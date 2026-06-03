@@ -1,0 +1,40 @@
+import { NextResponse } from 'next/server'
+
+type ErrorEnvelope = { error: { code: string; message: string } }
+
+function err(code: string, message: string, status: number): NextResponse {
+  return NextResponse.json<ErrorEnvelope>({ error: { code, message } }, { status })
+}
+
+export function jsonOk<T>(data: T, status = 200): NextResponse {
+  return NextResponse.json({ data }, { status })
+}
+
+export function unauthorized(): NextResponse {
+  return err('unauthorized', 'No autenticado', 401)
+}
+
+export function forbidden(): NextResponse {
+  return err('forbidden', 'Acceso restringido a administradores', 403)
+}
+
+export function validationError(message: string): NextResponse {
+  return err('validation_error', message, 400)
+}
+
+export function handleError(error: unknown): NextResponse {
+  const e = error as { code?: string; message?: string }
+
+  switch (e?.code) {
+    case '23505':
+      return err('23505', e.message ?? 'Recurso duplicado', 409)
+    case '42501':
+      return err('42501', 'No tienes permiso para esta operación', 403)
+    case 'P0001':
+      return err('P0001', e.message ?? 'Solicitud inválida', 400)
+    default:
+      // Log server-side, return generic message to client
+      console.error('[handleError]', error)
+      return err('internal_error', 'Error interno', 500)
+  }
+}

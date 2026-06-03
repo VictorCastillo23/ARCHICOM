@@ -1,5 +1,5 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
+C:\proyects\archicom\back\CLAUDE.md
 # dependencies
 /node_modules
 /.pnp
@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Local AI runtime state
+.atl/
+.claude
+promts
+.mcp.json
+AGENTS.md
+CLAUDE.md
+skills-lock.json
+.agents
