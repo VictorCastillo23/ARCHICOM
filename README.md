@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Archicom
 
-## Getting Started
+Portafolio digital académico (MVP). Estudiantes universitarios publican obras (libro, artículo, investigación, poema, dibujo, otro), las exploran, comentan y likean. Los administradores curan revistas temáticas.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router, Turbopack, React 19)
+- **Supabase** — PostgreSQL + Auth + Storage (ya desplegado)
+- **Tailwind CSS v4**
+- **TypeScript** (strict)
+
+## Setup local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repo>
+cd back
+npm install
+
+# Copiar variables de entorno
+cp .env.local.example .env.local
+# Editar .env.local con los valores de tu proyecto Supabase
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Variables requeridas (Supabase Dashboard → Project Settings → API):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-anon-key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> **No agregar** `SUPABASE_SERVICE_ROLE_KEY` — no se usa. Todas las operaciones corren bajo el JWT del usuario vía `@supabase/ssr`; RLS aplica como ese usuario.
 
-## Learn More
+## Comandos
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev        # servidor de desarrollo (Turbopack, puerto 3000)
+npm run build      # build de producción
+npm run start      # servidor de producción
+npm run lint       # ESLint (flat config)
+npx tsc --noEmit   # type-check sin emitir
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Despliegue en Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Importar el repositorio en [vercel.com](https://vercel.com).
+2. Agregar en **Project Settings → Environment Variables**:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+3. Deploy — el framework se detecta automáticamente como Next.js.
 
-## Deploy on Vercel
+> No agregar `SUPABASE_SERVICE_ROLE_KEY` en Vercel — no existe en el proyecto.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Cuentas de prueba
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Contraseña de todas: `Archicom123!`
+
+| Nombre | Email | Rol |
+|--------|-------|-----|
+| María García | `m.garcia@uaq.mx` | `usuario` |
+| Carlos Romo | `c.romo@unam.mx` | `usuario` |
+| Dra. Laura Vega | `l.vega@tec.mx` | `administrador` |
+
+## Tests
+
+No hay test runner local. Los tests se generan y ejecutan vía el MCP **testsprite**. Ver [`TEST_PLAN.md`](TEST_PLAN.md) para el plan de pruebas y resultados del ciclo de hardening (admin-capa5).
