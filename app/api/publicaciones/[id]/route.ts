@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { handleError, jsonOk, unauthorized } from '@/lib/supabase/handleError'
 import { getPublicacion } from '@/lib/data/publicaciones'
@@ -44,9 +44,14 @@ export async function PATCH(request: NextRequest, ctx: Context) {
     .update(updates)
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) return handleError(error)
+  if (!data)
+    return NextResponse.json(
+      { error: { code: 'not_found', message: 'Publicación no encontrada' } },
+      { status: 404 },
+    )
 
   return jsonOk({ publicacion: data })
 }
