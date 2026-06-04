@@ -1,17 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Revista, RevistaDetalle } from '@/lib/types/database'
 
+export type RevistaConEditor = Revista & { editor?: { id: string; nombre: string } | null }
+
 export async function getRevistas({
   estado,
 }: {
   estado?: string
-} = {}): Promise<{ data: Revista[] | null; error: unknown }> {
+} = {}): Promise<{ data: RevistaConEditor[] | null; error: unknown }> {
   const supabase = await createClient()
 
   let query = supabase
     .from('revista')
-    .select('*')
-    .order('creado_en', { ascending: false })
+    .select('*, editor:usuario(id, nombre)')
+    .order('publicada_en', { ascending: false })
 
   if (estado) {
     query = query.eq('estado', estado)
@@ -19,7 +21,7 @@ export async function getRevistas({
 
   const { data, error } = await query
 
-  return { data, error }
+  return { data: data as RevistaConEditor[] | null, error }
 }
 
 export async function getRevista(

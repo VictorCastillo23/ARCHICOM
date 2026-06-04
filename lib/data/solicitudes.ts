@@ -10,7 +10,7 @@ export async function getMisSolicitudes(
     .from('solicitud_revista')
     .select('*, revista(id, titulo), publicacion(id, titulo)')
     .eq('solicitante_id', uid)
-    .order('creado_en', { ascending: false })
+    .order('solicitado_en', { ascending: false })
 
   return { data: data as SolicitudRevista[] | null, error }
 }

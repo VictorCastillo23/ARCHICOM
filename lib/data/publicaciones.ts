@@ -9,17 +9,17 @@ export async function getPublicacionPorArea({
   area: string
   limit?: number
   offset?: number
-}): Promise<{ data: Publicacion[] | null; error: unknown }> {
+}): Promise<{ data: (Publicacion & { usuario?: { id: string; nombre: string } | null })[] | null; error: unknown }> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('publicacion')
-    .select('*, publicacion_tag!inner(tag!inner(nombre, area))')
+    .select('*, publicacion_tag!inner(tag!inner(nombre, area)), usuario(id, nombre)')
     .eq('publicacion_tag.tag.area', area)
     .order('creado_en', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  return { data: data as Publicacion[] | null, error }
+  return { data: data as (Publicacion & { usuario?: { id: string; nombre: string } | null })[] | null, error }
 }
 
 export async function getPublicacion(

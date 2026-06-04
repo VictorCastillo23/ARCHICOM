@@ -70,7 +70,7 @@ export type Revista = {
   estado: EstadoRevista
   editor_id: string
   publicada_en?: string | null
-  creado_en: string
+  //creado_en: string
 }
 
 export type RevistaArticulo = {
@@ -92,6 +92,16 @@ export type SolicitudRevista = {
 }
 
 // View DTO
+
+export type PublicacionCardData = {
+  id: string
+  titulo: string
+  resumen: string
+  tipo: TipoPublicacion
+  nombre_autor: string
+  autor_id?: string
+  creado_en?: string
+}
 
 export type FeedPublicacion = {
   id: string
