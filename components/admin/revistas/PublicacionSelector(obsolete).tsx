@@ -121,7 +121,7 @@ export default function PublicacionSelector({ revistaId, existingPubIds, onClose
                     <TipoBadge tipo={pub.tipo} />
                   </div>
                   <p className="font-medium text-sm truncate">{pub.titulo}</p>
-                  <p className="text-xs text-[--color-text-muted]">Por {pub.nombre_autor}</p>
+                  <p className="text-xs text-[--color-text-muted]">Por {pub.autor_nombre}</p>
                 </div>
                 <Button
                   size="sm"
