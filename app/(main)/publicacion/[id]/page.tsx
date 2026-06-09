@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getPublicacion } from '@/lib/data/publicaciones'
+import { getRevistaActiva } from '@/lib/data/revistas'
+import { getSolicitudParaEdicion } from '@/lib/data/solicitudes'
 import { createClient } from '@/lib/supabase/server'
 import TipoBadge from '@/components/ui/TipoBadge'
 import ErrorState from '@/components/ui/ErrorState'
@@ -7,6 +9,7 @@ import TagList from '@/components/publicacion/TagList'
 import ComentarioList from '@/components/publicacion/ComentarioList'
 import ComentarioForm from '@/components/publicacion/ComentarioForm'
 import LikeButton from '@/components/publicacion/LikeButton'
+import SolicitarRevistaButton from '@/components/publicacion/SolicitarRevistaButton'
 import Link from 'next/link'
 import type { Comentario, Tag, PublicacionTag, Usuario } from '@/lib/types/database'
 
@@ -38,13 +41,29 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   // Resolve comments
   const comentarios = (data.comentario ?? []) as (Comentario & { usuario?: Pick<Usuario, 'id' | 'nombre'> | null })[]
 
-  // Determine auth status for LikeButton
+  // Resolve session
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthenticated = Boolean(user)
+  const isAuthor = Boolean(user && user.id === data.autor_id)
+
+  // Resolve postulation state (only needed when user is the author)
+  const { data: revistaActiva } = await getRevistaActiva()
+  const { data: solicitudExistente } = isAuthor && revistaActiva
+    ? await getSolicitudParaEdicion(id, revistaActiva.id)
+    : { data: null }
 
   return (
-    <article className="max-w-3xl mx-auto">
+    <article className="animate-page max-w-[68ch] mx-auto">
+      <div className="mb-6 pb-4 border-b border-[--color-border]">
+        <Link
+          href="/"
+          className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+        >
+          ← Publicaciones
+        </Link>
+      </div>
+
       {/* Header */}
       <header className="mb-8">
         <div className="flex items-center gap-3 mb-4">
@@ -61,7 +80,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           </time>
         </div>
 
-        <h1 className="text-[--size-heading-lg] font-bold font-serif text-[--color-text] leading-tight mb-4">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-4">
           {data.titulo}
         </h1>
 
@@ -110,6 +129,18 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         </div>
       )}
 
+      {/* Postular a revista */}
+      {isAuthor && (
+        <div className="mb-8">
+          <SolicitarRevistaButton
+            publicacionId={id}
+            isAuthor={isAuthor}
+            revistaActiva={revistaActiva ? { id: revistaActiva.id, titulo: revistaActiva.titulo } : null}
+            solicitudExistente={solicitudExistente}
+          />
+        </div>
+      )}
+
       {/* Like */}
       <div className="mb-10 pb-8 border-b border-[--color-border]">
         <LikeButton
@@ -122,7 +153,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
 
       {/* Comentarios */}
       <section>
-        <h2 className="text-[--size-heading-sm] font-semibold font-serif text-[--color-text] mb-6">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
           Comentarios ({comentarios.length})
         </h2>
 

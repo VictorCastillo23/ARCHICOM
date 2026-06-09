@@ -14,8 +14,8 @@ export default async function RevistasPage() {
 
   if (!revistas || revistas.length === 0) {
     return (
-      <div>
-        <h1 className="text-[--size-heading-lg] font-bold font-serif text-[--color-text] mb-8">
+      <div className="animate-page">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-8">
           Revistas
         </h1>
         <EmptyState
@@ -27,20 +27,20 @@ export default async function RevistasPage() {
   }
 
   return (
-    <div>
+    <div className="animate-page">
       <div className="mb-8">
-        <h1 className="text-[--size-heading-lg] font-bold font-serif text-[--color-text]">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight">
           Revistas
         </h1>
-        <p className="mt-1 text-sm text-[--color-text-muted]">
-          Colecciones temáticas curadas por nuestros editores.
+        <p className="mt-2 text-sm text-[--color-text-muted]">
+          Ediciones semanales de la comunidad.
         </p>
       </div>
 
-      <ul className="flex flex-col gap-6 list-none p-0">
+      <ul className="animate-stagger grid grid-cols-1 md:grid-cols-2 gap-6 list-none p-0">
         {revistas.map((revista) => (
           <li key={revista.id}>
-            <Card as="article" className="hover:shadow-md transition-shadow">
+            <Card as="article" className="hover:shadow-md transition-shadow h-full">
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-3">
                   <Badge tone="info">
@@ -48,7 +48,7 @@ export default async function RevistasPage() {
                   </Badge>
                 </div>
 
-                <h2 className="text-[--size-heading-sm] font-semibold font-serif">
+                <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display">
                   <Link
                     href={`/revistas/${revista.id}`}
                     className="text-[--color-text] hover:text-[--color-primary] transition-colors"
@@ -63,14 +63,6 @@ export default async function RevistasPage() {
                   </p>
                 )}
 
-                {revista.editor && (
-                  <p className="text-xs text-[--color-text-muted]">
-                    Editor:{' '}
-                    <span className="font-medium text-[--color-text]">
-                      {revista.editor.nombre}
-                    </span>
-                  </p>
-                )}
               </div>
             </Card>
           </li>

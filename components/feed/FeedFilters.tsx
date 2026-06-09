@@ -38,9 +38,9 @@ export default function FeedFilters({ tipos, areas, current }: FeedFiltersProps)
   const hasFilter = Boolean(current.tipo || current.area)
 
   return (
-    <div className="flex flex-col gap-4 mb-8">
+    <div className="flex flex-col gap-3 mb-8 pb-6 border-b border-[--color-border]">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-[--color-text-muted] mr-1">Tipo:</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-[--color-text-muted] mr-1">Tipo</span>
         {tipos.map((tipo) => {
           const isActive = current.tipo === tipo
           return (
@@ -64,7 +64,7 @@ export default function FeedFilters({ tipos, areas, current }: FeedFiltersProps)
 
       {areas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-[--color-text-muted] mr-1">Área:</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-[--color-text-muted] mr-1">Área</span>
           {areas.map((area) => {
             const isActive = current.area === area
             return (
@@ -91,7 +91,7 @@ export default function FeedFilters({ tipos, areas, current }: FeedFiltersProps)
         <button
           type="button"
           onClick={clearFilters}
-          className="self-start text-xs text-[--color-text-muted] underline hover:text-[--color-primary] transition-colors"
+          className="self-start text-xs text-[--color-text-muted] underline underline-offset-2 hover:text-[--color-primary] transition-colors"
         >
           Limpiar filtros
         </button>

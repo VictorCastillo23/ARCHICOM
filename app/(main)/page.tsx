@@ -44,7 +44,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         titulo: pub.titulo,
         resumen: pub.resumen,
         tipo: pub.tipo,
-        nombre_autor: pub.nombre_autor,
+        nombre_autor: pub.autor_nombre,
         autor_id: pub.autor_id,
         creado_en: pub.creado_en,
       }))
@@ -58,13 +58,13 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const currentSearchParams = { ...(area ? { area } : tipo ? { tipo } : {}) }
 
   return (
-    <div>
+    <div className="animate-page">
       <div className="mb-8">
-        <h1 className="text-[--size-heading-lg] font-bold font-serif text-[--color-text]">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight">
           Publicaciones
         </h1>
-        <p className="mt-1 text-sm text-[--color-text-muted]">
-          Explorá el trabajo académico de la comunidad.
+        <p className="mt-2 text-sm text-[--color-text-muted]">
+          Explorá el trabajo de la comunidad.
         </p>
       </div>
 

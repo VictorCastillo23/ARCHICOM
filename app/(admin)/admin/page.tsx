@@ -5,14 +5,23 @@ export const metadata = { title: 'Admin' }
 
 export default function AdminPage() {
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-1">Panel de administración</h1>
-      <p className="text-[--color-text-muted] mb-8">Gestioná las revistas y el catálogo de tags.</p>
+    <div className="max-w-2xl animate-page">
+      <div className="mb-8 pb-6 border-b-2 border-[--color-primary]">
+        <p className="text-xs uppercase tracking-widest text-[--color-primary] font-medium mb-1">
+          Panel de administración
+        </p>
+        <h1 className="text-[length:var(--size-heading-lg)] font-display font-normal leading-tight text-[--color-text]">
+          Archicom
+        </h1>
+        <p className="mt-2 text-[--color-text-muted]">
+          Gestioná las revistas y el catálogo de tags.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-stagger">
         <Link href="/admin/revistas" className="block group">
-          <Card className="group-hover:shadow-md transition-shadow h-full">
-            <h2 className="font-semibold text-lg mb-1">Revistas</h2>
+          <Card className="group-hover:shadow-md transition-shadow h-full border-l-4 border-l-[--color-primary]">
+            <h2 className="font-display font-normal text-[length:var(--size-heading-sm)] mb-1">Revistas</h2>
             <p className="text-sm text-[--color-text-muted]">
               Crear y editar revistas, curar artículos, gestionar solicitudes.
             </p>
@@ -20,8 +29,8 @@ export default function AdminPage() {
         </Link>
 
         <Link href="/admin/tags" className="block group">
-          <Card className="group-hover:shadow-md transition-shadow h-full">
-            <h2 className="font-semibold text-lg mb-1">Tags</h2>
+          <Card className="group-hover:shadow-md transition-shadow h-full border-l-4 border-l-[--color-primary]">
+            <h2 className="font-display font-normal text-[length:var(--size-heading-sm)] mb-1">Tags</h2>
             <p className="text-sm text-[--color-text-muted]">
               Crear, editar y eliminar tags del catálogo público.
             </p>

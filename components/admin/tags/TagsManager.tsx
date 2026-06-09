@@ -104,9 +104,9 @@ export default function TagsManager({ initialTags }: Props) {
   }, {})
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Tags</h1>
+    <div className="animate-page">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-[--color-border]">
+        <h1 className="text-[length:var(--size-heading-md)] font-display font-normal">Tags</h1>
         <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? 'Cancelar' : 'Nuevo tag'}
         </Button>
@@ -159,7 +159,7 @@ export default function TagsManager({ initialTags }: Props) {
         <div className="flex flex-col gap-6">
           {Object.entries(grouped).map(([area, areaTags]) => (
             <div key={area}>
-              <h2 className="text-sm font-semibold text-[--color-text-muted] uppercase tracking-wide mb-2">
+              <h2 className="text-xs font-medium text-[--color-primary] uppercase tracking-widest mb-2 pl-2 border-l-2 border-[--color-primary]">
                 {area}
               </h2>
               <div className="border border-[--color-border] rounded-[--radius-md] overflow-hidden">

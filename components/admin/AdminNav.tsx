@@ -12,11 +12,11 @@ export default function AdminNav() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-50 bg-[--color-surface] border-b border-[--color-border]">
+    <header className="sticky top-0 z-50 bg-[--color-surface] border-b-2 border-[--color-primary]">
       <div className="mx-auto max-w-6xl px-[--space-page] h-14 flex items-center gap-6">
         <Link
           href="/admin"
-          className="font-semibold text-[--color-text] hover:text-[--color-primary] transition-colors"
+          className="font-display font-normal text-xl text-[--color-text] hover:text-[--color-primary] transition-colors"
         >
           Archicom Admin
         </Link>
@@ -31,7 +31,7 @@ export default function AdminNav() {
                 className={[
                   'px-3 py-1.5 rounded-[--radius-md] text-sm font-medium transition-colors',
                   active
-                    ? 'bg-[--color-surface-muted] text-[--color-text]'
+                    ? 'bg-[--color-primary] text-[--color-primary-fg]'
                     : 'text-[--color-text-muted] hover:text-[--color-text] hover:bg-[--color-surface-muted]',
                 ].join(' ')}
               >

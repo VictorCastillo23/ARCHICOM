@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   handleError,
@@ -6,6 +7,7 @@ import {
   validationError,
 } from '@/lib/supabase/handleError'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { getRevistaActiva } from '@/lib/data/revistas'
 import type { EstadoSolicitud } from '@/lib/types/database'
 
 export async function GET(request: Request) {
@@ -19,7 +21,7 @@ export async function GET(request: Request) {
   let query = admin.supabase
     .from('solicitud_revista')
     .select('*, revista(id, titulo), publicacion(id, titulo)')
-    .order('creado_en', { ascending: false })
+    .order('solicitado_en', { ascending: false })
 
   if (revista_id) query = query.eq('revista_id', revista_id)
   if (estado) query = query.eq('estado', estado)
@@ -39,17 +41,25 @@ export async function POST(request: Request) {
   if (!user) return unauthorized()
 
   const body = await request.json()
-  const { publicacion_id, revista_id, mensaje } = body
+  const { publicacion_id, mensaje } = body
 
-  if (!publicacion_id || !revista_id) {
-    return validationError('Se requieren publicacion_id y revista_id')
+  if (!publicacion_id) {
+    return validationError('Se requiere publicacion_id')
+  }
+
+  const { data: activa } = await getRevistaActiva()
+  if (!activa) {
+    return NextResponse.json(
+      { error: { code: 'no_active_revista', message: 'No hay una revista abierta esta semana' } },
+      { status: 404 }
+    )
   }
 
   const { data, error } = await supabase
     .from('solicitud_revista')
     .insert({
       publicacion_id,
-      revista_id,
+      revista_id: activa.id,
       mensaje: mensaje ?? null,
       solicitante_id: user.id,
     })

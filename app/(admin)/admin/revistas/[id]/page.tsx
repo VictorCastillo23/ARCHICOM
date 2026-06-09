@@ -19,15 +19,15 @@ export default async function RevistaDetailPage(props: Props) {
   if (!revista) notFound()
 
   return (
-    <div>
-      <div className="mb-6">
+    <div className="animate-page">
+      <div className="mb-6 pb-4 border-b border-[--color-border]">
         <Link
           href="/admin/revistas"
-          className="text-sm text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+          className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
         >
           ← Revistas
         </Link>
-        <h1 className="text-2xl font-semibold mt-1">{revista.titulo}</h1>
+        <h1 className="text-[length:var(--size-heading-md)] font-display font-normal mt-1">{revista.titulo}</h1>
       </div>
 
       <RevistaPatchForm revista={revista} />
@@ -35,9 +35,10 @@ export default async function RevistaDetailPage(props: Props) {
       <ArticulosList
         revistaId={revista.id}
         articulos={revista.revista_articulo ?? []}
+        estado={revista.estado}
       />
 
-      <SolicitudesList revistaId={revista.id} />
+      {revista.estado === 'borrador' && <SolicitudesList revistaId={revista.id} />}
     </div>
   )
 }

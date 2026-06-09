@@ -68,7 +68,6 @@ export type Revista = {
   volumen?: number
   descripcion?: string
   estado: EstadoRevista
-  editor_id: string
   publicada_en?: string | null
   //creado_en: string
 }
@@ -88,7 +87,12 @@ export type SolicitudRevista = {
   solicitante_id: string
   mensaje?: string
   estado: EstadoSolicitud
-  creado_en: string
+  solicitado_en: string
+}
+
+export type SolicitudRevistaDetalle = SolicitudRevista & {
+  revista: { id: string; titulo: string }
+  publicacion: { id: string; titulo: string }
 }
 
 // View DTO
@@ -111,7 +115,7 @@ export type FeedPublicacion = {
   archivo_url?: string
   autor_id: string
   creado_en: string
-  nombre_autor: string
+  autor_nombre: string
 }
 
 // Nested / joined relation types

@@ -7,16 +7,11 @@ export interface PublicacionCardProps {
   pub: PublicacionCardData
 }
 
-function truncate(text: string, maxLen = 150): string {
-  if (text.length <= maxLen) return text
-  return text.slice(0, maxLen).trimEnd() + '…'
-}
-
 export default function PublicacionCard({ pub }: PublicacionCardProps) {
   const { id, titulo, resumen, tipo, nombre_autor, autor_id, creado_en } = pub
 
   return (
-    <Card as="article" className="flex flex-col gap-3 hover:shadow-md transition-shadow">
+    <Card as="article" className="flex flex-col gap-3 hover:shadow-md transition-shadow motion-safe:hover:-translate-y-1 motion-safe:transition-transform motion-safe:duration-200">
       <div className="flex items-start justify-between gap-2">
         <TipoBadge tipo={tipo} />
         {creado_en && (
@@ -33,7 +28,7 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         )}
       </div>
 
-      <h2 className="text-[--size-heading-sm] font-semibold font-serif leading-snug">
+      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display leading-snug line-clamp-3">
         <Link
           href={`/publicacion/${id}`}
           className="text-[--color-text] hover:text-[--color-primary] transition-colors"
@@ -42,8 +37,8 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         </Link>
       </h2>
 
-      <p className="text-sm text-[--color-text-muted] leading-relaxed">
-        {truncate(resumen)}
+      <p className="text-sm text-[--color-text-muted] leading-relaxed line-clamp-3">
+        {resumen}
       </p>
 
       <div className="mt-auto pt-2 border-t border-[--color-border] flex items-center gap-1 text-xs text-[--color-text-muted]">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
@@ -94,7 +95,10 @@ export default function SolicitudesList({ revistaId }: Props) {
 
   return (
     <div>
-      <h2 className="font-semibold text-lg mb-3">Solicitudes pendientes</h2>
+      <h2 className="font-semibold text-lg mb-1">Solicitudes pendientes</h2>
+      <p className="text-xs text-[--color-text-muted] mb-3">
+        Las solicitudes pendientes se descartan automáticamente el viernes.
+      </p>
 
       {loading && (
         <p className="text-sm text-[--color-text-muted]">Cargando solicitudes…</p>
@@ -121,9 +125,13 @@ export default function SolicitudesList({ revistaId }: Props) {
                 className="flex items-start gap-3 p-4 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface]"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">
+                  <Link
+                    href={`/publicacion/${sol.publicacion_id}`}
+                    target="_blank"
+                    className="font-medium text-sm truncate hover:underline block"
+                  >
                     {sol.publicacion?.titulo ?? sol.publicacion_id}
-                  </p>
+                  </Link>
                   {sol.mensaje && (
                     <p className="text-xs text-[--color-text-muted] mt-0.5 line-clamp-2">
                       {sol.mensaje}

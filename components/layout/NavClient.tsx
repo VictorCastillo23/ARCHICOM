@@ -49,6 +49,13 @@ export default function NavClient({ session }: NavClientProps) {
         </>
       ) : (
         <>
+
+          <Link
+            href="/revistas"
+            className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+          >
+            Revistas
+          </Link>
           <Link
             href="/perfil"
             className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"

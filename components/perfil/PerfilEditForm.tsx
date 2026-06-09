@@ -48,7 +48,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <h2 className="text-[--size-heading-sm] font-semibold font-serif text-[--color-text]">
+      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text]">
         Editar perfil
       </h2>
 

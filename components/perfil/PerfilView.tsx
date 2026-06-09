@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import Avatar from '@/components/ui/Avatar'
 import type { Usuario } from '@/lib/types/database'
 
@@ -12,7 +13,7 @@ export default function PerfilView({ perfil, esPropio = false }: PerfilViewProps
       <Avatar nombre={perfil.nombre} size="lg" />
 
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-[--size-heading-md] font-bold font-serif text-[--color-text]">
+        <h1 className="text-[length:var(--size-heading-md)] font-normal font-display text-[--color-text]">
           {perfil.nombre}
         </h1>
 
@@ -29,10 +30,18 @@ export default function PerfilView({ perfil, esPropio = false }: PerfilViewProps
         )}
 
         {esPropio && (
-          <p className="text-sm text-[--color-text-muted] mt-1">
-            <span className="font-medium text-[--color-text]">Email:</span>{' '}
-            {perfil.email}
-          </p>
+          <>
+            <p className="text-sm text-[--color-text-muted] mt-1">
+              <span className="font-medium text-[--color-text]">Email:</span>{' '}
+              {perfil.email}
+            </p>
+            <Link
+              href={`/usuario/${perfil.id}`}
+              className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors mt-2 self-start"
+            >
+              Ver mi perfil público →
+            </Link>
+          </>
         )}
       </div>
     </div>

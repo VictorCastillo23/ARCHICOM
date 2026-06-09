@@ -24,7 +24,7 @@ export default async function Nav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-[--space-page] h-14">
         <Link
           href="/"
-          className="font-bold text-lg tracking-tight text-[--color-text] hover:text-[--color-primary] transition-colors"
+          className="font-display font-normal text-xl tracking-tight text-[--color-text] hover:text-[--color-primary] transition-colors"
         >
           Archicom
         </Link>

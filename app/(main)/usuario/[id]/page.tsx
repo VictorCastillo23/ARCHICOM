@@ -36,13 +36,13 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
   }))
 
   return (
-    <div>
+    <div className="animate-page">
       <div className="mb-10 pb-8 border-b border-[--color-border]">
         <PerfilView perfil={perfil} esPropio={false} />
       </div>
 
       <section>
-        <h2 className="text-[--size-heading-sm] font-semibold font-serif text-[--color-text] mb-6">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
           Publicaciones ({publicacionesData.length})
         </h2>
         <FeedList publicaciones={publicacionesData} />

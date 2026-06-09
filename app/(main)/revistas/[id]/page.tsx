@@ -25,32 +25,41 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
   const articulos = data.revista_articulo ?? []
 
   return (
-    <article>
-      {/* Header */}
-      <header className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
+    <article className="animate-page">
+      <div className="mb-6 pb-4 border-b border-[--color-border]">
+        <Link
+          href="/revistas"
+          className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+        >
+          ← Revistas
+        </Link>
+      </div>
+
+      {/* Editorial cover header */}
+      <header className="mb-10 pb-8 border-b-2 border-[--color-border]">
+        <div className="flex items-center gap-3 mb-5">
           <Badge tone="success">Publicada</Badge>
           {data.volumen && (
-            <span className="text-sm text-[--color-text-muted]">
+            <span className="text-xs font-medium uppercase tracking-widest text-[--color-text-muted]">
               Vol. {data.volumen}
             </span>
           )}
         </div>
 
-        <h1 className="text-[--size-heading-lg] font-bold font-serif text-[--color-text] leading-tight mb-4">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-4">
           {data.titulo}
         </h1>
 
         {data.descripcion && (
-          <p className="text-base text-[--color-text-muted] leading-relaxed">
+          <p className="text-base text-[--color-text-muted] leading-relaxed max-w-[60ch]">
             {data.descripcion}
           </p>
         )}
       </header>
 
-      {/* Artículos */}
+      {/* Curated article list */}
       <section>
-        <h2 className="text-[--size-heading-sm] font-semibold font-serif text-[--color-text] mb-6">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
           Artículos ({articulos.length})
         </h2>
 
@@ -60,7 +69,7 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
             description="Esta revista todavía no tiene artículos publicados."
           />
         ) : (
-          <ol className="flex flex-col gap-4 list-none p-0">
+          <ol className="flex flex-col gap-0 list-none p-0">
             {articulos.map((articulo, index) => {
               const pub = articulo.publicacion
               if (!pub) return null
@@ -70,13 +79,13 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
               return (
                 <li
                   key={articulo.id}
-                  className="flex gap-4 py-4 border-b border-[--color-border] last:border-b-0"
+                  className="flex gap-4 py-5 border-b border-[--color-border] last:border-b-0"
                 >
-                  <span className="text-2xl font-serif font-bold text-[--color-text-muted] w-8 shrink-0 pt-0.5">
+                  <span className="text-2xl font-display font-normal text-[--color-text-muted] w-8 shrink-0 pt-0.5 leading-none">
                     {index + 1}
                   </span>
                   <div className="flex flex-col gap-1">
-                    <h3 className="text-base font-semibold font-serif">
+                    <h3 className="text-base font-normal font-display">
                       <Link
                         href={`/publicacion/${pub.id}`}
                         className="text-[--color-text] hover:text-[--color-primary] transition-colors"
@@ -101,6 +110,7 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
           </ol>
         )}
       </section>
+
     </article>
   )
 }
