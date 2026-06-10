@@ -6,7 +6,7 @@ import Field from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import ArchivoPreview from './ArchivoPreview'
 import { apiClient, ApiError } from '@/lib/api/client'
-import type { TipoPublicacion, Publicacion } from '@/lib/types/database'
+import type { TipoPublicacion, Publicacion, Tag } from '@/lib/types/database'
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_SIZE = 10 * 1024 * 1024
@@ -26,17 +26,30 @@ const SELECT_CLASSES =
 const FILE_CLASSES =
   'w-full rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-3 py-2 text-[--color-text] text-sm file:mr-4 file:py-0 file:px-3 file:rounded-[--radius-sm] file:border-0 file:bg-[--color-surface-muted] file:text-sm file:font-medium file:text-[--color-text] hover:file:bg-[--color-surface-muted] disabled:opacity-50 disabled:cursor-not-allowed'
 
-export default function PublicarForm() {
+export default function PublicarForm({ tags }: { tags: Tag[] }) {
   const router = useRouter()
 
   const [titulo, setTitulo] = useState('')
   const [resumen, setResumen] = useState('')
   const [tipo, setTipo] = useState<TipoPublicacion>('libro')
   const [archivo, setArchivo] = useState<File | null>(null)
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const tagsByArea = tags.reduce<Record<string, Tag[]>>((acc, tag) => {
+    if (!acc[tag.area]) acc[tag.area] = []
+    acc[tag.area].push(tag)
+    return acc
+  }, {})
+
+  function toggleTag(id: string) {
+    setSelectedTagIds((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
+    )
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null
@@ -86,6 +99,16 @@ export default function PublicarForm() {
           method: 'POST',
           body: JSON.stringify({ titulo, resumen, tipo, archivo_url: archivoUrl }),
         },
+      )
+
+      await Promise.all(
+        selectedTagIds.map((tag_id) =>
+          fetch(`/api/publicaciones/${publicacion.id}/tags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag_id }),
+          }),
+        ),
       )
 
       router.refresh()
@@ -149,6 +172,41 @@ export default function PublicarForm() {
           ))}
         </select>
       </div>
+
+      {tags.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-[--color-text]">
+            Áreas{' '}
+            <span className="font-normal text-xs text-[--color-text-muted]">(opcional)</span>
+          </span>
+          <div className="rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] p-3 flex flex-col gap-3">
+            {Object.entries(tagsByArea).map(([area, areaTags]) => (
+              <div key={area}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted] mb-1.5">
+                  {area}
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {areaTags.map((tag) => (
+                    <label
+                      key={tag.id}
+                      className="flex items-center gap-1.5 cursor-pointer select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTagIds.includes(tag.id)}
+                        onChange={() => toggleTag(tag.id)}
+                        disabled={loading}
+                        className="accent-[--color-primary] w-3.5 h-3.5"
+                      />
+                      <span className="text-sm text-[--color-text]">{tag.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor="archivo" className="text-sm font-medium text-[--color-text]">

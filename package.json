@@ -1,5 +1,5 @@
 {
-  "packageManager": "pnpm@11.5.2", 
+  "packageManager": "pnpm@11.5.2",
   "name": "back",
   "version": "0.1.0",
   "private": true,
@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "@vercel/analytics": "^2.0.1",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"

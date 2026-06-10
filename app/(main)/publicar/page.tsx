@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getTags } from '@/lib/data/tags'
 import PublicarForm from '@/components/publicar/PublicarForm'
 import type { Metadata } from 'next'
 
@@ -12,6 +13,8 @@ export default async function PublicarPage() {
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
+
+  const { data: tags } = await getTags()
 
   return (
     <div className="animate-page max-w-2xl mx-auto">
@@ -27,7 +30,7 @@ export default async function PublicarPage() {
         aria-label="Formulario de publicación"
         className="border border-[--color-border] rounded-[--radius-lg] p-6 bg-[--color-surface]"
       >
-        <PublicarForm />
+        <PublicarForm tags={tags ?? []} />
       </section>
     </div>
   )
