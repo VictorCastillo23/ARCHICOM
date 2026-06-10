@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { handleError, jsonOk, unauthorized } from '@/lib/supabase/handleError'
+import { handleError, jsonOk, unauthorized, validationError } from '@/lib/supabase/handleError'
 import { getPublicacion } from '@/lib/data/publicaciones'
 
 type Context = { params: Promise<{ id: string }> }
@@ -32,6 +32,11 @@ export async function PATCH(request: NextRequest, ctx: Context) {
     tipo?: string
     archivo_url?: string
   }
+
+  if (titulo !== undefined && titulo.length > 150)
+    return validationError('El título no puede superar 150 caracteres.')
+  if (resumen !== undefined && resumen.length > 250)
+    return validationError('El resumen no puede superar 250 caracteres.')
 
   const updates: Record<string, string | undefined> = {}
   if (titulo !== undefined) updates.titulo = titulo

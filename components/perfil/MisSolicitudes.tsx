@@ -11,12 +11,14 @@ const estadoTone: Record<EstadoSolicitud, BadgeTone> = {
   pendiente: 'neutral',
   aceptada: 'success',
   rechazada: 'danger',
+  retirada: 'neutral',
 }
 
 const estadoLabel: Record<EstadoSolicitud, string> = {
   pendiente: 'Pendiente',
   aceptada: 'Aceptada',
   rechazada: 'Rechazada',
+  retirada: 'Retirada',
 }
 
 export default function MisSolicitudes({ solicitudes }: MisSolicitudesProps) {

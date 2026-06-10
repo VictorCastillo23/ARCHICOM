@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getPerfil } from '@/lib/data/perfil'
+import { getPerfil, getPerfilStats } from '@/lib/data/perfil'
 import { getMisPublicaciones } from '@/lib/data/publicaciones'
 import { getMisSolicitudes } from '@/lib/data/solicitudes'
 import PerfilView from '@/components/perfil/PerfilView'
 import PerfilEditForm from '@/components/perfil/PerfilEditForm'
+import PerfilStats from '@/components/perfil/PerfilStats'
 import FeedList from '@/components/feed/FeedList'
-import MisSolicitudes from '@/components/perfil/MisSolicitudes'
+import SolicitudesHistorial from '@/components/perfil/SolicitudesHistorial'
 import EmptyState from '@/components/ui/EmptyState'
-import type { PublicacionCardData, SolicitudRevistaDetalle } from '@/lib/types/database'
+import type { PublicacionCardData, SolicitudConDetalle } from '@/lib/types/database'
 
 export const metadata = { title: 'Mi perfil — Archicom' }
 
@@ -29,10 +30,17 @@ export default async function PerfilPage() {
     redirect('/login')
   }
 
-  const { data: publicaciones } = await getMisPublicaciones(user.id)
-  const { data: solicitudes } = await getMisSolicitudes(user.id)
+  const [
+    { data: publicaciones },
+    { data: solicitudes },
+    stats,
+  ] = await Promise.all([
+    getMisPublicaciones(user.id),
+    getMisSolicitudes(user.id),
+    getPerfilStats(user.id),
+  ])
 
-  const sols: SolicitudRevistaDetalle[] = (solicitudes ?? [])
+  const sols: SolicitudConDetalle[] = (solicitudes ?? []) as SolicitudConDetalle[]
 
   const pubs: PublicacionCardData[] = (publicaciones ?? []).map((p) => ({
     id: p.id,
@@ -46,9 +54,16 @@ export default async function PerfilPage() {
 
   return (
     <div className="animate-page flex flex-col gap-10">
-      {/* Profile header — PerfilView already has font fixes from Phase 2 */}
+      {/* Profile header */}
       <section aria-label="Datos del perfil">
         <PerfilView perfil={perfil} esPropio />
+        <div className="mt-4">
+          <PerfilStats
+            totalPublicaciones={stats.totalPublicaciones}
+            totalEnRevistas={stats.totalEnRevistas}
+            totalLikes={stats.totalLikes}
+          />
+        </div>
       </section>
 
       {/* Edit form */}
@@ -65,6 +80,14 @@ export default async function PerfilPage() {
         />
       </section>
 
+      {/* Solicitations history */}
+      <section aria-label="Mis postulaciones">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+          Mis postulaciones ({sols.length})
+        </h2>
+        <SolicitudesHistorial solicitudes={sols} />
+      </section>
+
       {/* Own publications */}
       <section aria-label="Mis publicaciones">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
@@ -72,20 +95,13 @@ export default async function PerfilPage() {
         </h2>
         {pubs.length === 0 ? (
           <EmptyState
-            title="Todavía no publicaste nada"
-            description="Compartí tu trabajo con la comunidad."
-            action={{ label: 'Publicar ahora', href: '/publicar' }}
+            title={`Tu portafolio está vacío, ${perfil.nombre}`}
+            description="Compartí tu primera obra con la comunidad. Puede ser una investigación, un poema, un dibujo… lo que vos creás."
+            action={{ label: 'Publicar mi primera obra', href: '/publicar' }}
           />
         ) : (
           <FeedList publicaciones={pubs} />
         )}
-      </section>
-
-      <section aria-label="Mis solicitudes">
-        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
-          Mis solicitudes
-        </h2>
-        <MisSolicitudes solicitudes={sols} />
       </section>
     </div>
   )

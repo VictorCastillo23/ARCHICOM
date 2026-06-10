@@ -1,18 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
-import type { SolicitudRevista, SolicitudRevistaDetalle } from '@/lib/types/database'
+import type { SolicitudConDetalle, SolicitudRevista } from '@/lib/types/database'
 
 export async function getMisSolicitudes(
   uid: string
-): Promise<{ data: SolicitudRevistaDetalle[] | null; error: unknown }> {
+): Promise<{ data: SolicitudConDetalle[] | null; error: unknown }> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('solicitud_revista')
-    .select('*, revista(id, titulo), publicacion(id, titulo)')
+    .select('*, revista(id, titulo, volumen, estado), publicacion(id, titulo, tipo)')
     .eq('solicitante_id', uid)
     .order('solicitado_en', { ascending: false })
 
-  return { data: data as SolicitudRevistaDetalle[] | null, error }
+  return { data: data as SolicitudConDetalle[] | null, error }
 }
 
 export async function getSolicitudParaEdicion(

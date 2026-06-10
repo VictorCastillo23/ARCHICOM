@@ -13,6 +13,10 @@ export async function POST(request: Request) {
     return validationError('email, password y nombre son requeridos')
   }
 
+  if (nombre.length > 50) return validationError('El nombre no puede superar 50 caracteres.')
+  if (email.length > 50) return validationError('El email no puede superar 50 caracteres.')
+  if (password.length > 20) return validationError('La contraseña no puede superar 20 caracteres.')
+
   const supabase = await createClient()
 
   const { data, error } = await supabase.auth.signUp({

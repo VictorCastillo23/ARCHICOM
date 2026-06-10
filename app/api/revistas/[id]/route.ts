@@ -1,4 +1,4 @@
-import { handleError, jsonOk } from '@/lib/supabase/handleError'
+import { handleError, jsonOk, validationError } from '@/lib/supabase/handleError'
 import { getRevista } from '@/lib/data/revistas'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 
@@ -24,6 +24,11 @@ export async function PATCH(request: Request, ctx: Context) {
     titulo?: string
     volumen?: number
   }
+
+  if (titulo !== undefined && titulo.length > 65)
+    return validationError('El título no puede superar 65 caracteres.')
+  if (volumen !== undefined && volumen >= 9999)
+    return validationError('El volumen debe ser menor a 9999.')
 
   const updateObj: Record<string, unknown> = {}
   if (titulo !== undefined) updateObj.titulo = titulo

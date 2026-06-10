@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Field from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import ArchivoPreview from './ArchivoPreview'
 import { apiClient, ApiError } from '@/lib/api/client'
 import type { TipoPublicacion, Publicacion } from '@/lib/types/database'
 
@@ -32,6 +33,7 @@ export default function PublicarForm() {
   const [resumen, setResumen] = useState('')
   const [tipo, setTipo] = useState<TipoPublicacion>('libro')
   const [archivo, setArchivo] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -109,6 +111,7 @@ export default function PublicarForm() {
         required
         disabled={loading}
         placeholder="Título de tu publicación"
+        maxLength={150}
       />
 
       <Field
@@ -120,6 +123,7 @@ export default function PublicarForm() {
         required
         disabled={loading}
         placeholder="Breve descripción del contenido"
+        maxLength={250}
       />
 
       <div className="flex flex-col gap-1">
@@ -160,7 +164,15 @@ export default function PublicarForm() {
           accept="application/pdf,image/jpeg,image/png"
           disabled={loading}
           onChange={handleFileChange}
+          ref={fileInputRef}
           className={FILE_CLASSES}
+        />
+        <ArchivoPreview
+          file={archivo}
+          onClear={() => {
+            setArchivo(null)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+          }}
         />
       </div>
 

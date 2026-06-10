@@ -18,6 +18,7 @@ const estadoTone: Record<EstadoSolicitud, 'neutral' | 'success' | 'danger'> = {
   pendiente: 'neutral',
   aceptada: 'success',
   rechazada: 'danger',
+  retirada: 'danger',
 }
 
 export default function SolicitarRevistaButton({

@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
     return validationError('titulo, resumen y tipo son requeridos')
   }
 
+  if (titulo.length > 150) return validationError('El título no puede superar 150 caracteres.')
+  if (resumen.length > 250) return validationError('El resumen no puede superar 250 caracteres.')
+
   const { data, error } = await supabase
     .from('publicacion')
     .insert({

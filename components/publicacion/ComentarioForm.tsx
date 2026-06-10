@@ -54,6 +54,7 @@ export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
         value={contenido}
         onChange={(e) => setContenido((e.target as unknown as HTMLTextAreaElement).value)}
         placeholder="Escribí tu comentario…"
+        maxLength={250}
       />
       {error && (
         <p

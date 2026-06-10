@@ -11,7 +11,7 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
   const { id, titulo, resumen, tipo, nombre_autor, autor_id, creado_en } = pub
 
   return (
-    <Card as="article" className="flex flex-col gap-3 hover:shadow-md transition-shadow motion-safe:hover:-translate-y-1 motion-safe:transition-transform motion-safe:duration-200">
+    <Card as="article" className="h-full flex flex-col gap-3 hover:shadow-md transition-shadow motion-safe:hover:-translate-y-1 motion-safe:transition-transform motion-safe:duration-200">
       <div className="flex items-start justify-between gap-2">
         <TipoBadge tipo={tipo} />
         {creado_en && (
@@ -28,7 +28,7 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         )}
       </div>
 
-      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display leading-snug line-clamp-3">
+      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display leading-snug line-clamp-2 break-words min-h-[3rem]">
         <Link
           href={`/publicacion/${id}`}
           className="text-[--color-text] hover:text-[--color-primary] transition-colors"
@@ -37,7 +37,7 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         </Link>
       </h2>
 
-      <p className="text-sm text-[--color-text-muted] leading-relaxed line-clamp-3">
+      <p className="text-sm text-[--color-text-muted] leading-relaxed line-clamp-3 break-words ">
         {resumen}
       </p>
 

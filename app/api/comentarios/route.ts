@@ -36,6 +36,8 @@ export async function POST(request: Request) {
     return validationError('Se requieren publicacion_id y contenido')
   }
 
+  if (contenido.length > 250) return validationError('El comentario no puede superar 250 caracteres.')
+
   const { data, error } = await supabase
     .from('comentario')
     .insert({ publicacion_id, contenido, autor_id: user.id })

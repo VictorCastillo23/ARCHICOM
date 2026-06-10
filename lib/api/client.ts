@@ -55,5 +55,5 @@ export async function apiClient<T>(
     )
   }
 
-  return (body as { data: T }).data
+  return body !== null ? (body as { data: T }).data : (undefined as T)
 }

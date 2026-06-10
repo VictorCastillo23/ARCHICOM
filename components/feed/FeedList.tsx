@@ -4,14 +4,53 @@ import type { PublicacionCardData } from '@/lib/types/database'
 
 export interface FeedListProps {
   publicaciones: PublicacionCardData[]
+  isAuthenticated?: boolean
+  tipoActivo?: string
+  areaActivo?: string
 }
 
-export default function FeedList({ publicaciones }: FeedListProps) {
+export default function FeedList({
+  publicaciones,
+  isAuthenticated,
+  tipoActivo,
+  areaActivo,
+}: FeedListProps) {
   if (publicaciones.length === 0) {
+    if (areaActivo) {
+      return (
+        <EmptyState
+          title={`No hay publicaciones en ${areaActivo}`}
+          description="Esta disciplina aún no tiene obras. Podés ser quien la inaugure."
+          action={{ label: `Publicar en ${areaActivo}`, href: '/publicar' }}
+        />
+      )
+    }
+
+    if (tipoActivo) {
+      return (
+        <EmptyState
+          title={`No hay ${tipoActivo} todavía`}
+          description={`¿Tenés un ${tipoActivo}? Compartilo con la comunidad.`}
+          action={{ label: `Publicar un ${tipoActivo}`, href: '/publicar' }}
+        />
+      )
+    }
+
+    if (isAuthenticated) {
+      return (
+        <EmptyState
+          title="Aún no hay publicaciones"
+          description="La comunidad espera tu primera obra."
+          action={{ label: 'Publica la primera', href: '/publicar' }}
+        />
+      )
+    }
+
     return (
       <EmptyState
-        title="Sin publicaciones"
-        description="Todavía no hay publicaciones con estos filtros."
+        title="Aún no hay publicaciones"
+        description="Sé el primero en compartir tu trabajo con la comunidad."
+        action={{ label: 'Crea tu cuenta', href: '/signup' }}
       />
     )
   }

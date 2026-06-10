@@ -88,6 +88,7 @@ export default function SignupForm() {
         required
         autoComplete="name"
         disabled={loading}
+        maxLength={50}
       />
 
       <Field
@@ -99,6 +100,7 @@ export default function SignupForm() {
         required
         autoComplete="email"
         disabled={loading}
+        maxLength={50}
       />
 
       <Field
@@ -110,6 +112,7 @@ export default function SignupForm() {
         required
         autoComplete="new-password"
         disabled={loading}
+        maxLength={20}
       />
 
       {errorMessage && (

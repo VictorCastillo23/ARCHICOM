@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { handleError, jsonOk, unauthorized } from '@/lib/supabase/handleError'
+import { handleError, jsonOk, unauthorized, validationError } from '@/lib/supabase/handleError'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -16,6 +16,13 @@ export async function PATCH(request: Request) {
     carrera?: string
     nombre?: string
   }
+
+  if (nombre !== undefined && nombre.length > 50)
+    return validationError('El nombre no puede superar 50 caracteres.')
+  if (institucion !== undefined && institucion.length > 50)
+    return validationError('La institución no puede superar 50 caracteres.')
+  if (carrera !== undefined && carrera.length > 50)
+    return validationError('La carrera no puede superar 50 caracteres.')
 
   const updates: Record<string, string> = {}
   if (institucion !== undefined) updates.institucion = institucion

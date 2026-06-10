@@ -91,6 +91,7 @@ export default function RevistaPatchForm({ revista }: Props) {
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
                 error={saveError}
+                maxLength={65}
               />
             </div>
             <div className="w-28">
@@ -99,6 +100,7 @@ export default function RevistaPatchForm({ revista }: Props) {
                 name="volumen"
                 type="number"
                 min={1}
+                max={9998}
                 value={volumen}
                 onChange={(e) => setVolumen(e.target.value)}
                 placeholder="1"

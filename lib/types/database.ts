@@ -3,7 +3,7 @@
 export type TipoPublicacion = 'libro' | 'articulo' | 'investigacion' | 'poema' | 'dibujo' | 'otro'
 export type RolUsuario = 'usuario' | 'administrador'
 export type EstadoRevista = 'borrador' | 'publicada'
-export type EstadoSolicitud = 'pendiente' | 'aceptada' | 'rechazada'
+export type EstadoSolicitud = 'pendiente' | 'aceptada' | 'rechazada' | 'retirada'
 
 // Snake_case aliases to satisfy spec REQ-TYPES-01
 export type tipo_publicacion = TipoPublicacion
@@ -85,7 +85,10 @@ export type SolicitudRevista = {
   publicacion_id: string
   revista_id: string
   solicitante_id: string
-  mensaje?: string
+  mensaje?: string | null
+  respuesta?: string | null
+  resuelto_en?: string | null
+  revisor_id?: string | null
   estado: EstadoSolicitud
   solicitado_en: string
 }
@@ -93,6 +96,11 @@ export type SolicitudRevista = {
 export type SolicitudRevistaDetalle = SolicitudRevista & {
   revista: { id: string; titulo: string }
   publicacion: { id: string; titulo: string }
+}
+
+export type SolicitudConDetalle = SolicitudRevista & {
+  publicacion: { id: string; titulo: string; tipo: TipoPublicacion }
+  revista: { id: string; titulo: string; volumen: number; estado: EstadoRevista }
 }
 
 // View DTO

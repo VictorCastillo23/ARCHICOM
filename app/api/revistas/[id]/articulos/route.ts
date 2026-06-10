@@ -74,13 +74,33 @@ export async function DELETE(request: Request, ctx: Context) {
 
   if (!publicacion_id) return validationError('Se requiere publicacion_id como query param')
 
-  const { error } = await admin.supabase
+  const body = await request.json().catch(() => ({}))
+  const motivo: string | null = body?.motivo ?? null
+
+  const { error: deleteError } = await admin.supabase
     .from('revista_articulo')
     .delete()
     .eq('revista_id', revista_id)
     .eq('publicacion_id', publicacion_id)
 
-  if (error) return handleError(error)
+  if (deleteError) return handleError(deleteError)
+
+  const respuesta = motivo
+    ? `Aceptada y después cancelada por: ${motivo}`
+    : 'Aceptada y después cancelada'
+
+  const { error: updateError } = await admin.supabase
+    .from('solicitud_revista')
+    .update({
+      estado: 'retirada',
+      respuesta,
+      resuelto_en: new Date().toISOString(),
+    })
+    .eq('revista_id', revista_id)
+    .eq('publicacion_id', publicacion_id)
+    .eq('estado', 'aceptada')
+
+  if (updateError) return handleError(updateError)
 
   return new NextResponse(null, { status: 204 })
 }

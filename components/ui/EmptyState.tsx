@@ -32,7 +32,7 @@ export default function EmptyState({ title, description, action }: EmptyStatePro
       {action && (
         <Link
           href={action.href}
-          className="mt-4 inline-flex items-center rounded-[--radius-md] bg-[--color-primary] px-4 py-2 text-sm font-medium text-white hover:bg-[--color-primary-hover] transition-colors"
+          className="mt-4 inline-flex items-center rounded-[--radius-md] bg-[--color-primary] px-4 py-2 text-sm font-medium text-black hover:bg-[--color-primary-hover] transition-colors"
         >
           {action.label}
         </Link>

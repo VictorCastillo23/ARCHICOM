@@ -32,6 +32,7 @@ export default function SolicitudesList({ revistaId }: Props) {
   const [solicitudes, setSolicitudes] = useState<SolicitudItem[]>([])
   const [fetchError, setFetchError] = useState('')
   const [actionId, setActionId] = useState<string | null>(null)
+  const [rejectPending, setRejectPending] = useState<{ solicitudId: string; motivo: string } | null>(null)
 
   // Initial fetch — all setState calls are inside promise callbacks (not synchronously in effect)
   useEffect(() => {
@@ -75,12 +76,13 @@ export default function SolicitudesList({ revistaId }: Props) {
       .finally(() => setLoading(false))
   }
 
-  async function handleAction(solicitudId: string, action: 'aceptar' | 'rechazar') {
+  async function handleAction(solicitudId: string, action: 'aceptar' | 'rechazar', respuesta?: string) {
     setActionId(solicitudId)
+    setRejectPending(null)
     try {
       await apiClient(`/api/solicitudes/${solicitudId}/${action}`, {
         method: 'POST',
-        body: JSON.stringify({}),
+        body: JSON.stringify(respuesta ? { respuesta } : {}),
       })
       setSolicitudes((prev) => prev.filter((s) => s.id !== solicitudId))
       if (action === 'aceptar') {
@@ -122,49 +124,96 @@ export default function SolicitudesList({ revistaId }: Props) {
             return (
               <div
                 key={sol.id}
-                className="flex items-start gap-3 p-4 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface]"
+                className="p-4 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface]"
               >
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/publicacion/${sol.publicacion_id}`}
-                    target="_blank"
-                    className="font-medium text-sm truncate hover:underline block"
-                  >
-                    {sol.publicacion?.titulo ?? sol.publicacion_id}
-                  </Link>
-                  {sol.mensaje && (
-                    <p className="text-xs text-[--color-text-muted] mt-0.5 line-clamp-2">
-                      {sol.mensaje}
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/publicacion/${sol.publicacion_id}`}
+                      target="_blank"
+                      className="font-medium text-sm truncate hover:underline block"
+                    >
+                      {sol.publicacion?.titulo ?? sol.publicacion_id}
+                    </Link>
+                    {sol.mensaje && (
+                      <p className="text-xs text-[--color-text-muted] mt-0.5 line-clamp-2">
+                        {sol.mensaje}
+                      </p>
+                    )}
+                    <p className="text-xs text-[--color-text-muted] mt-1">
+                      {new Date(sol.creado_en).toLocaleDateString('es-AR', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </p>
-                  )}
-                  <p className="text-xs text-[--color-text-muted] mt-1">
-                    {new Date(sol.creado_en).toLocaleDateString('es-AR', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </p>
+                  </div>
+
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      loading={busy}
+                      disabled={actionId !== null}
+                      onClick={() => handleAction(sol.id, 'aceptar')}
+                    >
+                      Aceptar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={busy}
+                      disabled={actionId !== null}
+                      onClick={() => {
+                        if (rejectPending?.solicitudId === sol.id) return
+                        setRejectPending({ solicitudId: sol.id, motivo: '' })
+                      }}
+                    >
+                      Rechazar
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    loading={busy}
-                    disabled={actionId !== null}
-                    onClick={() => handleAction(sol.id, 'aceptar')}
-                  >
-                    Aceptar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    loading={busy}
-                    disabled={actionId !== null}
-                    onClick={() => handleAction(sol.id, 'rechazar')}
-                  >
-                    Rechazar
-                  </Button>
-                </div>
+                {rejectPending?.solicitudId === sol.id && (
+                  <div className="mt-3 pt-3 border-t border-[--color-border]">
+                    <label className="block text-xs font-medium text-[--color-text] mb-1">
+                      Motivo del rechazo <span className="text-[--color-danger]">*</span>
+                    </label>
+                    <textarea
+                      className="w-full rounded-[--radius-sm] border border-[--color-border] bg-[--color-surface-muted] px-3 py-2 text-sm text-[--color-text] resize-none focus:outline-none focus:ring-2 focus:ring-[--color-primary]"
+                      rows={3}
+                      maxLength={250}
+                      placeholder="Explicá brevemente por qué se rechaza esta solicitud…"
+                      value={rejectPending.motivo}
+                      onChange={(e) =>
+                        setRejectPending({ solicitudId: sol.id, motivo: e.target.value })
+                      }
+                    />
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-[--color-text-muted]">
+                        {rejectPending.motivo.length}/250
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={!!actionId}
+                          onClick={() => setRejectPending(null)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          loading={busy}
+                          disabled={!!actionId || rejectPending.motivo.trim().length === 0}
+                          onClick={() => handleAction(sol.id, 'rechazar', rejectPending.motivo.trim())}
+                        >
+                          Confirmar rechazo
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}

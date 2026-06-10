@@ -59,6 +59,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
         onChange={(e) => setNombre(e.target.value)}
         required
         disabled={loading}
+        maxLength={50}
       />
 
       <Field
@@ -68,6 +69,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
         onChange={(e) => setInstitucion(e.target.value)}
         disabled={loading}
         placeholder="Universidad o institución"
+        maxLength={50}
       />
 
       <Field
@@ -77,6 +79,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
         onChange={(e) => setCarrera(e.target.value)}
         disabled={loading}
         placeholder="Carrera o área de estudio"
+        maxLength={50}
       />
 
       {error && (

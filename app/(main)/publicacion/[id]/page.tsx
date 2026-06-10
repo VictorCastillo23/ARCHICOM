@@ -10,8 +10,10 @@ import ComentarioList from '@/components/publicacion/ComentarioList'
 import ComentarioForm from '@/components/publicacion/ComentarioForm'
 import LikeButton from '@/components/publicacion/LikeButton'
 import SolicitarRevistaButton from '@/components/publicacion/SolicitarRevistaButton'
+import EliminarPublicacionButton from '@/components/publicacion/EliminarPublicacionButton'
+import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
 import Link from 'next/link'
-import type { Comentario, Tag, PublicacionTag, Usuario } from '@/lib/types/database'
+import type { Comentario, Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
 
 interface PublicacionPageProps {
   params: Promise<{ id: string }>
@@ -53,6 +55,26 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
     ? await getSolicitudParaEdicion(id, revistaActiva.id)
     : { data: null }
 
+  // Resolve delete confirmation data (only for the author)
+  let tieneRevista = false
+  let tieneSolicitudPendiente = false
+  if (isAuthor) {
+    const [{ count: revistaCount }, { count: solicitudCount }] = await Promise.all([
+      supabase
+        .from('revista_articulo')
+        .select('revista!inner(estado)', { count: 'exact', head: true })
+        .eq('publicacion_id', id)
+        .eq('revista.estado', 'publicada'),
+      supabase
+        .from('solicitud_revista')
+        .select('*', { count: 'exact', head: true })
+        .eq('publicacion_id', id)
+        .eq('estado', 'pendiente'),
+    ])
+    tieneRevista = (revistaCount ?? 0) > 0
+    tieneSolicitudPendiente = (solicitudCount ?? 0) > 0
+  }
+
   return (
     <article className="animate-page max-w-[68ch] mx-auto">
       <div className="mb-6 pb-4 border-b border-[--color-border]">
@@ -80,7 +102,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           </time>
         </div>
 
-        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-4">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-4 break-words">
           {data.titulo}
         </h1>
 
@@ -99,7 +121,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
 
       {/* Resumen */}
       <section className="mb-8">
-        <p className="text-base text-[--color-text] leading-relaxed">{data.resumen}</p>
+        <p className="text-base text-[--color-text] leading-relaxed break-words">{data.resumen}</p>
       </section>
 
       {/* Archivo */}
@@ -129,14 +151,20 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         </div>
       )}
 
-      {/* Postular a revista */}
+      {/* Acciones del autor */}
       {isAuthor && (
-        <div className="mb-8">
+        <div className="mb-8 flex items-center gap-3">
           <SolicitarRevistaButton
             publicacionId={id}
             isAuthor={isAuthor}
             revistaActiva={revistaActiva ? { id: revistaActiva.id, titulo: revistaActiva.titulo } : null}
             solicitudExistente={solicitudExistente}
+          />
+          <EliminarPublicacionButton
+            publicacionId={id}
+            titulo={data.titulo}
+            tieneRevista={tieneRevista}
+            tieneSolicitudPendiente={tieneSolicitudPendiente}
           />
         </div>
       )}
@@ -177,6 +205,12 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           </p>
         )}
       </section>
+
+      <PublicacionesRelacionadas
+        publicacionId={id}
+        tagIds={tags.map((t) => t.id)}
+        tipo={data.tipo as TipoPublicacion}
+      />
     </article>
   )
 }
