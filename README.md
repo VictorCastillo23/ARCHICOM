@@ -11,10 +11,12 @@ Portafolio digital académico (MVP). Estudiantes universitarios publican obras (
 
 ## Setup local
 
+Requiere **pnpm** (el repo declara `pnpm@11.5.2` en `packageManager`; con `corepack enable` se usa la versión correcta automáticamente).
+
 ```bash
 git clone <repo>
 cd back
-npm install
+pnpm install
 
 # Copiar variables de entorno
 cp .env.local.example .env.local
@@ -33,11 +35,11 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-anon-key
 ## Comandos
 
 ```bash
-npm run dev        # servidor de desarrollo (Turbopack, puerto 3000)
-npm run build      # build de producción
-npm run start      # servidor de producción
-npm run lint       # ESLint (flat config)
-npx tsc --noEmit   # type-check sin emitir
+pnpm dev                # servidor de desarrollo (Turbopack, puerto 3000)
+pnpm build              # build de producción
+pnpm start              # servidor de producción
+pnpm lint               # ESLint (flat config)
+pnpm exec tsc --noEmit  # type-check sin emitir
 ```
 
 ## Despliegue en Vercel

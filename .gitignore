@@ -2,7 +2,7 @@
 C:\proyects\archicom\back\CLAUDE.md
 # dependencies
 /node_modules
-/.pnp
+/.pnp 
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -48,6 +48,7 @@ AGENTS.md
 CLAUDE.md
 skills-lock.json
 .agents
+.vscode
 
 testsprite_tests
 bash.exe.stackdump
