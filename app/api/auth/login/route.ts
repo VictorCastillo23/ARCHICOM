@@ -18,5 +18,5 @@ export async function POST(request: Request) {
 
   if (error) return handleError(error)
 
-  return jsonOk({ user: data.user, session: data.session })
+  return jsonOk({ user: data.user })
 }

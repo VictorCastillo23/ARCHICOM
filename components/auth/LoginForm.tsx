@@ -61,7 +61,7 @@ export default function LoginForm() {
         required
         autoComplete="current-password"
         disabled={loading}
-        maxLength={20}
+        maxLength={72}
       />
 
       {errorMessage && (

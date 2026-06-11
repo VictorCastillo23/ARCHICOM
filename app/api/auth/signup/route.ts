@@ -15,7 +15,8 @@ export async function POST(request: Request) {
 
   if (nombre.length > 50) return validationError('El nombre no puede superar 50 caracteres.')
   if (email.length > 50) return validationError('El email no puede superar 50 caracteres.')
-  if (password.length > 20) return validationError('La contraseña no puede superar 20 caracteres.')
+  if (password.length < 8) return validationError('La contraseña debe tener al menos 8 caracteres.')
+  if (password.length > 72) return validationError('La contraseña no puede superar 72 caracteres.')
 
   const supabase = await createClient()
 
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     password,
     options: {
       data: { nombre },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
   })
 
