@@ -1,14 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Usuario } from '@/lib/types/database'
+import type { PerfilPublico } from '@/lib/types/database'
 
 export async function getPerfil(
   id: string
-): Promise<{ data: Usuario | null; error: unknown }> {
+): Promise<{ data: PerfilPublico | null; error: unknown }> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('usuario')
-    .select('*')
+    .select('id, nombre, rol, institucion, carrera, creado_en')
     .eq('id', id)
     .single()
 

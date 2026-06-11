@@ -56,7 +56,7 @@ export default async function PerfilPage() {
     <div className="animate-page flex flex-col gap-10">
       {/* Profile header */}
       <section aria-label="Datos del perfil">
-        <PerfilView perfil={perfil} esPropio />
+        <PerfilView perfil={perfil} esPropio email={user.email ?? undefined} />
         <div className="mt-4">
           <PerfilStats
             totalPublicaciones={stats.totalPublicaciones}

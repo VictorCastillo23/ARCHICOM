@@ -33,7 +33,7 @@ export async function PATCH(request: Request) {
     .from('usuario')
     .update(updates)
     .eq('id', user.id)
-    .select()
+    .select('id, nombre, rol, institucion, carrera, creado_en')
     .single()
 
   if (error) return handleError(error)

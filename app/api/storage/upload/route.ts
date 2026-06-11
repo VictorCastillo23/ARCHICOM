@@ -19,9 +19,14 @@ export async function POST(request: Request) {
 
   if (!file) return validationError('Se requiere un archivo')
 
-  // 1. Validate MIME type
-  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png']
-  if (!allowedTypes.includes(file.type)) {
+  // 1. Validate MIME type and derive safe extension
+  const MIME_EXT: Record<string, string> = {
+    'application/pdf': 'pdf',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+  }
+  const ext = MIME_EXT[file.type]
+  if (!ext) {
     return validationError('Solo se permiten archivos PDF, JPG o PNG')
   }
 
@@ -31,8 +36,8 @@ export async function POST(request: Request) {
     return validationError('El archivo no puede superar 10 MB')
   }
 
-  // 3. Build path: publicaciones/{user_id}/{uuid}-{filename}
-  const fileName = `${crypto.randomUUID()}-${file.name}`
+  // 3. Build path from UUID + MIME-derived extension; discard original filename entirely
+  const fileName = `${crypto.randomUUID()}.${ext}`
   const path = `${user.id}/${fileName}`
 
   // 4. Upload to bucket 'publicaciones'

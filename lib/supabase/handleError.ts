@@ -45,10 +45,13 @@ export function handleError(error: unknown): NextResponse {
     }
   }
 
+  // PostgREST: missing or invalid JWT → 401 (must come before Postgres switch)
+  if (e?.code === 'PGRST301') return err('unauthorized', 'No autenticado', 401)
+
   // Postgres errors (from data-layer / RPC)
   switch (e?.code) {
     case '23505':
-      return err('23505', e.message ?? 'Recurso duplicado', 409)
+      return err('23505', 'Recurso duplicado', 409)
     case '42501':
       return err('42501', 'No tienes permiso para esta operación', 403)
     case 'P0001':

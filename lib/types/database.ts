@@ -23,6 +23,9 @@ export type Usuario = {
   creado_en: string
 }
 
+/** Public profile fields — no email column (email sourced from auth.getUser() for own profile). */
+export type PerfilPublico = Omit<Usuario, 'email'>
+
 export type Publicacion = {
   id: string
   titulo: string
