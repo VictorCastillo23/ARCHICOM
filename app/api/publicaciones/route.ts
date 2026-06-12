@@ -8,8 +8,20 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const tipo = searchParams.get('tipo') ?? undefined
   const area = searchParams.get('area') ?? undefined
-  const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : 10
-  const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : 0
+
+  // Clamp pagination: reject NaN/negative/oversized values to avoid
+  // unbounded scans and NaN propagating into PostgREST .range().
+  const MAX_LIMIT = 50
+  const limitParam = searchParams.get('limit')
+  const offsetParam = searchParams.get('offset')
+  const limit =
+    limitParam === null
+      ? 10
+      : Math.min(Math.max(Math.trunc(Number(limitParam)) || 10, 1), MAX_LIMIT)
+  const offset =
+    offsetParam === null
+      ? 0
+      : Math.max(Math.trunc(Number(offsetParam)) || 0, 0)
 
   if (area) {
     const { data, error } = await getPublicacionPorArea({ area, limit, offset })

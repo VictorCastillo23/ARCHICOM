@@ -77,30 +77,16 @@ export async function DELETE(request: Request, ctx: Context) {
   const body = await request.json().catch(() => ({}))
   const motivo: string | null = body?.motivo ?? null
 
-  const { error: deleteError } = await admin.supabase
-    .from('revista_articulo')
-    .delete()
-    .eq('revista_id', revista_id)
-    .eq('publicacion_id', publicacion_id)
+  // Atomic: remove the curated article AND mark the solicitud as 'retirada' in
+  // one transaction (RPC). Two separate statements could leave inconsistent
+  // state if the second failed.
+  const { error } = await admin.supabase.rpc('retirar_articulo', {
+    p_revista_id: revista_id,
+    p_publicacion_id: publicacion_id,
+    p_motivo: motivo,
+  })
 
-  if (deleteError) return handleError(deleteError)
-
-  const respuesta = motivo
-    ? `Aceptada y después cancelada por: ${motivo}`
-    : 'Aceptada y después cancelada'
-
-  const { error: updateError } = await admin.supabase
-    .from('solicitud_revista')
-    .update({
-      estado: 'retirada',
-      respuesta,
-      resuelto_en: new Date().toISOString(),
-    })
-    .eq('revista_id', revista_id)
-    .eq('publicacion_id', publicacion_id)
-    .eq('estado', 'aceptada')
-
-  if (updateError) return handleError(updateError)
+  if (error) return handleError(error)
 
   return new NextResponse(null, { status: 204 })
 }

@@ -23,8 +23,12 @@ export type Usuario = {
   creado_en: string
 }
 
-/** Public profile fields — no email column (email sourced from auth.getUser() for own profile). */
-export type PerfilPublico = Omit<Usuario, 'email'>
+/**
+ * Public profile fields — excludes email (sourced from auth.getUser() for own
+ * profile) and rol (not readable by anon at the DB grant level; the own user's
+ * rol is fetched separately for nav/admin gating).
+ */
+export type PerfilPublico = Omit<Usuario, 'email' | 'rol'>
 
 export type Publicacion = {
   id: string

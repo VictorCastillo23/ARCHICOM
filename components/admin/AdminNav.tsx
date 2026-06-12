@@ -18,7 +18,7 @@ export default function AdminNav() {
           href="/admin"
           className="font-display font-normal text-xl text-[--color-text] hover:text-[--color-primary] transition-colors"
         >
-          Archicom Admin
+          Es Vitrina Admin
         </Link>
 
         <nav className="flex items-center gap-1" aria-label="Navegación admin">

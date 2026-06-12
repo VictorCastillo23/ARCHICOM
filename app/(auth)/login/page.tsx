@@ -3,7 +3,7 @@ import Link from 'next/link'
 import LoginForm from '@/components/auth/LoginForm'
 
 export const metadata: Metadata = {
-  title: 'Iniciar sesión | Archicom',
+  title: 'Iniciar sesión | Es Vitrina',
 }
 
 export default function LoginPage() {

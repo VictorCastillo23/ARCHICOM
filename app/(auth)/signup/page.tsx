@@ -3,7 +3,7 @@ import Link from 'next/link'
 import SignupForm from '@/components/auth/SignupForm'
 
 export const metadata: Metadata = {
-  title: 'Crear cuenta | Archicom',
+  title: 'Crear cuenta | Es Vitrina',
 }
 
 export default function SignupPage() {

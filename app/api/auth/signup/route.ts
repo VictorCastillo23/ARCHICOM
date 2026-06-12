@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   if (nombre.length > 50) return validationError('El nombre no puede superar 50 caracteres.')
-  if (email.length > 50) return validationError('El email no puede superar 50 caracteres.')
+  if (email.length > 254) return validationError('El email no puede superar 254 caracteres.')
   if (password.length < 8) return validationError('La contraseña debe tener al menos 8 caracteres.')
   if (password.length > 72) return validationError('La contraseña no puede superar 72 caracteres.')
 
@@ -31,5 +31,10 @@ export async function POST(request: Request) {
 
   if (error) return handleError(error)
 
-  return jsonOk({ user: data.user }, 201)
+  // With email confirmation enabled, signUp never returns a session — neither
+  // for a brand-new account nor for an already-registered email (the latter is
+  // an anti-enumeration decoy). Absence of a session is the correct signal that
+  // the user must confirm via email, and it doesn't leak whether the email
+  // already existed.
+  return jsonOk({ user: data.user, needsConfirmation: data.session === null }, 201)
 }

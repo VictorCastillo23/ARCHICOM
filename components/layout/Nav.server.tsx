@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getPerfil } from '@/lib/data/perfil'
+import { getSesionUsuario } from '@/lib/data/perfil'
 import NavClient, { type SessionProp } from './NavClient'
 
 // RSC — no 'use client'. Resolves auth server-side so HTML arrives with correct nav state.
@@ -13,7 +13,7 @@ export default async function Nav() {
   let session: SessionProp | null = null
 
   if (user) {
-    const { data: perfil } = await getPerfil(user.id)
+    const { data: perfil } = await getSesionUsuario(user.id)
     if (perfil) {
       session = { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol }
     }
@@ -26,7 +26,7 @@ export default async function Nav() {
           href="/"
           className="font-display font-normal text-xl tracking-tight text-[--color-text] hover:text-[--color-primary] transition-colors"
         >
-          Archicom
+          Es Vitrina
         </Link>
         <NavClient session={session} />
       </div>

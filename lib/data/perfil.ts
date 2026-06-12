@@ -1,14 +1,34 @@
 import { createClient } from '@/lib/supabase/server'
-import type { PerfilPublico } from '@/lib/types/database'
+import type { PerfilPublico, Usuario } from '@/lib/types/database'
 
 export async function getPerfil(
   id: string
 ): Promise<{ data: PerfilPublico | null; error: unknown }> {
   const supabase = await createClient()
 
+  // No `rol`: this runs as `anon` for public profile pages, and SELECT on the
+  // rol column is revoked from anon to prevent admin-account enumeration.
   const { data, error } = await supabase
     .from('usuario')
-    .select('id, nombre, rol, institucion, carrera, creado_en')
+    .select('id, nombre, institucion, carrera, creado_en')
+    .eq('id', id)
+    .single()
+
+  return { data, error }
+}
+
+/**
+ * Own user's session fields, including `rol` for nav/admin gating. Only ever
+ * called for the authenticated user's own id, where SELECT on rol is allowed.
+ */
+export async function getSesionUsuario(
+  id: string
+): Promise<{ data: Pick<Usuario, 'id' | 'nombre' | 'rol'> | null; error: unknown }> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('usuario')
+    .select('id, nombre, rol')
     .eq('id', id)
     .single()
 

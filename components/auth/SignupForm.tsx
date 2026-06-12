@@ -7,15 +7,13 @@ import Field from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiClient, ApiError } from '@/lib/api/client'
 
-// Shape returned by POST /api/auth/signup  → { data: { user } }
+// Shape returned by POST /api/auth/signup → { data: { user, needsConfirmation } }
 type SignupResponse = {
-  user: {
-    id: string
-    email?: string
-    // Supabase sets identities to [] when email confirmation is required
-    identities?: { id: string }[]
-    confirmation_sent_at?: string
-  } | null
+  user: { id: string; email?: string } | null
+  // True when no session was created → the user must confirm via email.
+  // Computed server-side (session === null); covers both new accounts and the
+  // already-registered decoy without leaking which case it is.
+  needsConfirmation: boolean
 }
 
 export default function SignupForm() {
@@ -43,16 +41,12 @@ export default function SignupForm() {
         body: JSON.stringify({ nombre, email, password }),
       })
 
-      // When email confirmation is required, Supabase returns a user with
-      // identities === [] (empty array) — no active session is created.
-      const needsConfirmation =
-        !data.user ||
-        (Array.isArray(data.user.identities) && data.user.identities.length === 0)
-
-      if (needsConfirmation) {
+      if (data.needsConfirmation) {
+        // No session yet — user must confirm via email.
         setConfirmationRequired(true)
       } else {
-        // Session created immediately — refresh Nav then navigate home
+        // Session created immediately (email confirmation disabled) —
+        // refresh Nav then navigate home.
         router.refresh()
         router.push('/')
       }
