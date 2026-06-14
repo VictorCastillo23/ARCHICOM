@@ -9,7 +9,7 @@ import Pagination from '@/components/ui/Pagination'
 import type { PublicacionCardData, FeedPublicacion } from '@/lib/types/database'
 import { TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
 
-const LIMIT = 10
+const LIMIT = 24
 
 interface FeedPageProps {
   searchParams: Promise<Record<string, string>>
