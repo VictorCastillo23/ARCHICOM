@@ -44,24 +44,4 @@ pnpm exec tsc --noEmit  # type-check sin emitir
 
 ## Despliegue en Vercel
 
-1. Importar el repositorio en [vercel.com](https://vercel.com).
-2. Agregar en **Project Settings → Environment Variables**:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-3. Deploy — el framework se detecta automáticamente como Next.js.
-
-> No agregar `SUPABASE_SERVICE_ROLE_KEY` en Vercel — no existe en el proyecto.
-
-## Cuentas de prueba
-
-Contraseña de todas: `Archicom123!`
-
-| Nombre | Email | Rol |
-|--------|-------|-----|
-| María García | `m.garcia@uaq.mx` | `usuario` |
-| Carlos Romo | `c.romo@unam.mx` | `usuario` |
-| Dra. Laura Vega | `l.vega@tec.mx` | `administrador` |
-
-## Tests
-
-No hay test runner local. Los tests se generan y ejecutan vía el MCP **testsprite**. Ver [`TEST_PLAN.md`](TEST_PLAN.md) para el plan de pruebas y resultados del ciclo de hardening (admin-capa5).
+El proyecto ya esta publicaco con vercel en esvitrina.com
