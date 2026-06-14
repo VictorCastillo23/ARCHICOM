@@ -6,9 +6,9 @@ import FeedList from '@/components/feed/FeedList'
 import FeedFilters from '@/components/feed/FeedFilters'
 import HeroBanner from '@/components/feed/HeroBanner'
 import Pagination from '@/components/ui/Pagination'
-import type { PublicacionCardData, TipoPublicacion, FeedPublicacion } from '@/lib/types/database'
+import type { PublicacionCardData, FeedPublicacion } from '@/lib/types/database'
+import { TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
 
-const TIPOS: TipoPublicacion[] = ['libro', 'articulo', 'investigacion', 'poema', 'dibujo', 'otro']
 const LIMIT = 10
 
 interface FeedPageProps {
@@ -79,7 +79,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         </div>
 
         <FeedFilters
-          tipos={TIPOS}
+          tipos={TIPOS_PUBLICACION}
           areas={areas}
           current={{ tipo: tipo || undefined, area: area || undefined }}
         />

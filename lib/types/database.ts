@@ -1,6 +1,6 @@
 // Union-literal type aliases (not TS enum keyword)
 
-export type TipoPublicacion = 'libro' | 'articulo' | 'investigacion' | 'poema' | 'dibujo' | 'otro'
+export type TipoPublicacion = 'libro' | 'articulo' | 'investigacion' | 'poema' | 'dibujo' | 'otro' | 'recomendacion'
 export type RolUsuario = 'usuario' | 'administrador'
 export type EstadoRevista = 'borrador' | 'publicada'
 export type EstadoSolicitud = 'pendiente' | 'aceptada' | 'rechazada' | 'retirada'
@@ -37,8 +37,9 @@ export type Publicacion = {
   tipo: TipoPublicacion
   archivo_url?: string
   autor_id: string
+  obra_autor_externo?: string | null
+  url_externa?: string | null
   creado_en: string
-  actualizado_en: string
 }
 
 export type Tag = {
@@ -129,8 +130,10 @@ export type FeedPublicacion = {
   tipo: TipoPublicacion
   archivo_url?: string
   autor_id: string
-  creado_en: string
   autor_nombre: string
+  obra_autor_externo?: string | null
+  url_externa?: string | null
+  creado_en: string
 }
 
 // Nested / joined relation types

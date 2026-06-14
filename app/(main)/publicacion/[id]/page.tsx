@@ -124,6 +124,30 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         <p className="text-base text-[--color-text] leading-relaxed break-words">{data.resumen}</p>
       </section>
 
+      {/* Obra recomendada: atribución externa */}
+      {data.tipo === 'recomendacion' && (data.obra_autor_externo || data.url_externa) && (
+        <section className="mb-8 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted] mb-2">
+            Obra recomendada
+          </h2>
+          {data.obra_autor_externo && (
+            <p className="text-sm text-[--color-text]">
+              Autor original: <span className="font-medium">{data.obra_autor_externo}</span>
+            </p>
+          )}
+          {data.url_externa && (
+            <a
+              href={data.url_externa}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-[--color-primary] hover:underline break-all"
+            >
+              Ver obra original ↗
+            </a>
+          )}
+        </section>
+      )}
+
       {/* Archivo */}
       {data.archivo_url && (
         <div className="mb-8">

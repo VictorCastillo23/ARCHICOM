@@ -3,7 +3,7 @@ import type { Publicacion, PublicacionCardData, PublicacionDetalle, TipoPublicac
 
 export async function getPublicacionPorArea({
   area,
-  limit = 10,
+  limit = 24,
   offset = 0,
 }: {
   area: string

@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { handleError, jsonOk, unauthorized, validationError } from '@/lib/supabase/handleError'
 import { getFeed } from '@/lib/data/feed'
 import { getPublicacionPorArea } from '@/lib/data/publicaciones'
+import { isHttpUrl } from '@/lib/validation/url'
+import type { TipoPublicacion } from '@/lib/types/database'
+import { TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -44,11 +47,13 @@ export async function POST(request: NextRequest) {
   if (!user) return unauthorized()
 
   const body = await request.json()
-  const { titulo, resumen, tipo, archivo_url } = body as {
+  const { titulo, resumen, tipo, archivo_url, obra_autor_externo, url_externa } = body as {
     titulo?: string
     resumen?: string
     tipo?: string
     archivo_url?: string
+    obra_autor_externo?: string
+    url_externa?: string
   }
 
   if (!titulo || !resumen || !tipo) {
@@ -58,6 +63,19 @@ export async function POST(request: NextRequest) {
   if (titulo.length > 150) return validationError('El título no puede superar 150 caracteres.')
   if (resumen.length > 250) return validationError('El resumen no puede superar 250 caracteres.')
 
+  if (!TIPOS_PUBLICACION.includes(tipo as TipoPublicacion)) {
+    return validationError('tipo inválido')
+  }
+
+  if (tipo === 'recomendacion') {
+    if (!obra_autor_externo || !obra_autor_externo.trim()) {
+      return validationError('obra_autor_externo es requerido para recomendaciones')
+    }
+    if (!url_externa || !isHttpUrl(url_externa)) {
+      return validationError('url_externa debe ser una URL http(s) válida')
+    }
+  }
+
   const { data, error } = await supabase
     .from('publicacion')
     .insert({
@@ -66,6 +84,7 @@ export async function POST(request: NextRequest) {
       tipo,
       archivo_url,
       autor_id: user.id,
+      ...(tipo === 'recomendacion' ? { obra_autor_externo, url_externa } : {}),
     })
     .select()
     .single()

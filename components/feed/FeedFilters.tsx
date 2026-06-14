@@ -2,15 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { TipoPublicacion } from '@/lib/types/database'
-
-const TIPO_LABELS: Record<TipoPublicacion, string> = {
-  libro:         'Libro',
-  articulo:      'Artículo',
-  investigacion: 'Investigación',
-  poema:         'Poema',
-  dibujo:        'Dibujo',
-  otro:          'Otro',
-}
+import { TIPO_META } from '@/lib/constants/publicaciones'
 
 export interface FeedFiltersProps {
   tipos: TipoPublicacion[]
@@ -56,7 +48,7 @@ export default function FeedFilters({ tipos, areas, current }: FeedFiltersProps)
                   : 'bg-[--color-surface] text-[--color-text] border-[--color-border] hover:border-[--color-primary] hover:text-[--color-primary]',
               ].join(' ')}
             >
-              {TIPO_LABELS[tipo]}
+              {TIPO_META[tipo].label}
             </button>
           )
         })}

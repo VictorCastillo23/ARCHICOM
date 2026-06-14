@@ -7,18 +7,12 @@ import Button from '@/components/ui/Button'
 import ArchivoPreview from './ArchivoPreview'
 import { apiClient, ApiError } from '@/lib/api/client'
 import type { TipoPublicacion, Publicacion, Tag } from '@/lib/types/database'
+import { TIPO_META, TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_SIZE = 10 * 1024 * 1024
 
-const TIPO_OPTIONS: { value: TipoPublicacion; label: string }[] = [
-  { value: 'libro', label: 'Libro' },
-  { value: 'articulo', label: 'Artículo' },
-  { value: 'investigacion', label: 'Investigación' },
-  { value: 'poema', label: 'Poema' },
-  { value: 'dibujo', label: 'Dibujo' },
-  { value: 'otro', label: 'Otro' },
-]
+const TIPO_OPTIONS = TIPOS_PUBLICACION.map((value) => ({ value, label: TIPO_META[value].label }))
 
 const SELECT_CLASSES =
   'w-full rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-3 py-2 text-[--color-text] text-sm focus:outline-none focus:ring-2 focus:ring-[--color-border-focus] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed'
@@ -32,7 +26,11 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
   const [titulo, setTitulo] = useState('')
   const [resumen, setResumen] = useState('')
   const [tipo, setTipo] = useState<TipoPublicacion>('libro')
+  const [obraAutorExterno, setObraAutorExterno] = useState('')
+  const [urlExterna, setUrlExterna] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
+
+  const esRecomendacion = tipo === 'recomendacion'
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -97,7 +95,15 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
         '/api/publicaciones',
         {
           method: 'POST',
-          body: JSON.stringify({ titulo, resumen, tipo, archivo_url: archivoUrl }),
+          body: JSON.stringify({
+            titulo,
+            resumen,
+            tipo,
+            archivo_url: archivoUrl,
+            ...(esRecomendacion
+              ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
+              : {}),
+          }),
         },
       )
 
@@ -172,6 +178,30 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
           ))}
         </select>
       </div>
+
+      {esRecomendacion && (
+        <>
+          <Field
+            label="Autor original de la obra"
+            name="obra_autor_externo"
+            value={obraAutorExterno}
+            onChange={(e) => setObraAutorExterno(e.target.value)}
+            required
+            disabled={loading}
+            placeholder="Nombre del autor de la obra que recomendás"
+          />
+          <Field
+            label="Enlace a la obra"
+            name="url_externa"
+            type="url"
+            value={urlExterna}
+            onChange={(e) => setUrlExterna(e.target.value)}
+            required
+            disabled={loading}
+            placeholder="https://..."
+          />
+        </>
+      )}
 
       {tags.length > 0 && (
         <div className="flex flex-col gap-1">

@@ -3,7 +3,7 @@ import type { FeedPublicacion } from '@/lib/types/database'
 
 export async function getFeed({
   tipo,
-  limit = 10,
+  limit = 24,
   offset = 0,
 }: {
   tipo?: string
