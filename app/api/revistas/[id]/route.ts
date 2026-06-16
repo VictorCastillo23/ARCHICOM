@@ -45,3 +45,16 @@ export async function PATCH(request: Request, ctx: Context) {
 
   return jsonOk({ revista: data })
 }
+
+export async function DELETE(_req: Request, ctx: Context) {
+  const admin = await requireAdmin()
+  if (admin.error) return admin.error
+
+  const { id } = await ctx.params
+
+  const { error } = await admin.supabase.from('revista').delete().eq('id', id)
+
+  if (error) return handleError(error)
+
+  return jsonOk(null)
+}

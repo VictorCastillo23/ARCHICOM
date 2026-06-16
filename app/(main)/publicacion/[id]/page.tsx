@@ -49,6 +49,17 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   const isAuthenticated = Boolean(user)
   const isAuthor = Boolean(user && user.id === data.autor_id)
 
+  // Admin moderation: a non-author admin can delete any publicacion (RLS: admin_elimina)
+  let isAdmin = false
+  if (user && !isAuthor) {
+    const { data: perfil } = await supabase
+      .from('usuario')
+      .select('rol')
+      .eq('id', user.id)
+      .single()
+    isAdmin = perfil?.rol === 'administrador'
+  }
+
   // Resolve postulation state (only needed when user is the author)
   const { data: revistaActiva } = await getRevistaActiva()
   const { data: solicitudExistente } = isAuthor && revistaActiva
@@ -189,6 +200,22 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             titulo={data.titulo}
             tieneRevista={tieneRevista}
             tieneSolicitudPendiente={tieneSolicitudPendiente}
+          />
+        </div>
+      )}
+
+      {/* Acciones de administración */}
+      {isAdmin && !isAuthor && (
+        <div className="mb-8 flex items-center gap-3 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface-muted] p-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted]">
+            Administración
+          </span>
+          <EliminarPublicacionButton
+            publicacionId={id}
+            titulo={data.titulo}
+            tieneRevista={false}
+            tieneSolicitudPendiente={false}
+            redirectTo="/"
           />
         </div>
       )}
