@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist_Mono } from 'next/font/google'
 import { DM_Serif_Display, DM_Sans } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import './globals.css'
 
 const geistMono = Geist_Mono({

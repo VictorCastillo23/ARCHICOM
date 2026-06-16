@@ -9,6 +9,7 @@ interface EliminarPublicacionButtonProps {
   titulo: string
   tieneRevista: boolean
   tieneSolicitudPendiente: boolean
+  redirectTo?: string
 }
 
 export default function EliminarPublicacionButton({
@@ -16,6 +17,7 @@ export default function EliminarPublicacionButton({
   titulo,
   tieneRevista,
   tieneSolicitudPendiente,
+  redirectTo,
 }: EliminarPublicacionButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -31,6 +33,7 @@ export default function EliminarPublicacionButton({
         publicacionId={publicacionId}
         tieneRevista={tieneRevista}
         tieneSolicitudPendiente={tieneSolicitudPendiente}
+        redirectTo={redirectTo}
       />
     </>
   )
