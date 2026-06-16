@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getPublicacion } from '@/lib/data/publicaciones'
+import { getPublicacion, getLikesInfo } from '@/lib/data/publicaciones'
 import { getRevistaActiva } from '@/lib/data/revistas'
 import { getSolicitudParaEdicion } from '@/lib/data/solicitudes'
 import { createClient } from '@/lib/supabase/server'
@@ -48,6 +48,9 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthenticated = Boolean(user)
   const isAuthor = Boolean(user && user.id === data.autor_id)
+
+  // Resolve real like count + whether the current user already liked it
+  const { count: likeCount, liked: likedByUser } = await getLikesInfo(id, user?.id)
 
   // Admin moderation: a non-author admin can delete any publicacion (RLS: admin_elimina)
   let isAdmin = false
@@ -224,8 +227,8 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       <div className="mb-10 pb-8 border-b border-[--color-border]">
         <LikeButton
           publicacionId={id}
-          initialLiked={false}
-          initialCount={0}
+          initialLiked={likedByUser}
+          initialCount={likeCount}
           isAuthenticated={isAuthenticated}
         />
       </div>
