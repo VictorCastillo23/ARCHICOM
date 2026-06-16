@@ -42,9 +42,10 @@ export default function RootLayout({
       lang="es"
       className={`${dmSans.variable} ${dmSerif.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[--color-surface-muted] text-[--color-text]">
+      <body className="min-h-full flex flex-col bg-(--color-surface-muted) text-(--color-text)">
         {children}
         <Analytics/>
+        <SpeedInsights />
       </body>
     </html>
   )
