@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api/client'
 import type { RolUsuario } from '@/lib/types/database'
+import SearchBox from '@/components/buscar/SearchBox'
 
 export type SessionProp = {
   id: string
@@ -32,6 +33,7 @@ export default function NavClient({ session }: NavClientProps) {
       aria-label="Navegación principal"
       className="flex items-center gap-4 text-sm font-medium"
     >
+      <SearchBox />
       {session === null ? (
         <>
           <Link
