@@ -2,9 +2,9 @@
 
 # 📚 Archicom
 
-### Portafolio digital académico para la comunidad universitaria
+### Portafolio digital académico para los Jovenes
 
-Publicá tus obras, recomendá las de otros, y dejá que la comunidad las descubra, comente y cure en **revistas temáticas**.
+Publicá tus obras, recominendá las de otros, y dejá que la comunidad las descubra, comente y postulate en las **revistas temáticas**.
 
 [![Live](https://img.shields.io/badge/demo-esvitrina.com-000?style=for-the-badge&logo=vercel)](https://esvitrina.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000?style=for-the-badge&logo=next.js)](https://nextjs.org)
@@ -19,7 +19,7 @@ Publicá tus obras, recomendá las de otros, y dejá que la comunidad las descub
 
 ## ✨ Qué es
 
-**Archicom** es una plataforma donde estudiantes universitarios comparten sus creaciones —libros, artículos, investigaciones, poemas, dibujos— y recomiendan obras de terceros. La comunidad las explora por disciplina, las comenta y las likea; los administradores seleccionan las mejores para componer **revistas temáticas semanales** que se publican automáticamente.
+**Archicom** es una plataforma donde los jovenes comparten sus creaciones —investigaciones, artículos, tesis, trabajos académicos, proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, poesía y revistas— y recomiendan obras de terceros. La comunidad las explora por disciplina, las comenta y las likea; los administradores aceptan las publicaciones postuladas para componer **revistas temáticas semanales** que se publican automáticamente.
 
 Una sola app **Next.js** (App Router): área pública + área de administración separadas por segmentos de ruta (`/admin`), protegidas por rol.
 
@@ -33,17 +33,6 @@ Una sola app **Next.js** (App Router): área pública + área de administración
 | 💬 **Interacción** | Comentarios y likes en cada publicación |
 | 📰 **Revistas temáticas** | Una edición activa por semana; los usuarios postulan sus obras y los administradores las curan (aceptar/rechazar) |
 | 🛡️ **Panel de administración** | Gestión de revistas y artículos curados, catálogo de tags y resolución de solicitudes — todo bajo `/admin`, protegido por rol |
-
-## 🏷️ Tipos de publicación
-
-Una publicación es de tipo `libro`, `articulo`, `investigacion`, `poema`, `dibujo`, `otro` o `recomendacion`.
-
-Los seis primeros son **obra propia**: `autor_id` es el creador. El tipo `recomendacion` es distinto — sirve para recomendar una obra que **no es propia**: `autor_id` es el usuario que recomienda, y la atribución de la obra original viaja en dos campos:
-
-- `obra_autor_externo` — nombre del autor original (requerido).
-- `url_externa` — enlace http(s) a la obra o fuente original (requerido).
-
-`archivo_url` sigue siendo opcional para recomendaciones (se puede adjuntar un PDF/imagen de la obra). El registro pertenece a quien recomienda, por lo que las políticas RLS existentes aplican sin cambios.
 
 ## 🧱 Stack
 
