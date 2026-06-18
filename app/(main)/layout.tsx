@@ -9,7 +9,7 @@ export default function MainLayout({
   return (
     <>
       <Nav />
-      <main className="flex-1 mx-auto w-full max-w-6xl px-[--space-page] py-8">
+      <main className="flex-1 mx-auto w-full max-w-6xl px-(--space-page) py-8">
         {children}
       </main>
       <Footer />

@@ -14,7 +14,7 @@ export default function TagList({ tags }: TagListProps) {
         <Link
           key={tag.id}
           href={`/?area=${encodeURIComponent(tag.area)}`}
-          className="inline-flex items-center rounded-full border border-[--color-border] bg-[--color-surface-muted] px-3 py-1 text-xs font-medium text-[--color-text] hover:border-[--color-primary] hover:text-[--color-primary] transition-colors"
+          className="inline-flex items-center rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-medium text-text hover:border-primary hover:text-primary transition-colors"
         >
           {tag.nombre}
         </Link>

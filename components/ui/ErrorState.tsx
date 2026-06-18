@@ -11,9 +11,9 @@ export default function ErrorState({
 }: ErrorStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="w-12 h-12 rounded-full bg-[--color-danger-bg] flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-full bg-danger-bg flex items-center justify-center mb-4">
         <svg
-          className="w-5 h-5 text-[--color-danger]"
+          className="w-5 h-5 text-danger"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -27,15 +27,15 @@ export default function ErrorState({
           />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-[--color-text] mb-1">{title}</h2>
+      <h2 className="text-lg font-semibold text-text mb-1">{title}</h2>
       {description && (
-        <p className="text-sm text-[--color-text-muted] max-w-sm">{description}</p>
+        <p className="text-sm text-text-muted max-w-sm">{description}</p>
       )}
       {retry && (
         <button
           type="button"
           onClick={retry}
-          className="mt-4 inline-flex items-center rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-4 py-2 text-sm font-medium text-[--color-text] hover:bg-[--color-surface-muted] transition-colors"
+          className="mt-4 inline-flex items-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text hover:bg-surface-muted transition-colors"
         >
           Reintentar
         </button>

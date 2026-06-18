@@ -103,7 +103,7 @@ export default function VerMas(props: VerMasProps) {
 
       {/* Error */}
       {error && (
-        <p className="mt-4 text-sm text-[--color-danger] text-center">{error}</p>
+        <p className="mt-4 text-sm text-danger text-center">{error}</p>
       )}
 
       {/* Ver más button */}

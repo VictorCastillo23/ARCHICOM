@@ -17,7 +17,7 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         {creado_en && (
           <time
             dateTime={creado_en}
-            className="text-xs text-[--color-text-muted] shrink-0"
+            className="text-xs text-text-muted shrink-0"
           >
             {new Date(creado_en).toLocaleDateString('es-AR', {
               year: 'numeric',
@@ -28,30 +28,30 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         )}
       </div>
 
-      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display leading-snug line-clamp-2 break-words min-h-[3rem]">
+      <h2 className="text-(length:--size-heading-sm) font-normal font-display leading-snug line-clamp-2 break-words min-h-[3rem]">
         <Link
           href={`/publicacion/${id}`}
-          className="text-[--color-text] hover:text-[--color-primary] transition-colors"
+          className="text-text hover:text-primary transition-colors"
         >
           {titulo}
         </Link>
       </h2>
 
-      <p className="text-sm text-[--color-text-muted] leading-relaxed line-clamp-3 break-words ">
+      <p className="text-sm text-text-muted leading-relaxed line-clamp-3 break-words ">
         {resumen}
       </p>
 
-      <div className="mt-auto pt-2 border-t border-[--color-border] flex items-center gap-1 text-xs text-[--color-text-muted]">
+      <div className="mt-auto pt-2 border-t border-border flex items-center gap-1 text-xs text-text-muted">
         <span>Por</span>
         {autor_id ? (
           <Link
             href={`/usuario/${autor_id}`}
-            className="font-medium text-[--color-text] hover:text-[--color-primary] transition-colors"
+            className="font-medium text-text hover:text-primary transition-colors"
           >
             {nombre_autor}
           </Link>
         ) : (
-          <span className="font-medium text-[--color-text]">{nombre_autor}</span>
+          <span className="font-medium text-text">{nombre_autor}</span>
         )}
       </div>
     </Card>

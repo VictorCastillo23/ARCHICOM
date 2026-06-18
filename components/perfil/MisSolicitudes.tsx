@@ -24,7 +24,7 @@ const estadoLabel: Record<EstadoSolicitud, string> = {
 export default function MisSolicitudes({ solicitudes }: MisSolicitudesProps) {
   if (solicitudes.length === 0) {
     return (
-      <p className="text-sm text-[--color-text-muted]">
+      <p className="text-sm text-text-muted">
         Todavía no enviaste propuestas a ninguna revista.
       </p>
     )
@@ -35,20 +35,20 @@ export default function MisSolicitudes({ solicitudes }: MisSolicitudesProps) {
       {solicitudes.map((s) => (
         <li
           key={s.id}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 border-b border-[--color-border] last:border-b-0"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 border-b border-border last:border-b-0"
         >
           <div className="flex flex-col gap-0.5">
             <Link
               href={`/publicacion/${s.publicacion.id}`}
-              className="text-sm font-medium text-[--color-text] hover:text-[--color-primary] transition-colors"
+              className="text-sm font-medium text-text hover:text-primary transition-colors"
             >
               {s.publicacion.titulo}
             </Link>
-            <span className="text-xs text-[--color-text-muted]">
+            <span className="text-xs text-text-muted">
               en{' '}
               <Link
                 href={`/revistas/${s.revista.id}`}
-                className="hover:text-[--color-primary] transition-colors"
+                className="hover:text-primary transition-colors"
               >
                 {s.revista.titulo}
               </Link>

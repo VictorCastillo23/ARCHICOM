@@ -38,8 +38,11 @@ export default function ArchivoPreview({ file, onClear }: ArchivoPreviewProps) {
   const isPdf = file.type === 'application/pdf'
 
   return (
-    <div className="mt-3 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface-muted] p-3">
+    <div className="mt-3 rounded-md border border-border bg-surface-muted p-3">
       {isImage && (
+        // next/image cannot handle blob: object URLs without `unoptimized`;
+        // this is a local client-side preview, so a raw <img> is intentional.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={objectUrl}
           alt="Vista previa del archivo"
@@ -57,8 +60,8 @@ export default function ArchivoPreview({ file, onClear }: ArchivoPreviewProps) {
             style={{ height: '400px' }}
             onError={() => {}}
           />
-          <p className="mt-2 text-xs text-[--color-text-muted]">
-            <span className="inline-flex items-center gap-1 rounded bg-[--color-surface] border border-[--color-border] px-2 py-0.5 text-xs font-medium">
+          <p className="mt-2 text-xs text-text-muted">
+            <span className="inline-flex items-center gap-1 rounded bg-surface border border-border px-2 py-0.5 text-xs font-medium">
               PDF
             </span>{' '}
             {file.name} — listo para subir

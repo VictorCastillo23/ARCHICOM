@@ -199,10 +199,10 @@ export default function SearchBox() {
         autoComplete="off"
         spellCheck={false}
         className={[
-          'w-48 sm:w-56 rounded-[--radius-md] border border-[--color-surface-border]',
-          'bg-[--color-surface-muted] px-3 py-1.5 text-sm text-[--color-text]',
-          'placeholder:text-[--color-text-muted]',
-          'focus:outline-none focus:ring-2 focus:ring-[--color-primary] focus:border-transparent',
+          'w-48 sm:w-72 rounded-md border border-surface-border',
+          'bg-surface-muted px-3 py-1.5 text-sm text-text',
+          'placeholder:text-text-muted',
+          'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
           'transition-all',
         ]
           .filter(Boolean)
@@ -216,9 +216,9 @@ export default function SearchBox() {
           role="listbox"
           aria-label="Sugerencias de búsqueda"
           className={[
-            'absolute right-0 top-full mt-1 z-50 w-80',
-            'rounded-[--radius-lg] border border-[--color-surface-border]',
-            'bg-[--color-surface] shadow-lg overflow-hidden',
+            'absolute right-0 top-full mt-1 z-50 w-full',
+            'rounded-lg border border-surface-border',
+            'bg-surface shadow-lg overflow-hidden',
           ]
             .filter(Boolean)
             .join(' ')}
@@ -228,10 +228,10 @@ export default function SearchBox() {
             <div className="p-3 space-y-2" aria-live="polite" aria-busy="true">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex items-center gap-2 animate-pulse">
-                  <div className="w-7 h-7 rounded-full bg-[--color-surface-muted]" />
+                  <div className="w-7 h-7 rounded-full bg-surface-muted" />
                   <div className="flex-1 space-y-1">
-                    <div className="h-3 bg-[--color-surface-muted] rounded w-3/4" />
-                    <div className="h-2.5 bg-[--color-surface-muted] rounded w-1/2" />
+                    <div className="h-3 bg-surface-muted rounded w-3/4" />
+                    <div className="h-2.5 bg-surface-muted rounded w-1/2" />
                   </div>
                 </div>
               ))}
@@ -240,14 +240,14 @@ export default function SearchBox() {
 
           {/* Error */}
           {status === 'error' && (
-            <div className="p-4 text-sm text-[--color-danger] text-center" role="alert">
+            <div className="p-4 text-sm text-danger text-center" role="alert">
               Error al buscar. Intentá de nuevo.
             </div>
           )}
 
           {/* Results — empty */}
           {status === 'results' && suggestions.length === 0 && (
-            <div className="p-4 text-sm text-[--color-text-muted] text-center" aria-live="polite">
+            <div className="p-4 text-sm text-text-muted text-center" aria-live="polite">
               No se encontraron resultados.
             </div>
           )}
@@ -272,8 +272,8 @@ export default function SearchBox() {
                       className={[
                         'w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors',
                         isActive
-                          ? 'bg-[--color-surface-muted] text-[--color-text]'
-                          : 'text-[--color-text] hover:bg-[--color-surface-muted]',
+                          ? 'bg-surface-muted text-text'
+                          : 'text-text hover:bg-surface-muted',
                       ]
                         .filter(Boolean)
                         .join(' ')}
@@ -289,7 +289,7 @@ export default function SearchBox() {
                           <span className="flex-1 min-w-0">
                             <span className="block truncate font-medium">{s.nombre}</span>
                             {(s.institucion ?? s.carrera) && (
-                              <span className="block text-xs text-[--color-text-muted] truncate">
+                              <span className="block text-xs text-text-muted truncate">
                                 {s.institucion ?? s.carrera}
                               </span>
                             )}
@@ -302,14 +302,14 @@ export default function SearchBox() {
               })}
 
               {/* "Ver todos" link */}
-              <li className="border-t border-[--color-surface-border] mt-1">
+              <li className="border-t border-surface-border mt-1">
                 <button
                   type="button"
                   onMouseDown={(e) => {
                     e.preventDefault()
                     navigate(`/buscar?q=${encodeURIComponent(query.trim())}`)
                   }}
-                  className="w-full px-3 py-2 text-xs text-[--color-text-muted] hover:text-[--color-primary] hover:bg-[--color-surface-muted] text-left transition-colors"
+                  className="w-full px-3 py-2 text-xs text-text-muted hover:text-primary hover:bg-surface-muted text-left transition-colors"
                 >
                   Ver todos los resultados para &ldquo;{query.trim()}&rdquo;
                 </button>

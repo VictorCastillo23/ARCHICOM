@@ -9,12 +9,12 @@ export interface BadgeProps {
 }
 
 const toneClasses: Record<BadgeTone, string> = {
-  neutral: 'bg-[--color-neutral-bg] text-[--color-neutral]',
-  info:    'bg-[--color-info-bg] text-[--color-info]',
-  success: 'bg-[--color-success-bg] text-[--color-success]',
-  warning: 'bg-[--color-warning-bg] text-[--color-warning]',
-  danger:  'bg-[--color-danger-bg] text-[--color-danger]',
-  accent:  'bg-[--color-accent-bg] text-[--color-accent]',
+  neutral: 'bg-neutral-bg text-neutral',
+  info:    'bg-info-bg text-info',
+  success: 'bg-success-bg text-success',
+  warning: 'bg-warning-bg text-warning',
+  danger:  'bg-danger-bg text-danger',
+  accent:  'bg-accent-bg text-accent',
 }
 
 export default function Badge({
@@ -25,7 +25,7 @@ export default function Badge({
   return (
     <span
       className={[
-        'inline-flex items-center rounded-[--radius-full] px-2.5 py-0.5',
+        'inline-flex items-center rounded-full px-2.5 py-0.5',
         'text-xs font-medium leading-tight',
         toneClasses[tone],
         className,

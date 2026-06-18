@@ -26,32 +26,32 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
 
   return (
     <article className="animate-page">
-      <div className="mb-6 pb-4 border-b border-[--color-border]">
+      <div className="mb-6 pb-4 border-b border-border">
         <Link
           href="/revistas"
-          className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+          className="text-xs uppercase tracking-wider text-text-muted hover:text-primary transition-colors"
         >
           ← Revistas
         </Link>
       </div>
 
       {/* Editorial cover header */}
-      <header className="mb-10 pb-8 border-b-2 border-[--color-border]">
+      <header className="mb-10 pb-8 border-b-2 border-border">
         <div className="flex items-center gap-3 mb-5">
           <Badge tone="success">Publicada</Badge>
           {data.volumen && (
-            <span className="text-xs font-medium uppercase tracking-widest text-[--color-text-muted]">
+            <span className="text-xs font-medium uppercase tracking-widest text-text-muted">
               Vol. {data.volumen}
             </span>
           )}
         </div>
 
-        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-4">
+        <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight mb-4">
           {data.titulo}
         </h1>
 
         {data.descripcion && (
-          <p className="text-base text-[--color-text-muted] leading-relaxed max-w-[60ch]">
+          <p className="text-base text-text-muted leading-relaxed max-w-[60ch]">
             {data.descripcion}
           </p>
         )}
@@ -59,7 +59,7 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
 
       {/* Curated article list */}
       <section>
-        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+        <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
           Artículos ({articulos.length})
         </h2>
 
@@ -79,25 +79,25 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
               return (
                 <li
                   key={articulo.id}
-                  className="flex gap-4 py-5 border-b border-[--color-border] last:border-b-0"
+                  className="flex gap-4 py-5 border-b border-border last:border-b-0"
                 >
-                  <span className="text-2xl font-display font-normal text-[--color-text-muted] w-8 shrink-0 pt-0.5 leading-none">
+                  <span className="text-2xl font-display font-normal text-text-muted w-8 shrink-0 pt-0.5 leading-none">
                     {index + 1}
                   </span>
                   <div className="flex flex-col gap-1">
                     <h3 className="text-base font-normal font-display">
                       <Link
                         href={`/publicacion/${pub.id}`}
-                        className="text-[--color-text] hover:text-[--color-primary] transition-colors"
+                        className="text-text hover:text-primary transition-colors"
                       >
                         {pub.titulo}
                       </Link>
                     </h3>
                     {autor && (
-                      <p className="text-sm text-[--color-text-muted]">
+                      <p className="text-sm text-text-muted">
                         <Link
                           href={`/usuario/${autor.id}`}
-                          className="hover:text-[--color-primary] transition-colors"
+                          className="hover:text-primary transition-colors"
                         >
                           {autor.nombre}
                         </Link>

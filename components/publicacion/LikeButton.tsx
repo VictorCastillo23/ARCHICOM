@@ -68,12 +68,12 @@ export default function LikeButton({
       aria-label={liked ? 'Quitar me gusta' : 'Me gusta'}
       aria-pressed={liked}
       className={[
-        'inline-flex items-center gap-2 rounded-[--radius-md] px-4 py-2 text-sm font-medium',
-        'border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] focus-visible:ring-offset-2',
+        'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium',
+        'border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50',
         liked
-          ? 'bg-[--color-primary] text-[--color-primary-fg] border-[--color-primary]'
-          : 'bg-[--color-surface] text-[--color-text] border-[--color-border] hover:border-[--color-primary] hover:text-[--color-primary]',
+          ? 'bg-primary text-primary-fg border-primary'
+          : 'bg-surface text-text border-border hover:border-primary hover:text-primary',
       ].join(' ')}
     >
       <svg

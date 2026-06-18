@@ -49,6 +49,22 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   const isAuthenticated = Boolean(user)
   const isAuthor = Boolean(user && user.id === data.autor_id)
 
+  // Resolve like state: public total count + whether the current user liked it
+  const { count: likeCount } = await supabase
+    .from('like')
+    .select('*', { count: 'exact', head: true })
+    .eq('publicacion_id', id)
+
+  let userLiked = false
+  if (user) {
+    const { count: ownLike } = await supabase
+      .from('like')
+      .select('*', { count: 'exact', head: true })
+      .eq('publicacion_id', id)
+      .eq('usuario_id', user.id)
+    userLiked = (ownLike ?? 0) > 0
+  }
+
   // Resolve postulation state (only needed when user is the author)
   const { data: revistaActiva } = await getRevistaActiva()
   const { data: solicitudExistente } = isAuthor && revistaActiva
@@ -77,10 +93,10 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
 
   return (
     <article className="animate-page max-w-[68ch] mx-auto">
-      <div className="mb-6 pb-4 border-b border-[--color-border]">
+      <div className="mb-6 pb-4 border-b border-border">
         <Link
           href="/"
-          className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+          className="text-xs uppercase tracking-wider text-text-muted hover:text-primary transition-colors"
         >
           ← Publicaciones
         </Link>
@@ -92,7 +108,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           <TipoBadge tipo={data.tipo} />
           <time
             dateTime={data.creado_en}
-            className="text-sm text-[--color-text-muted]"
+            className="text-sm text-text-muted"
           >
             {new Date(data.creado_en).toLocaleDateString('es-AR', {
               year: 'numeric',
@@ -102,16 +118,16 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           </time>
         </div>
 
-        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-4 break-words">
+        <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight mb-4 break-words">
           {data.titulo}
         </h1>
 
         {autor && (
-          <p className="text-sm text-[--color-text-muted]">
+          <p className="text-sm text-text-muted">
             Por{' '}
             <Link
               href={`/usuario/${autor.id}`}
-              className="font-medium text-[--color-text] hover:text-[--color-primary] transition-colors"
+              className="font-medium text-text hover:text-primary transition-colors"
             >
               {autor.nombre}
             </Link>
@@ -121,17 +137,17 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
 
       {/* Resumen */}
       <section className="mb-8">
-        <p className="text-base text-[--color-text] leading-relaxed break-words">{data.resumen}</p>
+        <p className="text-base text-text leading-relaxed break-words">{data.resumen}</p>
       </section>
 
       {/* Obra recomendada: atribución externa */}
       {data.tipo === 'recomendacion' && (data.obra_autor_externo || data.url_externa) && (
-        <section className="mb-8 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted] mb-2">
+        <section className="mb-8 rounded-md border border-border bg-surface p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
             Obra recomendada
           </h2>
           {data.obra_autor_externo && (
-            <p className="text-sm text-[--color-text]">
+            <p className="text-sm text-text">
               Autor original: <span className="font-medium">{data.obra_autor_externo}</span>
             </p>
           )}
@@ -140,7 +156,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
               href={data.url_externa}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-[--color-primary] hover:underline break-all"
+              className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline break-all"
             >
               Ver obra original ↗
             </a>
@@ -155,7 +171,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             href={data.archivo_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-4 py-2 text-sm font-medium text-[--color-text] hover:border-[--color-primary] hover:text-[--color-primary] transition-colors"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text hover:border-primary hover:text-primary transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -168,7 +184,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       {/* Tags */}
       {tags.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted] mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
             Etiquetas
           </h2>
           <TagList tags={tags} />
@@ -194,26 +210,26 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       )}
 
       {/* Like */}
-      <div className="mb-10 pb-8 border-b border-[--color-border]">
+      <div className="mb-10 pb-8 border-b border-border">
         <LikeButton
           publicacionId={id}
-          initialLiked={false}
-          initialCount={0}
+          initialLiked={userLiked}
+          initialCount={likeCount ?? 0}
           isAuthenticated={isAuthenticated}
         />
       </div>
 
       {/* Comentarios */}
       <section>
-        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+        <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
           Comentarios ({comentarios.length})
         </h2>
 
         <ComentarioList comentarios={comentarios} />
 
         {isAuthenticated && (
-          <div className="mt-8 pt-6 border-t border-[--color-border]">
-            <h3 className="text-sm font-semibold text-[--color-text] mb-3">
+          <div className="mt-8 pt-6 border-t border-border">
+            <h3 className="text-sm font-semibold text-text mb-3">
               Dejá tu comentario
             </h3>
             <ComentarioForm publicacionId={id} />
@@ -221,8 +237,8 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         )}
 
         {!isAuthenticated && (
-          <p className="mt-6 text-sm text-[--color-text-muted]">
-            <Link href="/login" className="text-[--color-primary] hover:underline">
+          <p className="mt-6 text-sm text-text-muted">
+            <Link href="/login" className="text-primary hover:underline">
               Iniciá sesión
             </Link>{' '}
             para comentar.

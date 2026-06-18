@@ -18,8 +18,8 @@ export default async function PublicacionesRelacionadas({
   if (relacionadas.length === 0) return null
 
   return (
-    <section className="mt-12 pt-8 border-t border-[--color-border]">
-      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+    <section className="mt-12 pt-8 border-t border-border">
+      <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
         También te puede interesar
       </h2>
       <div className="flex flex-col gap-4">

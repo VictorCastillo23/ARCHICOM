@@ -22,8 +22,8 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
 
   if (!isAuthenticated) {
     return (
-      <p className="text-sm text-[--color-text-muted]">
-        <Link href="/login" className="text-[--color-primary] hover:underline font-medium">
+      <p className="text-sm text-text-muted">
+        <Link href="/login" className="text-primary hover:underline font-medium">
           Iniciá sesión
         </Link>{' '}
         para proponer tus publicaciones a esta revista.
@@ -33,9 +33,9 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
 
   if (misPublicaciones.length === 0) {
     return (
-      <p className="text-sm text-[--color-text-muted]">
+      <p className="text-sm text-text-muted">
         Todavía no tenés publicaciones para proponer.{' '}
-        <Link href="/publicar" className="text-[--color-primary] hover:underline font-medium">
+        <Link href="/publicar" className="text-primary hover:underline font-medium">
           Publicá una
         </Link>
         .
@@ -45,7 +45,7 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
 
   if (success) {
     return (
-      <p role="status" className="text-sm font-medium text-[--color-primary]">
+      <p role="status" className="text-sm font-medium text-primary">
         ¡Solicitud enviada! El editor de la revista la revisará pronto.
       </p>
     )
@@ -86,7 +86,7 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="publicacion_id"
-          className="text-sm font-medium text-[--color-text]"
+          className="text-sm font-medium text-text"
         >
           Publicación
         </label>
@@ -96,7 +96,7 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
           value={selectedPubId}
           onChange={(e) => setSelectedPubId(e.target.value)}
           required
-          className="rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-3 py-2 text-sm text-[--color-text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary]"
+          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {misPublicaciones.map((pub) => (
             <option key={pub.id} value={pub.id}>
@@ -111,12 +111,12 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
         name="mensaje"
         multiline
         value={mensaje}
-        onChange={(e) => setMensaje((e.target as unknown as HTMLTextAreaElement).value)}
+        onChange={(e) => setMensaje(e.target.value)}
         placeholder="¿Por qué encaja tu publicación en esta revista?"
       />
 
       {error && (
-        <p role="alert" className="text-sm text-[--color-danger]" aria-live="polite">
+        <p role="alert" className="text-sm text-danger" aria-live="polite">
           {error}
         </p>
       )}

@@ -41,7 +41,7 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
 
   return (
     <div className="animate-page">
-      <div className="mb-6 pb-6 border-b border-[--color-border]">
+      <div className="mb-6 pb-6 border-b border-border">
         <PerfilView perfil={perfil} esPropio={false} />
         <div className="mt-4">
           <PerfilStats
@@ -53,7 +53,7 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
       </div>
 
       <section>
-        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+        <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
           Publicaciones ({publicacionesData.length})
         </h2>
         <FeedList publicaciones={publicacionesData} />

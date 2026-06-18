@@ -15,7 +15,7 @@ export default async function RevistasPage() {
   if (!revistas || revistas.length === 0) {
     return (
       <div className="animate-page">
-        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight mb-8">
+        <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight mb-8">
           Revistas
         </h1>
         <EmptyState
@@ -29,10 +29,10 @@ export default async function RevistasPage() {
   return (
     <div className="animate-page">
       <div className="mb-8">
-        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight">
+        <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight">
           Revistas
         </h1>
-        <p className="mt-2 text-sm text-[--color-text-muted]">
+        <p className="mt-2 text-sm text-text-muted">
           Ediciones semanales de la comunidad.
         </p>
       </div>
@@ -48,17 +48,17 @@ export default async function RevistasPage() {
                   </Badge>
                 </div>
 
-                <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display">
+                <h2 className="text-(length:--size-heading-sm) font-normal font-display">
                   <Link
                     href={`/revistas/${revista.id}`}
-                    className="text-[--color-text] hover:text-[--color-primary] transition-colors"
+                    className="text-text hover:text-primary transition-colors"
                   >
                     {revista.titulo}
                   </Link>
                 </h2>
 
                 {revista.descripcion && (
-                  <p className="text-sm text-[--color-text-muted] leading-relaxed">
+                  <p className="text-sm text-text-muted leading-relaxed">
                     {truncate(revista.descripcion)}
                   </p>
                 )}

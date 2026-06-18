@@ -11,13 +11,13 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[--color-primary] text-[--color-primary-fg] hover:bg-[--color-primary-hover] focus-visible:ring-[--color-primary]',
+    'bg-primary text-primary-fg hover:bg-primary-hover focus-visible:ring-primary',
   secondary:
-    'bg-[--color-surface] text-[--color-text] border border-[--color-border] hover:bg-[--color-surface-muted] focus-visible:ring-[--color-border-focus]',
+    'bg-surface text-text border border-border hover:bg-surface-muted focus-visible:ring-border-focus',
   ghost:
-    'bg-transparent text-[--color-text] hover:bg-[--color-surface-muted] focus-visible:ring-[--color-border-focus]',
+    'bg-transparent text-text hover:bg-surface-muted focus-visible:ring-border-focus',
   danger:
-    'bg-[--color-danger] text-black hover:opacity-90 focus-visible:ring-[--color-danger]',
+    'bg-danger text-black hover:opacity-90 focus-visible:ring-danger',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -44,7 +44,7 @@ export default function Button({
       disabled={isDisabled}
       aria-disabled={isDisabled}
       className={[
-        'inline-flex items-center justify-center rounded-[--radius-md] font-medium',
+        'inline-flex items-center justify-center rounded-md font-medium',
         'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50',
         variantClasses[variant],
