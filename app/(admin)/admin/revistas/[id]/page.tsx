@@ -4,6 +4,7 @@ import { getRevista } from '@/lib/data/revistas'
 import RevistaPatchForm from '@/components/admin/revistas/RevistaPatchForm'
 import ArticulosList from '@/components/admin/revistas/ArticulosList'
 import SolicitudesList from '@/components/admin/revistas/SolicitudesList'
+import EliminarRevistaButton from '@/components/admin/revistas/EliminarRevistaButton'
 type Props = { params: Promise<{ id: string }> }
 
 export async function generateMetadata(props: Props) {
@@ -39,6 +40,18 @@ export default async function RevistaDetailPage(props: Props) {
       />
 
       {revista.estado === 'borrador' && <SolicitudesList revistaId={revista.id} />}
+
+      <div className="mt-10 pt-6 border-t border-[--color-border]">
+        <h2 className="text-sm font-semibold text-[--color-text] mb-1">Zona de peligro</h2>
+        <p className="text-sm text-[--color-text-muted] mb-3">
+          Eliminar esta revista borra también sus artículos curados y solicitudes.
+        </p>
+        <EliminarRevistaButton
+          revistaId={revista.id}
+          titulo={revista.titulo}
+          esBorrador={revista.estado === 'borrador'}
+        />
+      </div>
     </div>
   )
 }

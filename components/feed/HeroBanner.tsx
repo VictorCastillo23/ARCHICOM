@@ -10,8 +10,8 @@ export default function HeroBanner() {
       <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight max-w-xl">
         Tu trabajo merece un mejor lugar que un chat
       </h1>
-      <p className="text-sm text-text-muted max-w-lg">
-        Es Vitrina es el portafolio digital para estudiantes. Publicá tus obras, recibí
+      <p className="text-sm text-[--color-text-muted] max-w-lg">
+        Es Vitrina es el portafolio digital para jovenes. Publicá tus obras, recibe
         retroalimentación y participá en la revista semanal de la comunidad.
       </p>
       <div className="flex flex-wrap justify-center gap-3 mt-2">

@@ -48,6 +48,32 @@ export async function getPublicacion(
   return { data: data as PublicacionDetalle | null, error }
 }
 
+export async function getLikesInfo(
+  publicacionId: string,
+  usuarioId?: string
+): Promise<{ count: number; liked: boolean }> {
+  const supabase = await createClient()
+
+  const [{ count }, likedResult] = await Promise.all([
+    supabase
+      .from('like')
+      .select('*', { count: 'exact', head: true })
+      .eq('publicacion_id', publicacionId),
+    usuarioId
+      ? supabase
+          .from('like')
+          .select('*', { count: 'exact', head: true })
+          .eq('publicacion_id', publicacionId)
+          .eq('usuario_id', usuarioId)
+      : Promise.resolve({ count: 0 }),
+  ])
+
+  return {
+    count: count ?? 0,
+    liked: (likedResult.count ?? 0) > 0,
+  }
+}
+
 export async function getPublicacionesRelacionadas(
   publicacionId: string,
   tagIds: string[],

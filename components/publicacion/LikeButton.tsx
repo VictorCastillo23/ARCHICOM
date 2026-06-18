@@ -39,7 +39,7 @@ export default function LikeButton({
       if (wasLiked) {
         await apiClient(
           `/api/likes?publicacion_id=${encodeURIComponent(publicacionId)}`,
-          { method: 'DELETE' },
+          { method: 'DELETE' }
         )
       } else {
         await apiClient('/api/likes', {

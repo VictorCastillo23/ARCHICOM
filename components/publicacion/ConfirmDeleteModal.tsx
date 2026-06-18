@@ -11,6 +11,7 @@ interface ConfirmDeleteModalProps {
   publicacionId: string
   tieneRevista: boolean
   tieneSolicitudPendiente: boolean
+  redirectTo?: string
 }
 
 export default function ConfirmDeleteModal({
@@ -20,6 +21,7 @@ export default function ConfirmDeleteModal({
   publicacionId,
   tieneRevista,
   tieneSolicitudPendiente,
+  redirectTo = '/perfil',
 }: ConfirmDeleteModalProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -40,7 +42,7 @@ export default function ConfirmDeleteModal({
         setLoading(false)
         return
       }
-      router.push('/perfil')
+      router.push(redirectTo)
     } catch {
       setError('Error de red. Intentá de nuevo.')
       setLoading(false)
