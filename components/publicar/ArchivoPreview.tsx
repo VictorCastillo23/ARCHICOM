@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import Button from '@/components/ui/Button'
 
 interface ArchivoPreviewProps {
@@ -9,28 +9,15 @@ interface ArchivoPreviewProps {
 }
 
 export default function ArchivoPreview({ file, onClear }: ArchivoPreviewProps) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null)
-  const prevUrl = useRef<string | null>(null)
+  // Derive the preview URL from `file` instead of mirroring it into state.
+  // createObjectURL allocates memory, so we revoke it in the effect cleanup
+  // whenever the URL changes or the component unmounts.
+  const objectUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
 
   useEffect(() => {
-    if (prevUrl.current) {
-      URL.revokeObjectURL(prevUrl.current)
-      prevUrl.current = null
-    }
-    if (file) {
-      const url = URL.createObjectURL(file)
-      prevUrl.current = url
-      setObjectUrl(url)
-    } else {
-      setObjectUrl(null)
-    }
-    return () => {
-      if (prevUrl.current) {
-        URL.revokeObjectURL(prevUrl.current)
-        prevUrl.current = null
-      }
-    }
-  }, [file])
+    if (!objectUrl) return
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [objectUrl])
 
   if (!file || !objectUrl) return null
 

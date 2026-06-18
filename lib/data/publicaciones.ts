@@ -1,6 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Publicacion, PublicacionCardData, PublicacionDetalle, TipoPublicacion } from '@/lib/types/database'
 
+// Shape of a related-publication row. `usuario` may come back as an object or a
+// single-element array depending on how supabase-js resolves the embedded join.
+type RelacionadaRow = {
+  id: string
+  titulo: string
+  resumen: string
+  tipo: TipoPublicacion
+  autor_id: string
+  creado_en: string
+  usuario: { id: string; nombre: string } | { id: string; nombre: string }[] | null
+}
+
 export async function getPublicacionPorArea({
   area,
   limit = 24,
@@ -61,14 +73,14 @@ export async function getPublicacionesRelacionadas(
       .order('creado_en', { ascending: false })
       .limit(4)
 
-    paso1 = (data as any[] ?? []).map((p) => ({
-      id: p.id as string,
-      titulo: p.titulo as string,
-      resumen: p.resumen as string,
-      tipo: p.tipo as TipoPublicacion,
+    paso1 = ((data as RelacionadaRow[]) ?? []).map((p) => ({
+      id: p.id,
+      titulo: p.titulo,
+      resumen: p.resumen,
+      tipo: p.tipo,
       nombre_autor: (Array.isArray(p.usuario) ? p.usuario[0]?.nombre : p.usuario?.nombre) ?? 'Autor desconocido',
-      autor_id: p.autor_id as string,
-      creado_en: p.creado_en as string,
+      autor_id: p.autor_id,
+      creado_en: p.creado_en,
     }))
   }
 
@@ -83,14 +95,14 @@ export async function getPublicacionesRelacionadas(
       .order('creado_en', { ascending: false })
       .limit(faltantes)
 
-    const paso2: PublicacionCardData[] = (data as any[] ?? []).map((p) => ({
-      id: p.id as string,
-      titulo: p.titulo as string,
-      resumen: p.resumen as string,
-      tipo: p.tipo as TipoPublicacion,
+    const paso2: PublicacionCardData[] = ((data as RelacionadaRow[]) ?? []).map((p) => ({
+      id: p.id,
+      titulo: p.titulo,
+      resumen: p.resumen,
+      tipo: p.tipo,
       nombre_autor: (Array.isArray(p.usuario) ? p.usuario[0]?.nombre : p.usuario?.nombre) ?? 'Autor desconocido',
-      autor_id: p.autor_id as string,
-      creado_en: p.creado_en as string,
+      autor_id: p.autor_id,
+      creado_en: p.creado_en,
     }))
 
     return [...paso1, ...paso2]

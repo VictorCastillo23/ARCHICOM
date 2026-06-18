@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import Badge from '@/components/ui/Badge'
-import TipoBadge from '@/components/ui/TipoBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import type { BadgeTone } from '@/components/ui/Badge'
 import type { EstadoSolicitud, SolicitudConDetalle } from '@/lib/types/database'
