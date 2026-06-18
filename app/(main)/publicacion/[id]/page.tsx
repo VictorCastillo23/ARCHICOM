@@ -11,6 +11,7 @@ import ComentarioForm from '@/components/publicacion/ComentarioForm'
 import LikeButton from '@/components/publicacion/LikeButton'
 import SolicitarRevistaButton from '@/components/publicacion/SolicitarRevistaButton'
 import EliminarPublicacionButton from '@/components/publicacion/EliminarPublicacionButton'
+import ReportarButton from '@/components/publicacion/ReportarButton'
 import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
 import Link from 'next/link'
 import type { Comentario, Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
@@ -209,8 +210,8 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
 
       {/* Acciones de administración */}
       {isAdmin && !isAuthor && (
-        <div className="mb-8 flex items-center gap-3 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface-muted] p-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted]">
+        <div className="mb-8 flex items-center gap-3 rounded-md border border-border bg-surface-muted p-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
             Administración
           </span>
           <EliminarPublicacionButton
@@ -223,7 +224,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         </div>
       )}
 
-      {/* Like */}
+      {/* Like + report */}
       <div className="mb-10 pb-8 border-b border-border">
         <LikeButton
           publicacionId={id}
@@ -231,6 +232,11 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           initialCount={likeCount}
           isAuthenticated={isAuthenticated}
         />
+        {isAuthenticated && !isAuthor && (
+          <div className="mt-3">
+            <ReportarButton publicacionId={id} isAuthenticated={isAuthenticated} />
+          </div>
+        )}
       </div>
 
       {/* Comentarios */}
