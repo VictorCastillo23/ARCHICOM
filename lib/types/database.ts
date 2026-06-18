@@ -123,6 +123,13 @@ export type PublicacionCardData = {
   creado_en?: string
 }
 
+export type UsuarioCardData = {
+  id: string
+  nombre: string
+  institucion?: string
+  carrera?: string
+}
+
 export type FeedPublicacion = {
   id: string
   titulo: string
