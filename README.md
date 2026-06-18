@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📚 Archicom
+# 📚 Vitrina
 
 ### Portafolio digital académico para los Jovenes
 

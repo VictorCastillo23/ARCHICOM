@@ -25,8 +25,8 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Es Vitrina',
-    template: '%s | Es Vitrina',
+    default: 'Vitrina',
+    template: '%s | Vitrina',
   },
   description: 'Portafolio académico',
 }

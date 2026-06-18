@@ -11,7 +11,7 @@ export default function AdminPage() {
           Panel de administración
         </p>
         <h1 className="text-(length:--size-heading-lg) font-display font-normal leading-tight text-text">
-          Es Vitrina
+          Vitrina
         </h1>
         <p className="mt-2 text-text-muted">
           Gestioná las revistas y el catálogo de tags.

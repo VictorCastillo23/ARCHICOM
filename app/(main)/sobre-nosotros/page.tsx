@@ -3,7 +3,7 @@ import Card from '@/components/ui/Card'
 
 export const metadata: Metadata = {
   title: 'Sobre nosotros',
-  description: 'Conocé Es Vitrina y cómo contactarnos.',
+  description: 'Conocé Vitrina y cómo contactarnos.',
 }
 
 export default function SobreNosotrosPage() {
@@ -20,7 +20,7 @@ export default function SobreNosotrosPage() {
 
       <section className="max-w-2xl space-y-4">
         <p className="text-[--color-text-muted] leading-relaxed">
-          <span className="font-semibold text-[--color-text]">Es Vitrina</span> es un
+          <span className="font-semibold text-[--color-text]">Vitrina</span> es un
           portafolio digital académico para la comunidad universitaria. Acá los estudiantes
           publican sus creaciones — investigaciones, artículos, tesis, trabajos académicos, 
           proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, 

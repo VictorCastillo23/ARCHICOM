@@ -11,7 +11,7 @@ import SolicitudesHistorial from '@/components/perfil/SolicitudesHistorial'
 import EmptyState from '@/components/ui/EmptyState'
 import type { PublicacionCardData, SolicitudConDetalle } from '@/lib/types/database'
 
-export const metadata = { title: 'Mi perfil — Es Vitrina' }
+export const metadata = { title: 'Mi perfil — Vitrina' }
 
 export default async function PerfilPage() {
   // Defensive redirect — proxy.ts already guards this route

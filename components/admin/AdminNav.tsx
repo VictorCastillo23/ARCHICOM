@@ -18,7 +18,7 @@ export default function AdminNav() {
           href="/admin"
           className="font-display font-normal text-xl text-text hover:text-primary transition-colors"
         >
-          Es Vitrina Admin
+          Vitrina Admin
         </Link>
 
         <nav className="flex items-center gap-1" aria-label="Navegación admin">

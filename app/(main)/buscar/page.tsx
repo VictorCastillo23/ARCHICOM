@@ -17,7 +17,7 @@ export async function generateMetadata({ searchParams }: BuscarPageProps): Promi
   const sp = await searchParams
   const q = (sp.q ?? '').trim()
   return {
-    title: q.length >= 2 ? `Búsqueda: "${q}" — Es Vitrina` : 'Buscar — Es Vitrina',
+    title: q.length >= 2 ? `Búsqueda: "${q}" — Vitrina` : 'Buscar — Vitrina',
   }
 }
 
@@ -32,7 +32,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
     return (
       <div className="animate-page">
         <EmptyState
-          title="Buscá en Es Vitrina"
+          title="Buscá en Vitrina"
           description="Ingresá al menos 2 caracteres para encontrar publicaciones y personas."
         />
       </div>

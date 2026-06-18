@@ -26,7 +26,7 @@ export default async function Nav() {
           href="/"
           className="font-display font-normal text-xl tracking-tight text-text hover:text-primary transition-colors"
         >
-          Es Vitrina
+          Vitrina
         </Link>
         <NavClient session={session} />
       </div>
