@@ -14,7 +14,7 @@ export default function LoginPage() {
           Iniciar sesión
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Ingresá con tu cuenta universitaria
+          Ingresá con tu cuenta
         </p>
       </div>
 

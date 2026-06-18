@@ -1,15 +1,18 @@
 import Link from 'next/link'
 import Avatar from '@/components/ui/Avatar'
-import type { PerfilPublico } from '@/lib/types/database'
+import LinksStrip from '@/components/perfil/LinksStrip'
+import type { PerfilPublico, UsuarioLink } from '@/lib/types/database'
 
 export interface PerfilViewProps {
   perfil: PerfilPublico
   esPropio?: boolean
   /** Own user's email — sourced from auth.getUser(), passed only when esPropio=true. Never from DB. */
   email?: string
+  /** User's profile links, rendered in LinksStrip. Pass empty array when none. */
+  links?: UsuarioLink[]
 }
 
-export default function PerfilView({ perfil, esPropio = false, email }: PerfilViewProps) {
+export default function PerfilView({ perfil, esPropio = false, email, links = [] }: PerfilViewProps) {
   return (
     <div className="flex flex-col sm:flex-row items-start gap-6">
       <Avatar nombre={perfil.nombre} size="lg" />
@@ -47,6 +50,8 @@ export default function PerfilView({ perfil, esPropio = false, email }: PerfilVi
             </Link>
           </>
         )}
+
+        <LinksStrip links={links} />
       </div>
     </div>
   )

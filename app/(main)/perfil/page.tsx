@@ -3,9 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { getPerfil, getPerfilStats } from '@/lib/data/perfil'
 import { getMisPublicaciones } from '@/lib/data/publicaciones'
 import { getMisSolicitudes } from '@/lib/data/solicitudes'
+import { getLinksUsuario } from '@/lib/data/links'
+import { getConteos } from '@/lib/data/seguidores'
 import PerfilView from '@/components/perfil/PerfilView'
 import PerfilEditForm from '@/components/perfil/PerfilEditForm'
 import PerfilStats from '@/components/perfil/PerfilStats'
+import LinksEditor from '@/components/perfil/LinksEditor'
 import FeedList from '@/components/feed/FeedList'
 import SolicitudesHistorial from '@/components/perfil/SolicitudesHistorial'
 import EmptyState from '@/components/ui/EmptyState'
@@ -34,10 +37,14 @@ export default async function PerfilPage() {
     { data: publicaciones },
     { data: solicitudes },
     stats,
+    { data: links },
+    { data: conteos },
   ] = await Promise.all([
     getMisPublicaciones(user.id),
     getMisSolicitudes(user.id),
     getPerfilStats(user.id),
+    getLinksUsuario(user.id),
+    getConteos(user.id),
   ])
 
   const sols: SolicitudConDetalle[] = (solicitudes ?? []) as SolicitudConDetalle[]
@@ -56,12 +63,15 @@ export default async function PerfilPage() {
     <div className="animate-page flex flex-col gap-10">
       {/* Profile header */}
       <section aria-label="Datos del perfil">
-        <PerfilView perfil={perfil} esPropio email={user.email ?? undefined} />
+        <PerfilView perfil={perfil} esPropio email={user.email ?? undefined} links={links ?? []} />
         <div className="mt-4">
           <PerfilStats
             totalPublicaciones={stats.totalPublicaciones}
             totalEnRevistas={stats.totalEnRevistas}
             totalLikes={stats.totalLikes}
+            usuarioId={perfil.id}
+            seguidores={conteos?.n_seguidores ?? 0}
+            seguidos={conteos?.n_seguidos ?? 0}
           />
         </div>
       </section>
@@ -78,6 +88,14 @@ export default async function PerfilPage() {
             carrera: perfil.carrera,
           }}
         />
+      </section>
+
+      {/* Links management */}
+      <section
+        aria-label="Mis enlaces"
+        className="border border-border rounded-lg p-6 bg-surface"
+      >
+        <LinksEditor initialLinks={links ?? []} />
       </section>
 
       {/* Solicitations history */}

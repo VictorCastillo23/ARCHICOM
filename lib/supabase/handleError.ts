@@ -56,6 +56,8 @@ export function handleError(error: unknown): NextResponse {
       return err('42501', 'No tienes permiso para esta operación', 403)
     case 'P0001':
       return err('P0001', e.message ?? 'Solicitud inválida', 400)
+    case '23514':
+      return err('validation_error', 'Operación no permitida', 400)
     default:
       console.error('[handleError]', error)
       return err('internal_error', 'Error interno', 500)

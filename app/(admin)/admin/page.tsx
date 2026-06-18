@@ -36,6 +36,15 @@ export default function AdminPage() {
             </p>
           </Card>
         </Link>
+
+        <Link href="/admin/reportes" className="block group">
+          <Card className="group-hover:shadow-md transition-shadow h-full border-l-4 border-l-primary">
+            <h2 className="font-display font-normal text-(length:--size-heading-sm) mb-1">Reportes</h2>
+            <p className="text-sm text-text-muted">
+              Revisá y moderá publicaciones reportadas.
+            </p>
+          </Card>
+        </Link>
       </div>
     </div>
   )

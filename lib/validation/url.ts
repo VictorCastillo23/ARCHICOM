@@ -10,3 +10,17 @@ export function isHttpUrl(value: string): boolean {
     return false
   }
 }
+
+/**
+ * Returns true only for well-formed https:// URLs.
+ * Rejects http:, javascript:, data:, relative paths, and empty string.
+ * Uses the WHATWG URL parser for robustness over raw regex.
+ */
+export function isHttpsUrl(value: string): boolean {
+  try {
+    const u = new URL(value)
+    return u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}

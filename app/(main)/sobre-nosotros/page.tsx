@@ -21,7 +21,7 @@ export default function SobreNosotrosPage() {
       <section className="max-w-2xl space-y-4">
         <p className="text-[--color-text-muted] leading-relaxed">
           <span className="font-semibold text-[--color-text]">Vitrina</span> es un
-          portafolio digital académico para la comunidad universitaria. Acá los estudiantes
+          portafolio digital académico. Aqui los joveness
           publican sus creaciones — investigaciones, artículos, tesis, trabajos académicos, 
           proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, 
           poesía y revistas — y también recomiendan obras de terceros que vale la pena difundir.
@@ -29,7 +29,7 @@ export default function SobreNosotrosPage() {
         <p className="text-[--color-text-muted] leading-relaxed">
           La comunidad explora las obras por disciplina, las comenta y las apoya con likes.
           Los administradores seleccionan las más destacadas para componer revistas temáticas
-          que se publican cada semana. Nuestra meta es darle a cada estudiante un espacio
+          que se publican cada semana. Nuestra meta es darle a cada joven un espacio
           serio para mostrar su trabajo y descubrir el de sus pares.
         </p>
       </section>
