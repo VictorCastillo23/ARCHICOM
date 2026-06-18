@@ -49,7 +49,6 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   const isAuthenticated = Boolean(user)
   const isAuthor = Boolean(user && user.id === data.autor_id)
 
-<<<<<<< HEAD
   // Resolve like state: public total count + whether the current user liked it
   const { count: likeCount } = await supabase
     .from('like')
@@ -64,20 +63,6 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       .eq('publicacion_id', id)
       .eq('usuario_id', user.id)
     userLiked = (ownLike ?? 0) > 0
-=======
-  // Resolve real like count + whether the current user already liked it
-  const { count: likeCount, liked: likedByUser } = await getLikesInfo(id, user?.id)
-
-  // Admin moderation: a non-author admin can delete any publicacion (RLS: admin_elimina)
-  let isAdmin = false
-  if (user && !isAuthor) {
-    const { data: perfil } = await supabase
-      .from('usuario')
-      .select('rol')
-      .eq('id', user.id)
-      .single()
-    isAdmin = perfil?.rol === 'administrador'
->>>>>>> f36817eba9169096002c2a834788a6e7b1bab164
   }
 
   // Resolve postulation state (only needed when user is the author)
@@ -244,13 +229,8 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       <div className="mb-10 pb-8 border-b border-border">
         <LikeButton
           publicacionId={id}
-<<<<<<< HEAD
           initialLiked={userLiked}
           initialCount={likeCount ?? 0}
-=======
-          initialLiked={likedByUser}
-          initialCount={likeCount}
->>>>>>> f36817eba9169096002c2a834788a6e7b1bab164
           isAuthenticated={isAuthenticated}
         />
       </div>
