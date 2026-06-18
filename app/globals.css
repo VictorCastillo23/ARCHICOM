@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ─── Design Tokens — Es Vitrina editorial palette ─────────────────────────── */
+/* ─── Design Tokens — Vitrina editorial palette ─────────────────────────── */
 @theme {
   /* Colors — primary accent (deep teal) */
   --color-primary:        #1a6b5e;

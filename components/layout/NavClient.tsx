@@ -38,13 +38,13 @@ export default function NavClient({ session }: NavClientProps) {
         <>
           <Link
             href="/login"
-            className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+            className="text-text-muted hover:text-text transition-colors"
           >
             Iniciar sesión
           </Link>
           <Link
             href="/signup"
-            className="rounded-[--radius-md] bg-[--color-primary] px-3 py-1.5 text-black hover:bg-[--color-primary-hover] transition-colors"
+            className="rounded-md bg-primary px-3 py-1.5 text-black hover:bg-primary-hover transition-colors"
           >
             Crear cuenta
           </Link>
@@ -54,26 +54,26 @@ export default function NavClient({ session }: NavClientProps) {
 
           <Link
             href="/revistas"
-            className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+            className="text-text-muted hover:text-text transition-colors"
           >
             Revistas
           </Link>
           <Link
             href="/perfil"
-            className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+            className="text-text-muted hover:text-text transition-colors"
           >
             {session.nombre}
           </Link>
           <Link
             href="/publicar"
-            className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+            className="text-text-muted hover:text-text transition-colors"
           >
             Publicar
           </Link>
           {session.rol === 'administrador' && (
             <Link
               href="/admin"
-              className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+              className="text-text-muted hover:text-text transition-colors"
             >
               Admin
             </Link>
@@ -81,7 +81,7 @@ export default function NavClient({ session }: NavClientProps) {
           <button
             type="button"
             onClick={handleLogout}
-            className="text-[--color-text-muted] hover:text-[--color-text] transition-colors"
+            className="text-text-muted hover:text-text transition-colors"
             aria-label="Cerrar sesión"
           >
             Salir

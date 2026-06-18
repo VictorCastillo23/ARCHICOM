@@ -48,7 +48,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text]">
+      <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text">
         Editar perfil
       </h2>
 
@@ -83,13 +83,13 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
       />
 
       {error && (
-        <p role="alert" className="text-sm text-[--color-danger]">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
 
       {success && (
-        <p role="status" className="text-sm text-[--color-text-muted]">
+        <p role="status" className="text-sm text-text-muted">
           Perfil actualizado correctamente.
         </p>
       )}

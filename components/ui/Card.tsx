@@ -15,8 +15,8 @@ export default function Card({
   return (
     <Tag
       className={[
-        'rounded-[--radius-lg] border border-[--color-surface-border]',
-        'bg-[--color-surface] p-6 shadow-sm',
+        'rounded-lg border border-surface-border',
+        'bg-surface p-6 shadow-sm',
         className,
       ]
         .filter(Boolean)

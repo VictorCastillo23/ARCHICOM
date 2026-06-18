@@ -15,10 +15,10 @@ const MAX_SIZE = 10 * 1024 * 1024
 const TIPO_OPTIONS = TIPOS_PUBLICACION.map((value) => ({ value, label: TIPO_META[value].label }))
 
 const SELECT_CLASSES =
-  'w-full rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-3 py-2 text-[--color-text] text-sm focus:outline-none focus:ring-2 focus:ring-[--color-border-focus] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed'
+  'w-full rounded-md border border-border bg-surface px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-border-focus focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed'
 
 const FILE_CLASSES =
-  'w-full rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] px-3 py-2 text-[--color-text] text-sm file:mr-4 file:py-0 file:px-3 file:rounded-[--radius-sm] file:border-0 file:bg-[--color-surface-muted] file:text-sm file:font-medium file:text-[--color-text] hover:file:bg-[--color-surface-muted] disabled:opacity-50 disabled:cursor-not-allowed'
+  'w-full rounded-md border border-border bg-surface px-3 py-2 text-text text-sm file:mr-4 file:py-0 file:px-3 file:rounded-sm file:border-0 file:bg-surface-muted file:text-sm file:font-medium file:text-text hover:file:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed'
 
 export default function PublicarForm({ tags }: { tags: Tag[] }) {
   const router = useRouter()
@@ -156,9 +156,9 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
       />
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="tipo" className="text-sm font-medium text-[--color-text]">
+        <label htmlFor="tipo" className="text-sm font-medium text-text">
           Tipo
-          <span className="ml-1 text-[--color-danger]" aria-hidden="true">
+          <span className="ml-1 text-danger" aria-hidden="true">
             *
           </span>
         </label>
@@ -205,14 +205,14 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
 
       {tags.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-[--color-text]">
+          <span className="text-sm font-medium text-text">
             Áreas{' '}
-            <span className="font-normal text-xs text-[--color-text-muted]">(opcional)</span>
+            <span className="font-normal text-xs text-text-muted">(opcional)</span>
           </span>
-          <div className="rounded-[--radius-md] border border-[--color-border] bg-[--color-surface] p-3 flex flex-col gap-3">
+          <div className="rounded-md border border-border bg-surface p-3 flex flex-col gap-3">
             {Object.entries(tagsByArea).map(([area, areaTags]) => (
               <div key={area}>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[--color-text-muted] mb-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
                   {area}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -226,9 +226,9 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
                         checked={selectedTagIds.includes(tag.id)}
                         onChange={() => toggleTag(tag.id)}
                         disabled={loading}
-                        className="accent-[--color-primary] w-3.5 h-3.5"
+                        className="accent-primary w-3.5 h-3.5"
                       />
-                      <span className="text-sm text-[--color-text]">{tag.nombre}</span>
+                      <span className="text-sm text-text">{tag.nombre}</span>
                     </label>
                   ))}
                 </div>
@@ -239,9 +239,9 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
       )}
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="archivo" className="text-sm font-medium text-[--color-text]">
+        <label htmlFor="archivo" className="text-sm font-medium text-text">
           Archivo{' '}
-          <span className="font-normal text-xs text-[--color-text-muted]">
+          <span className="font-normal text-xs text-text-muted">
             (opcional — PDF, JPG o PNG, máx. 10 MB)
           </span>
         </label>
@@ -265,7 +265,7 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-[--color-danger]">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}

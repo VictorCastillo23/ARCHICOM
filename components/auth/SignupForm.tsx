@@ -87,20 +87,20 @@ export default function SignupForm() {
     return (
       <div
         role="status"
-        className="rounded-[--radius-md] bg-[--color-surface-muted] border border-[--color-border] p-4 text-sm text-[--color-text]"
+        className="rounded-md bg-surface-muted border border-border p-4 text-sm text-text"
       >
         <p className="font-medium">¡Cuenta creada!</p>
-        <p className="mt-1 text-[--color-text-muted]">
+        <p className="mt-1 text-text-muted">
           Te enviamos un correo de confirmación a{' '}
-          <span className="font-medium text-[--color-text]">{email}</span>. Una vez
+          <span className="font-medium text-text">{email}</span>. Una vez
           que confirmes tu cuenta, podés{' '}
-          <Link href="/login" className="text-[--color-primary] hover:underline">
+          <Link href="/login" className="text-primary hover:underline">
             iniciar sesión
           </Link>
           .
         </p>
 
-        <p className="mt-3 text-[--color-text-muted]">
+        <p className="mt-3 text-text-muted">
           ¿No te llegó? Revisá el spam o reenvialo:
         </p>
         <div className="mt-2">
@@ -116,12 +116,12 @@ export default function SignupForm() {
         </div>
 
         {resendMessage && (
-          <p role="status" className="mt-2 text-[--color-success]">
+          <p role="status" className="mt-2 text-success">
             {resendMessage}
           </p>
         )}
         {resendError && (
-          <p role="alert" className="mt-2 text-[--color-danger]">
+          <p role="alert" className="mt-2 text-danger">
             {resendError}
           </p>
         )}
@@ -168,7 +168,7 @@ export default function SignupForm() {
       />
 
       {errorMessage && (
-        <p role="alert" className="text-sm text-[--color-danger]">
+        <p role="alert" className="text-sm text-danger">
           {errorMessage}
         </p>
       )}

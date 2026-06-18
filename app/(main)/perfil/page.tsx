@@ -11,7 +11,7 @@ import SolicitudesHistorial from '@/components/perfil/SolicitudesHistorial'
 import EmptyState from '@/components/ui/EmptyState'
 import type { PublicacionCardData, SolicitudConDetalle } from '@/lib/types/database'
 
-export const metadata = { title: 'Mi perfil — Es Vitrina' }
+export const metadata = { title: 'Mi perfil — Vitrina' }
 
 export default async function PerfilPage() {
   // Defensive redirect — proxy.ts already guards this route
@@ -69,7 +69,7 @@ export default async function PerfilPage() {
       {/* Edit form */}
       <section
         aria-label="Editar perfil"
-        className="border border-[--color-border] rounded-[--radius-lg] p-6 bg-[--color-surface]"
+        className="border border-border rounded-lg p-6 bg-surface"
       >
         <PerfilEditForm
           perfil={{
@@ -82,7 +82,7 @@ export default async function PerfilPage() {
 
       {/* Solicitations history */}
       <section aria-label="Mis postulaciones">
-        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+        <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
           Mis postulaciones ({sols.length})
         </h2>
         <SolicitudesHistorial solicitudes={sols} />
@@ -90,7 +90,7 @@ export default async function PerfilPage() {
 
       {/* Own publications */}
       <section aria-label="Mis publicaciones">
-        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6">
+        <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
           Mis publicaciones
         </h2>
         {pubs.length === 0 ? (

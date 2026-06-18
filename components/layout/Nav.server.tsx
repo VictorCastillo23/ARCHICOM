@@ -20,13 +20,13 @@ export default async function Nav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[--color-border] bg-[--color-surface]/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-[--space-page] h-14">
+    <header className="sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-(--space-page) h-14">
         <Link
           href="/"
-          className="font-display font-normal text-xl tracking-tight text-[--color-text] hover:text-[--color-primary] transition-colors"
+          className="font-display font-normal text-xl tracking-tight text-text hover:text-primary transition-colors"
         >
-          Es Vitrina
+          Vitrina
         </Link>
         <NavClient session={session} />
       </div>

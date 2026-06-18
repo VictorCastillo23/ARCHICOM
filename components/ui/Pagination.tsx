@@ -41,7 +41,7 @@ export default function Pagination({
         {showPrev && (
           <Link
             href={buildHref(basePath, searchParams, prevOffset)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-[--color-primary] hover:underline"
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
             ← Anterior
           </Link>
@@ -51,7 +51,7 @@ export default function Pagination({
         {showNext && (
           <Link
             href={buildHref(basePath, searchParams, nextOffset)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-[--color-primary] hover:underline"
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
             Siguiente →
           </Link>

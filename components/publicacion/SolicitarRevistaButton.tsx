@@ -35,14 +35,14 @@ export default function SolicitarRevistaButton({
 
   if (!revistaActiva) {
     return (
-      <p className="text-sm text-[--color-text-muted]">No hay una revista abierta esta semana.</p>
+      <p className="text-sm text-text-muted">No hay una revista abierta esta semana.</p>
     )
   }
 
   if (solicitudExistente) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-sm text-[--color-text-muted]">Postulación:</span>
+        <span className="text-sm text-text-muted">Postulación:</span>
         <Badge tone={estadoTone[solicitudExistente.estado]}>{solicitudExistente.estado}</Badge>
       </div>
     )
@@ -79,7 +79,7 @@ export default function SolicitarRevistaButton({
       <Button size="sm" loading={loading} onClick={handlePostular}>
         Postular a {revistaActiva.titulo}
       </Button>
-      {error && <p className="text-xs text-[--color-danger]">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   )
 }

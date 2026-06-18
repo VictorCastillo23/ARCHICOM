@@ -9,9 +9,9 @@ export interface EmptyStateProps {
 export default function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="w-12 h-12 rounded-full bg-[--color-surface-muted] border border-[--color-border] flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-full bg-surface-muted border border-border flex items-center justify-center mb-4">
         <svg
-          className="w-5 h-5 text-[--color-text-muted]"
+          className="w-5 h-5 text-text-muted"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -25,14 +25,14 @@ export default function EmptyState({ title, description, action }: EmptyStatePro
           />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-[--color-text] mb-1">{title}</h2>
+      <h2 className="text-lg font-semibold text-text mb-1">{title}</h2>
       {description && (
-        <p className="text-sm text-[--color-text-muted] max-w-sm">{description}</p>
+        <p className="text-sm text-text-muted max-w-sm">{description}</p>
       )}
       {action && (
         <Link
           href={action.href}
-          className="mt-4 inline-flex items-center rounded-[--radius-md] bg-[--color-primary] px-4 py-2 text-sm font-medium text-black hover:bg-[--color-primary-hover] transition-colors"
+          className="mt-4 inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-black hover:bg-primary-hover transition-colors"
         >
           {action.label}
         </Link>

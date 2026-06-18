@@ -2,10 +2,10 @@ import Link from 'next/link'
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[--color-border] bg-[--color-surface] mt-auto">
-      <div className="mx-auto max-w-6xl px-[--space-page] py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-[--color-text-muted]">
-        <span className="font-semibold tracking-tight text-[--color-text]">
-          Es Vitrina
+    <footer className="border-t border-border bg-surface mt-auto">
+      <div className="mx-auto max-w-6xl px-(--space-page) py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-text-muted">
+        <span className="font-semibold tracking-tight text-text">
+          Vitrina
         </span>
         <nav className="flex items-center gap-4">
 

@@ -59,18 +59,18 @@ export default function RevistaPatchForm({ revista }: Props) {
         <div className="flex flex-col gap-3">
           <div className="flex gap-4">
             <div className="flex-1">
-              <p className="text-xs text-[--color-text-muted] mb-1">Título</p>
+              <p className="text-xs text-text-muted mb-1">Título</p>
               <p className="text-sm">{revista.titulo}</p>
             </div>
             {revista.volumen && (
               <div className="w-28">
-                <p className="text-xs text-[--color-text-muted] mb-1">Volumen</p>
+                <p className="text-xs text-text-muted mb-1">Volumen</p>
                 <p className="text-sm">Vol. {revista.volumen}</p>
               </div>
             )}
           </div>
           {revista.publicada_en && (
-            <p className="text-xs text-[--color-text-muted]">
+            <p className="text-xs text-text-muted">
               Publicada el{' '}
               {new Date(revista.publicada_en).toLocaleDateString('es-AR', {
                 year: 'numeric',

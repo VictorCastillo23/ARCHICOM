@@ -12,13 +12,13 @@ export default function AdminNav() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-50 bg-[--color-surface] border-b-2 border-[--color-primary]">
-      <div className="mx-auto max-w-6xl px-[--space-page] h-14 flex items-center gap-6">
+    <header className="sticky top-0 z-50 bg-surface border-b-2 border-primary">
+      <div className="mx-auto max-w-6xl px-(--space-page) h-14 flex items-center gap-6">
         <Link
           href="/admin"
-          className="font-display font-normal text-xl text-[--color-text] hover:text-[--color-primary] transition-colors"
+          className="font-display font-normal text-xl text-text hover:text-primary transition-colors"
         >
-          Es Vitrina Admin
+          Vitrina Admin
         </Link>
 
         <nav className="flex items-center gap-1" aria-label="Navegación admin">
@@ -29,10 +29,10 @@ export default function AdminNav() {
                 key={href}
                 href={href}
                 className={[
-                  'px-3 py-1.5 rounded-[--radius-md] text-sm font-medium transition-colors',
+                  'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                   active
-                    ? 'bg-[--color-primary] text-[--color-primary-fg]'
-                    : 'text-[--color-text-muted] hover:text-[--color-text] hover:bg-[--color-surface-muted]',
+                    ? 'bg-primary text-primary-fg'
+                    : 'text-text-muted hover:text-text hover:bg-surface-muted',
                 ].join(' ')}
               >
                 {label}
@@ -43,7 +43,7 @@ export default function AdminNav() {
 
         <Link
           href="/"
-          className="ml-auto text-xs text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+          className="ml-auto text-xs text-text-muted hover:text-primary transition-colors"
         >
           ← Sitio público
         </Link>

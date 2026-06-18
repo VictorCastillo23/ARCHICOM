@@ -18,16 +18,16 @@ export default function UsuarioCard({ usuario }: UsuarioCardProps) {
     >
       <Link
         href={`/usuario/${id}`}
-        className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] focus-visible:ring-offset-2 rounded-[--radius-md]"
+        className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
         aria-label={`Ver perfil de ${nombre}`}
       >
         <Avatar nombre={nombre} size="md" />
         <div className="min-w-0">
-          <p className="text-[length:var(--size-heading-sm)] font-normal font-display leading-snug text-[--color-text] group-hover:text-[--color-primary] transition-colors truncate">
+          <p className="text-(length:--size-heading-sm) font-normal font-display leading-snug text-text group-hover:text-primary transition-colors truncate">
             {nombre}
           </p>
           {secondary && (
-            <p className="text-xs text-[--color-text-muted] truncate mt-0.5">
+            <p className="text-xs text-text-muted truncate mt-0.5">
               {secondary}
             </p>
           )}

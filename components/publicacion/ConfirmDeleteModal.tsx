@@ -56,32 +56,32 @@ export default function ConfirmDeleteModal({
       aria-modal="true"
       aria-labelledby="confirm-delete-title"
     >
-      <div className="w-full max-w-md rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-6 shadow-lg">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg">
         <h2
           id="confirm-delete-title"
-          className="text-base font-semibold text-[--color-text] mb-3"
+          className="text-base font-semibold text-text mb-3"
         >
           ¿Eliminar &ldquo;{titulo}&rdquo;?
         </h2>
 
-        <p className="text-sm text-[--color-text-muted] mb-2">
+        <p className="text-sm text-text-muted mb-2">
           Esta acción no se puede deshacer. Se perderán los comentarios y likes asociados.
         </p>
 
         {tieneRevista && (
-          <p className="text-sm text-[--color-text-muted] mb-2">
+          <p className="text-sm text-text-muted mb-2">
             Esta obra aparece en una revista publicada y será removida de ella.
           </p>
         )}
 
         {tieneSolicitudPendiente && (
-          <p className="text-sm text-[--color-text-muted] mb-2">
+          <p className="text-sm text-text-muted mb-2">
             Tenés una solicitud pendiente para la revista de esta semana; también se eliminará.
           </p>
         )}
 
         {error && (
-          <p className="text-sm text-red-600 mt-2 mb-2" role="alert">
+          <p className="text-sm text-danger mt-2 mb-2" role="alert">
             {error}
           </p>
         )}

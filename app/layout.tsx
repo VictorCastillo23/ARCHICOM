@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist_Mono } from 'next/font/google'
-import { DM_Serif_Display, DM_Sans } from 'next/font/google'
+import { Geist_Mono, DM_Serif_Display, DM_Sans } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import './globals.css'
@@ -26,8 +25,8 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Es Vitrina',
-    template: '%s | Es Vitrina',
+    default: 'Vitrina',
+    template: '%s | Vitrina',
   },
   description: 'Portafolio académico',
 }
@@ -42,7 +41,7 @@ export default function RootLayout({
       lang="es"
       className={`${dmSans.variable} ${dmSerif.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-(--color-surface-muted) text-(--color-text)">
+      <body className="min-h-full flex flex-col bg-surface-muted text-text">
         {children}
         <Analytics/>
         <SpeedInsights />

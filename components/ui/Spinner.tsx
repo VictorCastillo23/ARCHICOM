@@ -18,7 +18,7 @@ export function Spinner({ size = 'md' }: SpinnerProps) {
       role="status"
       aria-label="Loading"
       style={{ width: dim, height: dim }}
-      className="inline-block rounded-full border-2 border-[--color-border] border-t-[--color-primary] motion-safe:animate-spin shrink-0"
+      className="inline-block rounded-full border-2 border-border border-t-primary motion-safe:animate-spin shrink-0"
     />
   )
 }

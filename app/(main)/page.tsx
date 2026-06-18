@@ -70,10 +70,10 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
 
       <div id="feed">
         <div className="mb-8">
-          <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-[--color-text] leading-tight">
+          <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight">
             Publicaciones
           </h1>
-          <p className="mt-2 text-sm text-[--color-text-muted]">
+          <p className="mt-2 text-sm text-text-muted">
             Explorá el trabajo de la comunidad.
           </p>
         </div>

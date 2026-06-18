@@ -98,12 +98,12 @@ export default function SolicitudesList({ revistaId }: Props) {
   return (
     <div>
       <h2 className="font-semibold text-lg mb-1">Solicitudes pendientes</h2>
-      <p className="text-xs text-[--color-text-muted] mb-3">
+      <p className="text-xs text-text-muted mb-3">
         Las solicitudes pendientes se descartan automáticamente el viernes.
       </p>
 
       {loading && (
-        <p className="text-sm text-[--color-text-muted]">Cargando solicitudes…</p>
+        <p className="text-sm text-text-muted">Cargando solicitudes…</p>
       )}
 
       {!loading && fetchError && (
@@ -124,7 +124,7 @@ export default function SolicitudesList({ revistaId }: Props) {
             return (
               <div
                 key={sol.id}
-                className="p-4 rounded-[--radius-md] border border-[--color-border] bg-[--color-surface]"
+                className="p-4 rounded-md border border-border bg-surface"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
@@ -136,11 +136,11 @@ export default function SolicitudesList({ revistaId }: Props) {
                       {sol.publicacion?.titulo ?? sol.publicacion_id}
                     </Link>
                     {sol.mensaje && (
-                      <p className="text-xs text-[--color-text-muted] mt-0.5 line-clamp-2">
+                      <p className="text-xs text-text-muted mt-0.5 line-clamp-2">
                         {sol.mensaje}
                       </p>
                     )}
-                    <p className="text-xs text-[--color-text-muted] mt-1">
+                    <p className="text-xs text-text-muted mt-1">
                       {new Date(sol.creado_en).toLocaleDateString('es-AR', {
                         year: 'numeric',
                         month: 'short',
@@ -174,12 +174,12 @@ export default function SolicitudesList({ revistaId }: Props) {
                 </div>
 
                 {rejectPending?.solicitudId === sol.id && (
-                  <div className="mt-3 pt-3 border-t border-[--color-border]">
-                    <label className="block text-xs font-medium text-[--color-text] mb-1">
-                      Motivo del rechazo <span className="text-[--color-danger]">*</span>
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <label className="block text-xs font-medium text-text mb-1">
+                      Motivo del rechazo <span className="text-danger">*</span>
                     </label>
                     <textarea
-                      className="w-full rounded-[--radius-sm] border border-[--color-border] bg-[--color-surface-muted] px-3 py-2 text-sm text-[--color-text] resize-none focus:outline-none focus:ring-2 focus:ring-[--color-primary]"
+                      className="w-full rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                       rows={3}
                       maxLength={250}
                       placeholder="Explicá brevemente por qué se rechaza esta solicitud…"
@@ -189,7 +189,7 @@ export default function SolicitudesList({ revistaId }: Props) {
                       }
                     />
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-[--color-text-muted]">
+                      <span className="text-xs text-text-muted">
                         {rejectPending.motivo.length}/250
                       </span>
                       <div className="flex gap-2">

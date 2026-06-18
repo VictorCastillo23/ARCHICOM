@@ -65,7 +65,7 @@ export default function LoginForm() {
       />
 
       {errorMessage && (
-        <p role="alert" className="text-sm text-[--color-danger]">
+        <p role="alert" className="text-sm text-danger">
           {errorMessage}
         </p>
       )}

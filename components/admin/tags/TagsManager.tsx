@@ -105,15 +105,15 @@ export default function TagsManager({ initialTags }: Props) {
 
   return (
     <div className="animate-page">
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-[--color-border]">
-        <h1 className="text-[length:var(--size-heading-md)] font-display font-normal">Tags</h1>
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
+        <h1 className="text-(length:--size-heading-md) font-display font-normal">Tags</h1>
         <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? 'Cancelar' : 'Nuevo tag'}
         </Button>
       </div>
 
       {showCreate && (
-        <div className="border border-[--color-border] rounded-[--radius-md] p-4 mb-6 bg-[--color-surface]">
+        <div className="border border-border rounded-md p-4 mb-6 bg-surface">
           <form onSubmit={handleCreate} className="flex gap-3 items-end">
             <div className="flex-1">
               <Field
@@ -159,10 +159,10 @@ export default function TagsManager({ initialTags }: Props) {
         <div className="flex flex-col gap-6">
           {Object.entries(grouped).map(([area, areaTags]) => (
             <div key={area}>
-              <h2 className="text-xs font-medium text-[--color-primary] uppercase tracking-widest mb-2 pl-2 border-l-2 border-[--color-primary]">
+              <h2 className="text-xs font-medium text-primary uppercase tracking-widest mb-2 pl-2 border-l-2 border-primary">
                 {area}
               </h2>
-              <div className="border border-[--color-border] rounded-[--radius-md] overflow-hidden">
+              <div className="border border-border rounded-md overflow-hidden">
                 {areaTags.map((tag, idx) => {
                   const isEditing = editingId === tag.id
                   const isDeleting = deletingId === tag.id
@@ -172,14 +172,14 @@ export default function TagsManager({ initialTags }: Props) {
                     <div
                       key={tag.id}
                       className={[
-                        'flex items-center gap-3 px-4 py-3 bg-[--color-surface]',
-                        !isLast ? 'border-b border-[--color-border]' : '',
+                        'flex items-center gap-3 px-4 py-3 bg-surface',
+                        !isLast ? 'border-b border-border' : '',
                       ].join(' ')}
                     >
                       {isEditing ? (
                         <>
                           <input
-                            className="flex-1 border border-[--color-border] rounded-[--radius-sm] px-2 py-1 text-sm bg-[--color-surface]"
+                            className="flex-1 border border-border rounded-sm px-2 py-1 text-sm bg-surface"
                             value={editState.nombre}
                             onChange={(e) =>
                               setEditState((s) => ({ ...s, nombre: e.target.value }))
@@ -188,7 +188,7 @@ export default function TagsManager({ initialTags }: Props) {
                             autoFocus
                           />
                           <input
-                            className="w-36 border border-[--color-border] rounded-[--radius-sm] px-2 py-1 text-sm bg-[--color-surface]"
+                            className="w-36 border border-border rounded-sm px-2 py-1 text-sm bg-surface"
                             value={editState.area}
                             onChange={(e) =>
                               setEditState((s) => ({ ...s, area: e.target.value }))

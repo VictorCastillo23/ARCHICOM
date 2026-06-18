@@ -17,7 +17,7 @@ export async function generateMetadata({ searchParams }: BuscarPageProps): Promi
   const sp = await searchParams
   const q = (sp.q ?? '').trim()
   return {
-    title: q.length >= 2 ? `Búsqueda: "${q}" — Archicom` : 'Buscar — Archicom',
+    title: q.length >= 2 ? `Búsqueda: "${q}" — Vitrina` : 'Buscar — Vitrina',
   }
 }
 
@@ -32,7 +32,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
     return (
       <div className="animate-page">
         <EmptyState
-          title="Buscá en Archicom"
+          title="Buscá en Vitrina"
           description="Ingresá al menos 2 caracteres para encontrar publicaciones y personas."
         />
       </div>
@@ -47,7 +47,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
 
   return (
     <div className="animate-page space-y-12">
-      <h1 className="text-[length:var(--size-heading-md)] font-normal font-display text-[--color-text]">
+      <h1 className="text-(length:--size-heading-md) font-normal font-display text-text">
         Resultados para &ldquo;{q}&rdquo;
       </h1>
 
@@ -55,7 +55,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
       <section aria-labelledby="section-publicaciones">
         <h2
           id="section-publicaciones"
-          className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6"
+          className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6"
         >
           Publicaciones
         </h2>
@@ -93,7 +93,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
       <section aria-labelledby="section-personas">
         <h2
           id="section-personas"
-          className="text-[length:var(--size-heading-sm)] font-normal font-display text-[--color-text] mb-6"
+          className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6"
         >
           Personas
         </h2>

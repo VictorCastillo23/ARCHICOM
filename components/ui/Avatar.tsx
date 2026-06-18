@@ -41,7 +41,7 @@ export default function Avatar({ nombre, size = 'md', src }: AvatarProps) {
   return (
     <span
       aria-label={nombre}
-      className={`${classes} ${textClass} inline-flex items-center justify-center rounded-full bg-[--color-primary] font-semibold text-[--color-primary-fg] shrink-0`}
+      className={`${classes} ${textClass} inline-flex items-center justify-center rounded-full bg-primary font-semibold text-primary-fg shrink-0`}
     >
       {getInitials(nombre)}
     </span>

@@ -52,14 +52,14 @@ export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
         multiline
         required
         value={contenido}
-        onChange={(e) => setContenido((e.target as unknown as HTMLTextAreaElement).value)}
+        onChange={(e) => setContenido(e.target.value)}
         placeholder="Escribí tu comentario…"
         maxLength={250}
       />
       {error && (
         <p
           role="alert"
-          className="text-sm text-[--color-danger]"
+          className="text-sm text-danger"
           aria-live="polite"
         >
           {error}

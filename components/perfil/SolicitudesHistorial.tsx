@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import Badge from '@/components/ui/Badge'
-import TipoBadge from '@/components/ui/TipoBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import type { BadgeTone } from '@/components/ui/Badge'
 import type { EstadoSolicitud, SolicitudConDetalle } from '@/lib/types/database'
@@ -55,10 +54,10 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
           <li
             key={s.id}
             className={[
-              'rounded-[--radius-lg] border p-4 ',
+              'rounded-lg border p-4 ',
               esBorrador
-                ? 'border-[--color-primary] bg-[--color-surface-muted]'
-                : 'border-[--color-border] bg-[--color-surface]',
+                ? 'border-primary bg-surface-muted'
+                : 'border-border bg-surface',
             ].join(' ')}
           >
             <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
@@ -66,12 +65,12 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
                 {s.publicacion ? (
                   <Link
                     href={`/publicacion/${s.publicacion.id}`}
-                    className="text-sm font-medium text-[--color-text] hover:text-[--color-primary] transition-colors break-words min-w-0"
+                    className="text-sm font-medium text-text hover:text-primary transition-colors break-words min-w-0"
                   >
                     {s.publicacion.titulo}
                   </Link>
                 ) : (
-                  <span className="text-sm font-medium text-[--color-text-muted]">
+                  <span className="text-sm font-medium text-text-muted">
                     Publicación eliminada
                   </span>
                 )}
@@ -81,12 +80,12 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
             </div>
 
             {s.revista && (
-              <p className="text-xs text-[--color-text-muted] mb-1">
+              <p className="text-xs text-text-muted mb-1">
                 Revista:{' '}
                 {s.revista.estado === 'publicada' ? (
                   <Link
                     href={`/revistas/${s.revista.id}`}
-                    className="hover:text-[--color-primary] transition-colors"
+                    className="hover:text-primary transition-colors"
                   >
                     {s.revista.titulo}
                     {s.revista.volumen != null && ` (Vol. ${s.revista.volumen})`}
@@ -101,18 +100,18 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
               </p>
             )}
 
-            <p className="text-xs text-[--color-text-muted]">
+            <p className="text-xs text-text-muted">
               Postulada el {formatDate(s.solicitado_en)}
               {s.resuelto_en && <> · Resuelta el {formatDate(s.resuelto_en)}</>}
             </p>
 
             {s.respuesta && (
-              <div className="mt-3 border-l-2 border-[--color-border] pl-3">
-                <p className="text-xs text-[--color-text] break-words">
+              <div className="mt-3 border-l-2 border-border pl-3">
+                <p className="text-xs text-text break-words">
                   <span className="font-medium">Respuesta:</span> {s.respuesta}
                 </p>
                 {s.revisor_id == null && s.estado === 'rechazada' && (
-                  <p className="text-xs text-[--color-text-muted] mt-0.5">
+                  <p className="text-xs text-text-muted mt-0.5">
                     (cierre automático del viernes)
                   </p>
                 )}
@@ -120,7 +119,7 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
             )}
 
             {s.mensaje && (
-              <p className="mt-2 text-xs text-[--color-text-muted] break-words">
+              <p className="mt-2 text-xs text-text-muted break-words">
                 Tu mensaje: {s.mensaje}
               </p>
             )}

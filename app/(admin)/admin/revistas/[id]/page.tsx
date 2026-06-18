@@ -21,14 +21,14 @@ export default async function RevistaDetailPage(props: Props) {
 
   return (
     <div className="animate-page">
-      <div className="mb-6 pb-4 border-b border-[--color-border]">
+      <div className="mb-6 pb-4 border-b border-border">
         <Link
           href="/admin/revistas"
-          className="text-xs uppercase tracking-wider text-[--color-text-muted] hover:text-[--color-primary] transition-colors"
+          className="text-xs uppercase tracking-wider text-text-muted hover:text-primary transition-colors"
         >
           ← Revistas
         </Link>
-        <h1 className="text-[length:var(--size-heading-md)] font-display font-normal mt-1">{revista.titulo}</h1>
+        <h1 className="text-(length:--size-heading-md) font-display font-normal mt-1">{revista.titulo}</h1>
       </div>
 
       <RevistaPatchForm revista={revista} />

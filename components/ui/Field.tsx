@@ -2,12 +2,15 @@ import React from 'react'
 
 type InputBaseProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name'>
 
-export interface FieldProps extends InputBaseProps {
+export interface FieldProps extends Omit<InputBaseProps, 'onChange'> {
   label: string
   name: string
   error?: string
   required?: boolean
   multiline?: boolean
+  // The rendered element is an <input> or a <textarea> depending on `multiline`,
+  // so the change event target can be either.
+  onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>
 }
 
 export default function Field({
@@ -22,12 +25,12 @@ export default function Field({
   const errorId = error ? `${name}-error` : undefined
 
   const inputClasses = [
-    'w-full rounded-[--radius-md] border border-[--color-border] bg-[--color-surface]',
-    'px-3 py-2 text-[--color-text] text-sm',
-    'placeholder:text-[--color-text-muted]',
-    'focus:outline-none focus:ring-2 focus:ring-[--color-border-focus] focus:border-transparent',
+    'w-full rounded-md border border-border bg-surface',
+    'px-3 py-2 text-text text-sm',
+    'placeholder:text-text-muted',
+    'focus:outline-none focus:ring-2 focus:ring-border-focus focus:border-transparent',
     'disabled:opacity-50 disabled:cursor-not-allowed',
-    error ? 'border-[--color-danger] focus:ring-[--color-danger]' : '',
+    error ? 'border-danger focus:ring-danger' : '',
     className,
   ]
     .filter(Boolean)
@@ -37,11 +40,11 @@ export default function Field({
     <div className="flex flex-col gap-1">
       <label
         htmlFor={name}
-        className="text-sm font-medium text-[--color-text]"
+        className="text-sm font-medium text-text"
       >
         {label}
         {required && (
-          <span className="ml-1 text-[--color-danger]" aria-hidden="true">
+          <span className="ml-1 text-danger" aria-hidden="true">
             *
           </span>
         )}
@@ -74,7 +77,7 @@ export default function Field({
         <p
           id={errorId}
           role="alert"
-          className="text-xs text-[--color-danger] mt-0.5"
+          className="text-xs text-danger mt-0.5"
         >
           {error}
         </p>
