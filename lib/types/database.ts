@@ -4,6 +4,16 @@ export type TipoPublicacion = 'libro' | 'articulo' | 'investigacion' | 'poema' |
 export type RolUsuario = 'usuario' | 'administrador'
 export type EstadoRevista = 'borrador' | 'publicada'
 export type EstadoSolicitud = 'pendiente' | 'aceptada' | 'rechazada' | 'retirada'
+export type MotivoReporte = 'contenido_inapropiado' | 'plagio' | 'spam' | 'otro'
+export type EstadoReporte = 'pendiente' | 'revisado' | 'descartado'
+
+/** Ordered array for select dropdowns and server-side validation (mirrors TIPOS_PUBLICACION pattern). */
+export const MOTIVOS_REPORTE: MotivoReporte[] = [
+  'contenido_inapropiado',
+  'plagio',
+  'spam',
+  'otro',
+]
 
 // Snake_case aliases to satisfy spec REQ-TYPES-01
 export type tipo_publicacion = TipoPublicacion
@@ -40,6 +50,7 @@ export type Publicacion = {
   obra_autor_externo?: string | null
   url_externa?: string | null
   creado_en: string
+  bloqueada: boolean
 }
 
 export type Tag = {
@@ -111,6 +122,15 @@ export type SolicitudConDetalle = SolicitudRevista & {
   revista: { id: string; titulo: string; volumen: number; estado: EstadoRevista }
 }
 
+export type UsuarioLink = {
+  id: string
+  usuario_id: string
+  etiqueta: string
+  url: string
+  orden: number
+  creado_en: string
+}
+
 // View DTO
 
 export type PublicacionCardData = {
@@ -153,4 +173,40 @@ export type PublicacionDetalle = Publicacion & {
 
 export type RevistaDetalle = Revista & {
   revista_articulo?: RevistaArticulo[]
+}
+
+// Seguidor table DTO
+
+export type Seguidor = {
+  seguidor_id: string
+  seguido_id: string
+  creado_en: string
+}
+
+// View DTO (perfil_contadores)
+
+export type PerfilConteos = {
+  usuario_id: string
+  n_seguidores: number
+  n_seguidos: number
+  n_publicaciones: number
+}
+
+// Reporte DTOs
+
+export type Reporte = {
+  id: string
+  publicacion_id: string
+  reportante_id: string
+  motivo: MotivoReporte
+  detalle?: string | null
+  estado: EstadoReporte
+  revisor_id?: string | null
+  resuelto_en?: string | null
+  creado_en: string
+}
+
+export type ReporteConDetalle = Reporte & {
+  publicacion: { id: string; titulo: string } | null
+  reportante: { id: string; nombre: string } | null
 }
