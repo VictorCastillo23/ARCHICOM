@@ -54,3 +54,5 @@ testsprite_tests
 bash.exe.stackdump
 TEST_PLAN.md
 claude.md
+migrations
+SECURITY_AUDIT.md

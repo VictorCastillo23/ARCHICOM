@@ -10,7 +10,7 @@ const securityHeaders = [
       `img-src 'self' data: blob: ${SUPABASE_HOST}`,
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "frame-src 'self' blob:",
+      `frame-src 'self' blob: ${SUPABASE_HOST}`,
       `connect-src 'self' ${SUPABASE_HOST}`,
       "font-src 'self' data:",
       "object-src 'none'",

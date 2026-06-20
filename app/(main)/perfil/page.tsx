@@ -7,6 +7,7 @@ import { getLinksUsuario } from '@/lib/data/links'
 import { getConteos } from '@/lib/data/seguidores'
 import PerfilView from '@/components/perfil/PerfilView'
 import PerfilEditForm from '@/components/perfil/PerfilEditForm'
+import ChangePasswordForm from '@/components/perfil/ChangePasswordForm'
 import PerfilStats from '@/components/perfil/PerfilStats'
 import LinksEditor from '@/components/perfil/LinksEditor'
 import FeedList from '@/components/feed/FeedList'
@@ -88,6 +89,14 @@ export default async function PerfilPage() {
             carrera: perfil.carrera,
           }}
         />
+      </section>
+
+      {/* Change password */}
+      <section
+        aria-label="Cambiar contraseña"
+        className="border border-border rounded-lg p-6 bg-surface"
+      >
+        <ChangePasswordForm />
       </section>
 
       {/* Links management */}

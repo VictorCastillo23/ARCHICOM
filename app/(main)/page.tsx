@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getFeed } from '@/lib/data/feed'
 import { getPublicacionPorArea } from '@/lib/data/publicaciones'
 import { getTags } from '@/lib/data/tags'
+import { shuffle } from '@/lib/utils/shuffle'
 import FeedList from '@/components/feed/FeedList'
 import FeedFilters from '@/components/feed/FeedFilters'
 import HeroBanner from '@/components/feed/HeroBanner'
@@ -57,6 +58,11 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       }))
     }
   }
+
+  // Randomize display order so every reload shows a different arrangement.
+  // The fetch/pagination set is still deterministic (creado_en + range); only
+  // the visual order within the page is shuffled.
+  publicaciones = shuffle(publicaciones)
 
   const { data: tags } = await getTags()
   const areas = [...new Set((tags ?? []).map((t) => t.area))].sort()

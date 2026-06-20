@@ -13,6 +13,7 @@ import SolicitarRevistaButton from '@/components/publicacion/SolicitarRevistaBut
 import EliminarPublicacionButton from '@/components/publicacion/EliminarPublicacionButton'
 import ReportarButton from '@/components/publicacion/ReportarButton'
 import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
+import ArchivoVistaPrevia from '@/components/publicacion/ArchivoVistaPrevia'
 import Link from 'next/link'
 import type { Comentario, Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
 
@@ -166,17 +167,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       {/* Archivo */}
       {data.archivo_url && (
         <div className="mb-8">
-          <a
-            href={data.archivo_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text hover:border-primary hover:text-primary transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Ver archivo
-          </a>
+          <ArchivoVistaPrevia url={data.archivo_url} titulo={data.titulo} />
         </div>
       )}
 
