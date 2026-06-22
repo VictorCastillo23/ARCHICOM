@@ -31,7 +31,7 @@ export default function LoginForm() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
       } else {
-        setErrorMessage('Error inesperado. Intentá de nuevo.')
+        setErrorMessage('Error inesperado. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)

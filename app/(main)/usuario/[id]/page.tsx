@@ -29,7 +29,7 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
   ])
 
   if (perfilError) {
-    return <ErrorState title="Error al cargar el perfil" description="Intentá de nuevo más tarde." />
+    return <ErrorState title="Error al cargar el perfil" description="Intenta de nuevo más tarde." />
   }
 
   if (!perfil) {

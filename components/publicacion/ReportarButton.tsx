@@ -70,7 +70,7 @@ export default function ReportarButton({
         setNoticeMsg('Ya habías reportado esta publicación. ¡Gracias!')
         setTimeout(() => setIsOpen(false), 1500)
       } else {
-        setErrorMsg('No se pudo enviar el reporte. Intentá de nuevo.')
+        setErrorMsg('No se pudo enviar el reporte. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)

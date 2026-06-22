@@ -54,7 +54,7 @@ export default function SignupForm() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
       } else {
-        setErrorMessage('Error inesperado. Intentá de nuevo.')
+        setErrorMessage('Error inesperado. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)
@@ -76,7 +76,7 @@ export default function SignupForm() {
       if (err instanceof ApiError) {
         setResendError(err.message)
       } else {
-        setResendError('No pudimos reenviar el correo. Intentá de nuevo.')
+        setResendError('No pudimos reenviar el correo. Intenta de nuevo.')
       }
     } finally {
       setResending(false)

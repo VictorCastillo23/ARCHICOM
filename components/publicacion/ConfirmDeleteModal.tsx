@@ -44,7 +44,7 @@ export default function ConfirmDeleteModal({
       }
       router.push(redirectTo)
     } catch {
-      setError('Error de red. Intentá de nuevo.')
+      setError('Error de red. Intenta de nuevo.')
       setLoading(false)
     }
   }
