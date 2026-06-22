@@ -10,14 +10,14 @@ export default function HeroBanner() {
       <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight max-w-xl">
         Tu trabajo merece un mejor lugar que un chat
       </h1>
-      <p className="text-sm text-[--color-text-muted] max-w-lg">
+      <p className="text-sm text-text-muted max-w-lg">
         Vitrina es el portafolio digital para jovenes. Publicá tus obras, recibe
         retroalimentación y participá en la revista semanal de la comunidad.
       </p>
       <div className="flex flex-wrap justify-center gap-3 mt-2">
         <Link
           href="/signup"
-          className="inline-flex items-center rounded-md bg-primary px-5 py-2 text-sm font-medium text-black hover:bg-primary-hover transition-colors"
+          className="inline-flex items-center rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover transition-colors"
         >
           Crea tu cuenta gratis
         </Link>
