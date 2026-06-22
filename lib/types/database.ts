@@ -131,11 +131,6 @@ export type SolicitudRevista = {
   solicitado_en: string
 }
 
-export type SolicitudRevistaDetalle = SolicitudRevista & {
-  revista: { id: string; titulo: string }
-  publicacion: { id: string; titulo: string }
-}
-
 export type SolicitudConDetalle = SolicitudRevista & {
   publicacion: { id: string; titulo: string; tipo: TipoPublicacion }
   revista: { id: string; titulo: string; volumen: number; estado: EstadoRevista }
