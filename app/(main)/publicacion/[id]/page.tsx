@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getPublicacion, getLikesInfo } from '@/lib/data/publicaciones'
+import { getPublicacion, getLikesInfo, getEstadoEliminacion } from '@/lib/data/publicaciones'
+import { esAdmin } from '@/lib/data/perfil'
 import { getRevistaActiva } from '@/lib/data/revistas'
 import { getSolicitudParaEdicion } from '@/lib/data/solicitudes'
 import { createClient } from '@/lib/supabase/server'
@@ -27,7 +28,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   const { data, error } = await getPublicacion(id)
 
   if (error) {
-    return <ErrorState title="Error al cargar la publicación" description="Intentá de nuevo más tarde." />
+    return <ErrorState title="Error al cargar la publicación" description="Intenta de nuevo más tarde." />
   }
 
   if (!data) {
@@ -55,15 +56,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   const { count: likeCount, liked: likedByUser } = await getLikesInfo(id, user?.id)
 
   // Admin moderation: a non-author admin can delete any publicacion (RLS: admin_elimina)
-  let isAdmin = false
-  if (user && !isAuthor) {
-    const { data: perfil } = await supabase
-      .from('usuario')
-      .select('rol')
-      .eq('id', user.id)
-      .single()
-    isAdmin = perfil?.rol === 'administrador'
-  }
+  const isAdmin = user && !isAuthor ? await esAdmin(user.id) : false
 
   // Resolve postulation state (only needed when user is the author)
   const { data: revistaActiva } = await getRevistaActiva()
@@ -72,24 +65,9 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
     : { data: null }
 
   // Resolve delete confirmation data (only for the author)
-  let tieneRevista = false
-  let tieneSolicitudPendiente = false
-  if (isAuthor) {
-    const [{ count: revistaCount }, { count: solicitudCount }] = await Promise.all([
-      supabase
-        .from('revista_articulo')
-        .select('revista!inner(estado)', { count: 'exact', head: true })
-        .eq('publicacion_id', id)
-        .eq('revista.estado', 'publicada'),
-      supabase
-        .from('solicitud_revista')
-        .select('*', { count: 'exact', head: true })
-        .eq('publicacion_id', id)
-        .eq('estado', 'pendiente'),
-    ])
-    tieneRevista = (revistaCount ?? 0) > 0
-    tieneSolicitudPendiente = (solicitudCount ?? 0) > 0
-  }
+  const { tieneRevista, tieneSolicitudPendiente } = isAuthor
+    ? await getEstadoEliminacion(id)
+    : { tieneRevista: false, tieneSolicitudPendiente: false }
 
   return (
     <article className="animate-page max-w-[68ch] mx-auto">

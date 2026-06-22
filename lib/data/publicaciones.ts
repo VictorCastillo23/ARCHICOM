@@ -137,6 +137,35 @@ export async function getPublicacionesRelacionadas(
   return paso1
 }
 
+/**
+ * Deletion-confirmation state for a publication: whether it appears in a published
+ * revista and whether it has a pending postulation. Drives the author's delete
+ * confirmation copy.
+ */
+export async function getEstadoEliminacion(
+  publicacionId: string
+): Promise<{ tieneRevista: boolean; tieneSolicitudPendiente: boolean }> {
+  const supabase = await createClient()
+
+  const [{ count: revistaCount }, { count: solicitudCount }] = await Promise.all([
+    supabase
+      .from('revista_articulo')
+      .select('revista!inner(estado)', { count: 'exact', head: true })
+      .eq('publicacion_id', publicacionId)
+      .eq('revista.estado', 'publicada'),
+    supabase
+      .from('solicitud_revista')
+      .select('*', { count: 'exact', head: true })
+      .eq('publicacion_id', publicacionId)
+      .eq('estado', 'pendiente'),
+  ])
+
+  return {
+    tieneRevista: (revistaCount ?? 0) > 0,
+    tieneSolicitudPendiente: (solicitudCount ?? 0) > 0,
+  }
+}
+
 export async function getMisPublicaciones(
   autorId: string
 ): Promise<{ data: Publicacion[] | null; error: unknown }> {
