@@ -5,11 +5,9 @@ import { getMisPublicaciones } from '@/lib/data/publicaciones'
 import { getMisSolicitudes } from '@/lib/data/solicitudes'
 import { getLinksUsuario } from '@/lib/data/links'
 import { getConteos } from '@/lib/data/seguidores'
+import Link from 'next/link'
 import PerfilView from '@/components/perfil/PerfilView'
-import PerfilEditForm from '@/components/perfil/PerfilEditForm'
-import ChangePasswordForm from '@/components/perfil/ChangePasswordForm'
 import PerfilStats from '@/components/perfil/PerfilStats'
-import LinksEditor from '@/components/perfil/LinksEditor'
 import FeedList from '@/components/feed/FeedList'
 import SolicitudesHistorial from '@/components/perfil/SolicitudesHistorial'
 import EmptyState from '@/components/ui/EmptyState'
@@ -64,7 +62,15 @@ export default async function PerfilPage() {
     <div className="animate-page flex flex-col gap-10">
       {/* Profile header */}
       <section aria-label="Datos del perfil">
-        <PerfilView perfil={perfil} esPropio email={user.email ?? undefined} links={links ?? []} />
+        <div className="flex items-start justify-between gap-4">
+          <PerfilView perfil={perfil} esPropio email={user.email ?? undefined} links={links ?? []} />
+          <Link
+            href="/perfil/ajustes"
+            className="shrink-0 inline-flex items-center rounded-md bg-surface text-text border border-border h-8 px-3 text-sm font-medium hover:bg-surface-muted transition-colors"
+          >
+            Ajustes
+          </Link>
+        </div>
         <div className="mt-4">
           <PerfilStats
             totalPublicaciones={stats.totalPublicaciones}
@@ -77,43 +83,27 @@ export default async function PerfilPage() {
         </div>
       </section>
 
-      {/* Edit form */}
-      <section
-        aria-label="Editar perfil"
-        className="border border-border rounded-lg p-6 bg-surface"
-      >
-        <PerfilEditForm
-          perfil={{
-            nombre: perfil.nombre,
-            institucion: perfil.institucion,
-            carrera: perfil.carrera,
-          }}
-        />
-      </section>
-
-      {/* Change password */}
-      <section
-        aria-label="Cambiar contraseña"
-        className="border border-border rounded-lg p-6 bg-surface"
-      >
-        <ChangePasswordForm />
-      </section>
-
-      {/* Links management */}
-      <section
-        aria-label="Mis enlaces"
-        className="border border-border rounded-lg p-6 bg-surface"
-      >
-        <LinksEditor initialLinks={links ?? []} />
-      </section>
-
-      {/* Solicitations history */}
-      <section aria-label="Mis postulaciones">
-        <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
-          Mis postulaciones ({sols.length})
-        </h2>
-        <SolicitudesHistorial solicitudes={sols} />
-      </section>
+      {/* Solicitations history — collapsed by default (native <details>, no JS) */}
+      <details className="group" aria-label="Mis postulaciones">
+        <summary className="flex items-center gap-2 cursor-pointer list-none select-none">
+          <svg
+            className="w-4 h-4 text-text-muted transition-transform group-open:rotate-90"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text">
+            Mis postulaciones ({sols.length})
+          </h2>
+        </summary>
+        <div className="mt-6">
+          <SolicitudesHistorial solicitudes={sols} />
+        </div>
+      </details>
 
       {/* Own publications */}
       <section aria-label="Mis publicaciones">
