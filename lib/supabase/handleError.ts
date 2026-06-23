@@ -38,7 +38,7 @@ export function handleError(error: unknown): NextResponse {
       case 422:
         return err('validation_error', e.message ?? 'Datos inválidos', 400)
       case 429:
-        return err('rate_limit', 'Demasiados intentos. Intentá más tarde', 429)
+        return err('rate_limit', 'Demasiados intentos. Intenta más tarde', 429)
       default:
         console.error('[handleError] AuthError', error)
         return err('internal_error', 'Error interno', 500)

@@ -23,7 +23,7 @@ export default async function PublicarPage() {
           Nueva publicación
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Compartí tu trabajo con la comunidad.
+          Comparte tu trabajo con la comunidad.
         </p>
       </div>
       <section

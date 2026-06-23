@@ -61,18 +61,29 @@ export async function POST(request: NextRequest) {
   }
 
   if (titulo.length > 150) return validationError('El título no puede superar 150 caracteres.')
-  if (resumen.length > 250) return validationError('El resumen no puede superar 250 caracteres.')
+  if (resumen.length > 700) return validationError('El resumen no puede superar 700 caracteres.')
 
   if (!TIPOS_PUBLICACION.includes(tipo as TipoPublicacion)) {
     return validationError('tipo inválido')
   }
 
+  const urlExterna = url_externa?.trim()
+
   if (tipo === 'recomendacion') {
     if (!obra_autor_externo || !obra_autor_externo.trim()) {
       return validationError('obra_autor_externo es requerido para recomendaciones')
     }
-    if (!url_externa || !isHttpUrl(url_externa)) {
+    if (!urlExterna || !isHttpUrl(urlExterna)) {
       return validationError('url_externa debe ser una URL http(s) válida')
+    }
+  } else {
+    // Normal publication: a link is allowed on any type, and at least one of
+    // {archivo_url, url_externa} is required so the publication has content.
+    if (urlExterna && !isHttpUrl(urlExterna)) {
+      return validationError('url_externa debe ser una URL http(s) válida')
+    }
+    if (!archivo_url && !urlExterna) {
+      return validationError('Agrega un archivo o un enlace (al menos uno).')
     }
   }
 
@@ -84,7 +95,8 @@ export async function POST(request: NextRequest) {
       tipo,
       archivo_url,
       autor_id: user.id,
-      ...(tipo === 'recomendacion' ? { obra_autor_externo, url_externa } : {}),
+      ...(urlExterna ? { url_externa: urlExterna } : {}),
+      ...(tipo === 'recomendacion' ? { obra_autor_externo } : {}),
     })
     .select()
     .single()

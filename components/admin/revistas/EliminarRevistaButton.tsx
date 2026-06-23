@@ -33,7 +33,7 @@ export default function EliminarRevistaButton({
       }
       router.push('/admin/revistas')
     } catch {
-      setError('Error de red. Intentá de nuevo.')
+      setError('Error de red. Intenta de nuevo.')
       setLoading(false)
     }
   }
@@ -51,28 +51,28 @@ export default function EliminarRevistaButton({
           aria-modal="true"
           aria-labelledby="confirm-delete-revista-title"
         >
-          <div className="w-full max-w-md rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-6 shadow-lg">
+          <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg">
             <h2
               id="confirm-delete-revista-title"
-              className="text-base font-semibold text-[--color-text] mb-3"
+              className="text-base font-semibold text-text mb-3"
             >
               ¿Eliminar &ldquo;{titulo}&rdquo;?
             </h2>
 
-            <p className="text-sm text-[--color-text-muted] mb-2">
+            <p className="text-sm text-text-muted mb-2">
               Esta acción no se puede deshacer. Se eliminarán los artículos curados y
               las solicitudes asociadas a esta revista.
             </p>
 
             {esBorrador && (
-              <p className="text-sm text-[--color-text-muted] mb-2">
+              <p className="text-sm text-text-muted mb-2">
                 Es la edición en borrador (activa): al borrarla, no habrá edición de la
                 semana hasta que el ciclo cree la siguiente.
               </p>
             )}
 
             {error && (
-              <p className="text-sm text-red-600 mt-2 mb-2" role="alert">
+              <p className="text-sm text-danger mt-2 mb-2" role="alert">
                 {error}
               </p>
             )}

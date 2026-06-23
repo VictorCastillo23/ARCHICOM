@@ -39,7 +39,7 @@ export default function ChangePasswordForm() {
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError('Error inesperado. Intentá de nuevo.')
+        setError('Error inesperado. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)

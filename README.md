@@ -2,7 +2,7 @@
 
 # 📚 Vitrina
 
-### Portafolio digital académico para los Jovenes
+### Portafolio digital académico para los jóvenes
 
 Publicá tus obras, recominendá las de otros, y dejá que la comunidad las descubra, comente y postulate en las **revistas temáticas**.
 
@@ -19,7 +19,7 @@ Publicá tus obras, recominendá las de otros, y dejá que la comunidad las desc
 
 ## ✨ Qué es
 
-**Vitrina** es una plataforma donde los jovenes comparten sus creaciones —investigaciones, artículos, tesis, trabajos académicos, proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, poesía y revistas— y recomiendan obras de terceros. La comunidad las explora por disciplina, las comenta y las likea; los administradores aceptan las publicaciones postuladas para componer **revistas temáticas semanales** que se publican automáticamente.
+**Vitrina** es una plataforma donde los jóvenes comparten sus creaciones —investigaciones, artículos, tesis, trabajos académicos, proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, poesía y revistas— y recomiendan obras de terceros. La comunidad las explora por disciplina, las comenta y las likea; los administradores aceptan las publicaciones postuladas para componer **revistas temáticas semanales** que se publican automáticamente.
 
 Una sola app **Next.js** (App Router): área pública + área de administración separadas por segmentos de ruta (`/admin`), protegidas por rol.
 

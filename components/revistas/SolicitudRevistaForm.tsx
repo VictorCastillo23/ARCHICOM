@@ -74,7 +74,7 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
       } else if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError('Error al enviar la solicitud. Intentá de nuevo.')
+        setError('Error al enviar la solicitud. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)

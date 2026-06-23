@@ -37,7 +37,7 @@ export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError('Error al enviar el comentario. Intentá de nuevo.')
+        setError('Error al enviar el comentario. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)

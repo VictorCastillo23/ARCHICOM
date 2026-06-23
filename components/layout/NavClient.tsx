@@ -22,6 +22,7 @@ export default function NavClient({ session }: NavClientProps) {
   async function handleLogout() {
     try {
       await apiClient('/api/auth/logout', { method: 'POST' })
+      router.replace('/')
     } catch {
       // Silently ignore logout errors — session likely already cleared
     }

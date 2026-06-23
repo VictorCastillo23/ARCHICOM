@@ -15,7 +15,7 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
   const { data, error } = await getRevista(id)
 
   if (error) {
-    return <ErrorState title="Error al cargar la revista" description="Intentá de nuevo más tarde." />
+    return <ErrorState title="Error al cargar la revista" description="Intenta de nuevo más tarde." />
   }
 
   if (!data) {

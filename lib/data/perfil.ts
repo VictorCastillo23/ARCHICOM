@@ -35,6 +35,23 @@ export async function getSesionUsuario(
   return { data, error }
 }
 
+/**
+ * Whether a user has the `administrador` role. Used for admin-only UI gating
+ * (e.g. a non-author admin moderating a publication). Security is still enforced
+ * by RLS — this only decides what to render.
+ */
+export async function esAdmin(userId: string): Promise<boolean> {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('usuario')
+    .select('rol')
+    .eq('id', userId)
+    .single()
+
+  return data?.rol === 'administrador'
+}
+
 export async function getPerfilStats(uid: string): Promise<{
   totalPublicaciones: number
   totalEnRevistas: number

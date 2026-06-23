@@ -37,8 +37,16 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Protect /perfil and /publicar — redirect to /login without session
-  if (!user && (pathname.startsWith('/perfil') || pathname.startsWith('/publicar'))) {
+  // Protect /perfil, /publicar and the publication edit route — redirect to
+  // /login without session. The public detail page (/publicacion/[id]) stays open.
+  const isEditarPublicacion =
+    pathname.startsWith('/publicacion/') && pathname.endsWith('/editar')
+  if (
+    !user &&
+    (pathname.startsWith('/perfil') ||
+      pathname.startsWith('/publicar') ||
+      isEditarPublicacion)
+  ) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

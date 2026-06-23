@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { handleError, jsonOk, unauthorized, validationError } from '@/lib/supabase/handleError'
 import { getPublicacion } from '@/lib/data/publicaciones'
+import { removeOwnStorageObject } from '@/lib/supabase/storage'
 import { isHttpUrl } from '@/lib/validation/url'
 import type { TipoPublicacion } from '@/lib/types/database'
 import { TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
@@ -40,8 +41,8 @@ export async function PATCH(request: NextRequest, ctx: Context) {
 
   if (titulo !== undefined && titulo.length > 150)
     return validationError('El título no puede superar 150 caracteres.')
-  if (resumen !== undefined && resumen.length > 250)
-    return validationError('El resumen no puede superar 250 caracteres.')
+  if (resumen !== undefined && resumen.length > 700)
+    return validationError('El resumen no puede superar 700 caracteres.')
 
   if (tipo !== undefined && !TIPOS_PUBLICACION.includes(tipo as TipoPublicacion)) {
     return validationError('tipo inválido')
@@ -123,12 +124,24 @@ export async function DELETE(_req: NextRequest, ctx: Context) {
 
   if (!user) return unauthorized()
 
+  // Read the file URL before deleting the row, to clean up Storage afterwards.
+  const { data: current } = await supabase
+    .from('publicacion')
+    .select('archivo_url')
+    .eq('id', id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('publicacion')
     .delete()
     .eq('id', id)
 
   if (error) return handleError(error)
+
+  // Best-effort Storage cleanup. Works under the author's JWT; a non-author admin
+  // can't remove the file (bucket RLS is folder-scoped, no service_role) → it stays
+  // orphaned (known limitation). Never fails the delete.
+  if (current?.archivo_url) await removeOwnStorageObject(supabase, current.archivo_url)
 
   return jsonOk(null)
 }

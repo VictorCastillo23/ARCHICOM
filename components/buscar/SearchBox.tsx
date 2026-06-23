@@ -241,7 +241,7 @@ export default function SearchBox() {
           {/* Error */}
           {status === 'error' && (
             <div className="p-4 text-sm text-danger text-center" role="alert">
-              Error al buscar. Intentá de nuevo.
+              Error al buscar. Intenta de nuevo.
             </div>
           )}
 

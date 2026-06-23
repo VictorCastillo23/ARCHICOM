@@ -63,7 +63,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
         {pubsResult.error ? (
           <ErrorState
             title="Error al cargar publicaciones"
-            description="No pudimos obtener las publicaciones. Intentá de nuevo más tarde."
+            description="No pudimos obtener las publicaciones. Intenta de nuevo más tarde."
           />
         ) : pubsResult.items.length === 0 ? (
           <EmptyState
@@ -101,7 +101,7 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
         {usersResult.error ? (
           <ErrorState
             title="Error al cargar personas"
-            description="No pudimos obtener los resultados de personas. Intentá de nuevo más tarde."
+            description="No pudimos obtener los resultados de personas. Intenta de nuevo más tarde."
           />
         ) : usersResult.items.length === 0 ? (
           <EmptyState
