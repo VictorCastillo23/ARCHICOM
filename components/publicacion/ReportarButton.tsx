@@ -144,7 +144,7 @@ export default function ReportarButton({
                     onChange={(e) => setDetalle(e.target.value)}
                     rows={3}
                     maxLength={500}
-                    placeholder="Describí brevemente el problema…"
+                    placeholder="Describe brevemente el problema…"
                     className="w-full rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <p className="text-xs text-text-muted mt-0.5 text-right">
