@@ -66,7 +66,7 @@ function combineSuggestions(
 
 // ---------- Component ----------
 
-export default function SearchBox() {
+export default function SearchBox({ fullWidth = false }: { fullWidth?: boolean }) {
   const router = useRouter()
   const uid = useId()
   const listId = `${uid}-listbox`
@@ -182,7 +182,7 @@ export default function SearchBox() {
   const isExpanded = open && query.trim().length >= 2
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={fullWidth ? 'relative w-full' : 'relative'}>
       <input
         ref={inputRef}
         type="search"
@@ -199,7 +199,7 @@ export default function SearchBox() {
         autoComplete="off"
         spellCheck={false}
         className={[
-          'w-48 sm:w-72 rounded-md border border-surface-border',
+          fullWidth ? 'w-full rounded-md border border-surface-border' : 'w-48 sm:w-72 rounded-md border border-surface-border',
           'bg-surface-muted px-3 py-1.5 text-sm text-text',
           'placeholder:text-text-muted',
           'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
