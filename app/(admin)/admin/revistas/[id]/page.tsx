@@ -41,9 +41,9 @@ export default async function RevistaDetailPage(props: Props) {
 
       {revista.estado === 'borrador' && <SolicitudesList revistaId={revista.id} />}
 
-      <div className="mt-10 pt-6 border-t border-[--color-border]">
-        <h2 className="text-sm font-semibold text-[--color-text] mb-1">Zona de peligro</h2>
-        <p className="text-sm text-[--color-text-muted] mb-3">
+      <div className="mt-10 pt-6 border-t border-border">
+        <h2 className="text-sm font-semibold text-text mb-1">Zona de peligro</h2>
+        <p className="text-sm text-text-muted mb-3">
           Eliminar esta revista borra también sus artículos curados y solicitudes.
         </p>
         <EliminarRevistaButton
