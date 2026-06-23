@@ -22,6 +22,7 @@ export default function SignupForm() {
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [confirmationRequired, setConfirmationRequired] = useState(false)
@@ -33,6 +34,12 @@ export default function SignupForm() {
     e.preventDefault()
     setErrorMessage(null)
     setConfirmationRequired(false)
+
+    if (!acceptedTerms) {
+      setErrorMessage('Debes aceptar los Términos de Servicio para crear una cuenta.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -93,7 +100,7 @@ export default function SignupForm() {
         <p className="mt-1 text-text-muted">
           Te enviamos un correo de confirmación a{' '}
           <span className="font-medium text-text">{email}</span>. Una vez
-          que confirmes tu cuenta, podés{' '}
+          que confirmes tu cuenta, puedes{' '}
           <Link href="/login" className="text-primary hover:underline">
             iniciar sesión
           </Link>
@@ -101,7 +108,7 @@ export default function SignupForm() {
         </p>
 
         <p className="mt-3 text-text-muted">
-          ¿No te llegó? Revisá el spam o reenvialo:
+          ¿No te llegó? Revisa el spam o reenvíalo:
         </p>
         <div className="mt-2">
           <Button
@@ -167,13 +174,40 @@ export default function SignupForm() {
         maxLength={72}
       />
 
+      <label className="flex items-start gap-2 text-sm text-text-muted">
+        <input
+          type="checkbox"
+          name="terms"
+          checked={acceptedTerms}
+          onChange={(e) => setAcceptedTerms(e.target.checked)}
+          disabled={loading}
+          className="mt-0.5 accent-primary"
+        />
+        <span>
+          Acepto los{' '}
+          <Link
+            href="/terminos"
+            target="_blank"
+            className="text-primary hover:underline"
+          >
+            Términos de Servicio
+          </Link>
+          .
+        </span>
+      </label>
+
       {errorMessage && (
         <p role="alert" className="text-sm text-danger">
           {errorMessage}
         </p>
       )}
 
-      <Button type="submit" loading={loading} className="w-full mt-2">
+      <Button
+        type="submit"
+        loading={loading}
+        disabled={!acceptedTerms}
+        className="w-full mt-2"
+      >
         Crear cuenta
       </Button>
     </form>

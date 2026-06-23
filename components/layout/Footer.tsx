@@ -8,12 +8,17 @@ export default function Footer() {
           Vitrina
         </span>
         <nav className="flex items-center gap-4">
-
           <Link
             href="/sobre-nosotros"
-            className="hover:text-[--color-text] transition-colors"
+            className="hover:text-text transition-colors"
           >
             Sobre nosotros
+          </Link>
+          <Link
+            href="/terminos"
+            className="hover:text-text transition-colors"
+          >
+            Términos
           </Link>
         </nav>
         <nav className="flex items-center gap-4">

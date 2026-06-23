@@ -1,0 +1,342 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Términos de servicio',
+  description: 'Términos de Servicio de Vitrina: condiciones de uso de la plataforma.',
+}
+
+export default function TerminosPage() {
+  return (
+    <div className="animate-page">
+      <div className="mb-8">
+        <h1 className="text-[length:var(--size-heading-lg)] font-normal font-display text-text leading-tight">
+          Términos de servicio
+        </h1>
+        <p className="mt-2 text-sm text-text-muted">
+          Versión 1.0 · Última actualización: 21 de junio de 2026.
+        </p>
+      </div>
+
+      <section className="max-w-2xl space-y-4">
+        <p className="text-text-muted leading-relaxed">
+          Lee estos Términos de Servicio (&laquo;Términos&raquo;) con atención antes de
+          registrarte o usar Vitrina. Al crear una cuenta o utilizar la plataforma, aceptas
+          quedar vinculado por estos Términos. Si no estás de acuerdo, no debes usar el servicio.
+        </p>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          1. Descripción del servicio
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            Vitrina es un portafolio digital y red de difusión académica que permite a sus
+            usuarios publicar, compartir y descubrir creaciones de carácter académico, artístico
+            y de investigación —libros, artículos, investigaciones, poemas, dibujos,
+            recomendaciones de obras de terceros y otros formatos.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            El servicio incluye, entre otras, las siguientes funcionalidades:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>Publicación de obras propias con archivos adjuntos (PDF e imágenes).</li>
+            <li>
+              Recomendación de obras de terceros con la debida atribución a su autor original.
+            </li>
+            <li>
+              Interacción social mediante comentarios, &laquo;me gusta&raquo; y seguimiento de
+              otros usuarios.
+            </li>
+            <li>Postulación de obras a la revista semanal curada de la comunidad.</li>
+            <li>Búsqueda de publicaciones y perfiles, y gestión de enlaces de perfil.</li>
+          </ul>
+          <p className="text-text-muted leading-relaxed">
+            Vitrina se ofrece &laquo;tal cual&raquo; y puede modificarse, suspenderse o
+            discontinuarse total o parcialmente en cualquier momento.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          2. Elegibilidad y cuentas
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Registro.</span> Para acceder a
+            las funciones interactivas debes crear una cuenta proporcionando un nombre, un correo
+            electrónico válido y una contraseña. Eres responsable de la veracidad de los datos que
+            proporcionas.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Seguridad de la cuenta.</span> Tu
+            contraseña debe tener entre 8 y 72 caracteres. Eres el único responsable de mantener la
+            confidencialidad de tus credenciales y de toda actividad que ocurra bajo tu cuenta, y
+            debes notificar de inmediato cualquier uso no autorizado.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Roles.</span> Existen dos tipos de
+            cuenta: usuario (rol por defecto al registrarse) y administrador. Los administradores
+            cuentan con facultades adicionales de moderación y curación descritas en estos
+            Términos. La asignación del rol de administrador queda a discreción de Vitrina.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          3. Contenido del usuario
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Titularidad.</span> Conservas
+            todos los derechos de propiedad intelectual sobre las obras originales que publiques.
+            Vitrina no reclama la propiedad de tu contenido.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Licencia que nos otorgas.</span>{' '}
+            Al publicar contenido, concedes a Vitrina una licencia mundial, no exclusiva y libre de
+            regalías para alojar, almacenar, reproducir, mostrar y distribuir dicho contenido con
+            el único fin de operar y ofrecer el servicio (por ejemplo, mostrar tu obra en el feed,
+            en tu perfil o en la revista semanal). Esta licencia termina cuando eliminas el
+            contenido, salvo por copias residuales en respaldos.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Tus declaraciones.</span> Al
+            publicar declaras y garantizas que:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>
+              Eres el autor de la obra, o cuentas con los derechos o permisos necesarios para
+              publicarla.
+            </li>
+            <li>
+              Cuando publiques una recomendación de obra de terceros, atribuirás correctamente al
+              autor original y, cuando corresponda, enlazarás a la fuente. La función de
+              recomendación no transfiere la autoría de la obra recomendada.
+            </li>
+            <li>
+              Tu contenido no infringe derechos de autor, marcas, privacidad ni otros derechos de
+              terceros.
+            </li>
+          </ul>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Archivos.</span> Los archivos
+            adjuntos se limitan a formatos PDF e imágenes (JPG, PNG), con un tamaño máximo de 10 MB
+            por archivo. Eres responsable del contenido de los archivos que subas.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          4. Conducta aceptable
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            Te comprometes a no usar Vitrina para:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>
+              Publicar contenido ilegal, difamatorio, fraudulento, que incite al odio o que sea
+              sexualmente explícito.
+            </li>
+            <li>
+              Infringir derechos de propiedad intelectual de terceros o cometer plagio.
+            </li>
+            <li>Distribuir spam, malware o contenido engañoso.</li>
+            <li>Acosar, suplantar o vulnerar la privacidad de otras personas.</li>
+            <li>
+              Intentar acceder sin autorización a la plataforma, a las cuentas de otros usuarios o
+              a la infraestructura subyacente.
+            </li>
+            <li>
+              Eludir o interferir con los mecanismos de seguridad, moderación o control de acceso
+              del servicio.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          5. Moderación y reportes
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Reportes.</span> Cualquier usuario
+            autenticado puede reportar una publicación que considere inapropiada, indicando un
+            motivo (contenido inapropiado, plagio, spam u otro) y un detalle opcional. Cada usuario
+            puede reportar una misma publicación una sola vez.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Decisiones de moderación.</span>{' '}
+            Los administradores revisan los reportes y pueden bloquear una publicación (ocultándola
+            del público) o descartar el reporte. Una publicación bloqueada deja de ser visible para
+            el resto de los usuarios, aunque su autor puede seguir viéndola.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Eliminación.</span> Los
+            administradores pueden eliminar cualquier publicación que infrinja estos Términos. El
+            usuario autor también puede eliminar sus propias publicaciones en cualquier momento. La
+            eliminación de una publicación arrastra de forma irreversible sus comentarios,
+            &laquo;me gusta&raquo;, etiquetas y postulaciones asociadas.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            Vitrina no garantiza revisar todo el contenido, pero se reserva el derecho de hacerlo y
+            de actuar a su discreción.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          6. Revista semanal
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            Vitrina publica una revista temática que se renueva cada semana. El funcionamiento es
+            el siguiente:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>Solo el autor de una obra puede postularla a la edición activa de la semana.</li>
+            <li>
+              La curación de las solicitudes (aceptar o rechazar) corresponde a los
+              administradores.
+            </li>
+            <li>
+              El cierre y la publicación de cada edición se realizan de forma automática cada
+              viernes; las solicitudes que sigan pendientes al cierre se rechazan automáticamente y
+              se abre una nueva edición para la semana siguiente.
+            </li>
+            <li>
+              La inclusión de una obra en la revista no genera contraprestación económica ni
+              transfiere derechos sobre la obra más allá de la licencia descrita en la cláusula 3.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          7. Privacidad y datos personales
+        </h2>
+        <div className="space-y-4">
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>
+              Recopilamos los datos necesarios para operar el servicio: nombre, correo electrónico
+              y, opcionalmente, institución, carrera y enlaces de perfil.
+            </li>
+            <li>
+              Tu correo electrónico no se muestra públicamente a otros usuarios; se utiliza para
+              autenticación y comunicaciones del servicio.
+            </li>
+            <li>
+              Cierta información de tu perfil (nombre, institución, carrera, publicaciones, enlaces
+              y conteos de seguidores) es de carácter público y visible para cualquier visitante,
+              incluso sin sesión iniciada.
+            </li>
+            <li>
+              Aplicamos medidas técnicas razonables para proteger tus datos, incluido el control de
+              acceso a nivel de base de datos. Sin embargo, ningún sistema es completamente seguro y
+              no podemos garantizar seguridad absoluta.
+            </li>
+          </ul>
+          <p className="text-text-muted leading-relaxed">
+            El tratamiento de tus datos se rige por la legislación aplicable en materia de
+            protección de datos personales en México.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          8. Propiedad intelectual de la plataforma
+        </h2>
+        <p className="text-text-muted leading-relaxed">
+          El software, el diseño, la marca &laquo;Vitrina&raquo;, los logotipos y los demás
+          elementos de la plataforma son propiedad de Vitrina o de sus licenciantes y están
+          protegidos por las leyes de propiedad intelectual. No se te otorga ningún derecho sobre
+          ellos salvo el uso del servicio conforme a estos Términos.
+        </p>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          9. Terminación
+        </h2>
+        <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+          <li>
+            Puedes dejar de usar el servicio en cualquier momento. Para eliminar tu cuenta,
+            comunícate con el equipo de soporte de la plataforma; al ejecutarse la baja se eliminan
+            en cascada tus publicaciones, comentarios, &laquo;me gusta&raquo;, enlaces, relaciones
+            de seguimiento y postulaciones.
+          </li>
+          <li>
+            Podemos suspender o cancelar tu cuenta, con o sin aviso previo, si incumples estos
+            Términos o si tu conducta perjudica a otros usuarios o al servicio.
+          </li>
+        </ul>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          10. Exención de garantías
+        </h2>
+        <p className="text-text-muted leading-relaxed">
+          El servicio se proporciona &laquo;tal cual&raquo; y &laquo;según disponibilidad&raquo;,
+          sin garantías de ningún tipo, expresas o implícitas, incluyendo —sin limitarse a—
+          garantías de comerciabilidad, idoneidad para un fin particular, disponibilidad
+          ininterrumpida o ausencia de errores. No garantizamos que el contenido publicado por
+          otros usuarios sea exacto, legal o adecuado.
+        </p>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          11. Limitación de responsabilidad
+        </h2>
+        <p className="text-text-muted leading-relaxed">
+          En la máxima medida permitida por la ley, Vitrina no será responsable por daños
+          indirectos, incidentales, especiales o consecuentes derivados del uso o la imposibilidad
+          de uso del servicio, ni por la pérdida de contenido, datos o beneficios. Eres responsable
+          de mantener tus propios respaldos de las obras que consideres importantes.
+        </p>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          12. Modificaciones a los Términos
+        </h2>
+        <p className="text-text-muted leading-relaxed">
+          Podemos actualizar estos Términos en cualquier momento. Cuando los cambios sean
+          sustanciales, lo notificaremos por medios razonables dentro de la plataforma. El uso
+          continuado del servicio tras la entrada en vigor de los cambios constituye tu aceptación
+          de los Términos modificados.
+        </p>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          13. Ley aplicable
+        </h2>
+        <p className="text-text-muted leading-relaxed">
+          Estos Términos se rigen por las leyes de los Estados Unidos Mexicanos. Cualquier
+          controversia se someterá a los tribunales competentes correspondientes, sin perjuicio de
+          los derechos que la ley reconozca a los consumidores.
+        </p>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          14. Contacto
+        </h2>
+        <p className="text-text-muted leading-relaxed">
+          Para preguntas sobre estos Términos, reportes o solicitudes relacionadas con tu cuenta,
+          comunícate con el equipo de Vitrina a través de los canales de soporte de la plataforma.
+        </p>
+      </section>
+    </div>
+  )
+}
