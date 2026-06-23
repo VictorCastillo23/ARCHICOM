@@ -10,6 +10,7 @@ import TipoPicker from './TipoPicker'
 import { apiClient, ApiError } from '@/lib/api/client'
 import type { TipoPublicacion, Publicacion, Tag } from '@/lib/types/database'
 import { TIPO_META } from '@/lib/constants/publicaciones'
+import { isHttpUrl } from '@/lib/validation/url'
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_SIZE = 10 * 1024 * 1024
@@ -17,26 +18,58 @@ const MAX_SIZE = 10 * 1024 * 1024
 const FILE_CLASSES =
   'w-full rounded-md border border-border bg-surface px-3 py-2 text-text text-sm file:mr-4 file:py-0 file:px-3 file:rounded-sm file:border-0 file:bg-surface-muted file:text-sm file:font-medium file:text-text hover:file:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed'
 
-export default function PublicarForm({ tags }: { tags: Tag[] }) {
-  const router = useRouter()
+// Seed values for edit mode. Absent → create mode (the original behaviour).
+export type PublicarFormInitialValues = {
+  titulo: string
+  resumen: string
+  tipo: TipoPublicacion
+  obraAutorExterno: string
+  urlExterna: string
+  archivoUrl?: string
+}
 
-  const [titulo, setTitulo] = useState('')
-  const [resumen, setResumen] = useState('')
-  const [tipo, setTipo] = useState<TipoPublicacion | null>(null)
-  const [obraAutorExterno, setObraAutorExterno] = useState('')
-  const [urlExterna, setUrlExterna] = useState('')
+type PublicarFormProps = {
+  tags: Tag[]
+  // Edit mode: when set, the form PATCHes this publication instead of creating one.
+  publicacionId?: string
+  initialValues?: PublicarFormInitialValues
+  initialTagIds?: string[]
+  // Edit mode locks the type (changing category would invalidate conditional fields).
+  lockTipo?: boolean
+}
+
+export default function PublicarForm({
+  tags,
+  publicacionId,
+  initialValues,
+  initialTagIds,
+  lockTipo = false,
+}: PublicarFormProps) {
+  const router = useRouter()
+  const isEdit = Boolean(publicacionId)
+
+  const [titulo, setTitulo] = useState(initialValues?.titulo ?? '')
+  const [resumen, setResumen] = useState(initialValues?.resumen ?? '')
+  const [tipo, setTipo] = useState<TipoPublicacion | null>(initialValues?.tipo ?? null)
+  const [obraAutorExterno, setObraAutorExterno] = useState(initialValues?.obraAutorExterno ?? '')
+  const [urlExterna, setUrlExterna] = useState(initialValues?.urlExterna ?? '')
   const [archivo, setArchivo] = useState<File | null>(null)
+  // The file already attached to the publication (edit mode). Kept unless a new
+  // file is chosen; satisfies the "at least one" rule without re-uploading.
+  const existingArchivoUrl = initialValues?.archivoUrl
+  const hasExistingArchivo = Boolean(existingArchivoUrl)
 
   const categoria = tipo ? TIPO_META[tipo].categoria : null
   const esRecomendacion = categoria === 'recomendacion'
   const esVisual = categoria === 'visual'
 
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const baseTagIds = initialTagIds ?? []
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(baseTagIds)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Soft warning: publication created, but some tags failed to attach. Carries a link.
+  // Soft warning: publication saved, but some tags failed to attach/detach. Carries a link.
   const [tagWarning, setTagWarning] = useState<{ message: string; publicacionId: string } | null>(
     null,
   )
@@ -84,16 +117,29 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
       setError('Elige qué quieres publicar.')
       return
     }
-    if (esVisual && !archivo) {
+    if (esVisual && !archivo && !hasExistingArchivo) {
       setError('Sube la imagen de tu obra.')
       return
     }
 
+    // Normal publications (not recommendations): a link is optional, but at least
+    // one of {archivo, enlace} is required. An already-attached file counts.
+    const urlTrim = urlExterna.trim()
+    if (!esRecomendacion && urlTrim && !isHttpUrl(urlTrim)) {
+      setError('El enlace debe ser una URL http(s) válida.')
+      return
+    }
+    if (!esRecomendacion && !esVisual && !archivo && !hasExistingArchivo && !urlTrim) {
+      setError('Agrega un archivo o un enlace (al menos uno).')
+      return
+    }
+
     setLoading(true)
+    // Track the file uploaded in THIS submit so we can roll it back if the save fails.
+    let uploadedUrl: string | undefined
 
     try {
-      let archivoUrl: string | undefined
-
+      // Upload only when a new file was chosen; otherwise keep the existing one.
       if (archivo) {
         const formData = new FormData()
         formData.append('file', archivo)
@@ -103,52 +149,18 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
           setError(json?.error?.message ?? 'Error al subir el archivo.')
           return
         }
-        archivoUrl = json.data.url
+        uploadedUrl = json.data.url
       }
 
-      const { publicacion } = await apiClient<{ publicacion: Publicacion }>(
-        '/api/publicaciones',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            titulo,
-            resumen,
-            tipo,
-            archivo_url: archivoUrl,
-            ...(esRecomendacion
-              ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
-              : {}),
-          }),
-        },
-      )
-
-      // Attach tags, checking each response so silent failures surface.
-      const results = await Promise.all(
-        selectedTagIds.map((tag_id) =>
-          fetch(`/api/publicaciones/${publicacion.id}/tags`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tag_id }),
-          })
-            .then((res) => res.ok)
-            .catch(() => false),
-        ),
-      )
-      const failed = results.filter((ok) => !ok).length
-
-      if (failed > 0) {
-        // Publication exists — don't lose it. Surface the partial failure with a link
-        // instead of auto-redirecting (re-submitting would create a duplicate).
-        setTagWarning({
-          message: `La publicación se creó, pero ${failed} ${failed === 1 ? 'área no se asoció' : 'áreas no se asociaron'}.`,
-          publicacionId: publicacion.id,
-        })
+      if (isEdit && publicacionId) {
+        await editarPublicacion(publicacionId, urlTrim, uploadedUrl)
         return
       }
 
-      router.refresh()
-      router.push(`/publicacion/${publicacion.id}`)
+      await crearPublicacion(urlTrim, uploadedUrl)
     } catch (err) {
+      // The save failed after the file was uploaded → don't leave it orphaned.
+      if (uploadedUrl) await removeUploadedFile(uploadedUrl)
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
@@ -159,10 +171,93 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
     }
   }
 
+  // --- Create ---------------------------------------------------------------
+  async function crearPublicacion(urlTrim: string, archivoUrl: string | undefined) {
+    const { publicacion } = await apiClient<{ publicacion: Publicacion }>('/api/publicaciones', {
+      method: 'POST',
+      body: JSON.stringify({
+        titulo,
+        resumen,
+        tipo,
+        archivo_url: archivoUrl,
+        ...(esRecomendacion
+          ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
+          : urlTrim
+            ? { url_externa: urlTrim }
+            : {}),
+      }),
+    })
+
+    // Attach tags, checking each response so silent failures surface.
+    const results = await Promise.all(
+      selectedTagIds.map((tag_id) => postTag(publicacion.id, tag_id)),
+    )
+    const failed = results.filter((ok) => !ok).length
+
+    if (failed > 0) {
+      // Publication exists — don't lose it. Surface the partial failure with a link
+      // instead of auto-redirecting (re-submitting would create a duplicate).
+      setTagWarning({
+        message: `La publicación se creó, pero ${failed} ${failed === 1 ? 'área no se asoció' : 'áreas no se asociaron'}.`,
+        publicacionId: publicacion.id,
+      })
+      return
+    }
+
+    router.refresh()
+    router.push(`/publicacion/${publicacion.id}`)
+  }
+
+  // --- Edit -----------------------------------------------------------------
+  async function editarPublicacion(
+    id: string,
+    urlTrim: string,
+    archivoUrl: string | undefined,
+  ) {
+    // tipo is locked on edit → not sent (the PATCH leaves it untouched).
+    await apiClient(`/api/publicaciones/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        titulo,
+        resumen,
+        ...(archivoUrl ? { archivo_url: archivoUrl } : {}),
+        ...(esRecomendacion
+          ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
+          : { url_externa: urlTrim ? urlTrim : null }),
+      }),
+    })
+
+    // A new file replaced the old one → remove the now-unreferenced old file.
+    if (archivoUrl && existingArchivoUrl && existingArchivoUrl !== archivoUrl) {
+      await removeUploadedFile(existingArchivoUrl)
+    }
+
+    // Tag diff: add the newly-selected, remove the deselected.
+    const toAdd = selectedTagIds.filter((t) => !baseTagIds.includes(t))
+    const toRemove = baseTagIds.filter((t) => !selectedTagIds.includes(t))
+    const results = await Promise.all([
+      ...toAdd.map((tag_id) => postTag(id, tag_id)),
+      ...toRemove.map((tag_id) => deleteTag(id, tag_id)),
+    ])
+    const failed = results.filter((ok) => !ok).length
+
+    if (failed > 0) {
+      setTagWarning({
+        message: `Se guardaron los cambios, pero ${failed} ${failed === 1 ? 'área no se actualizó' : 'áreas no se actualizaron'}.`,
+        publicacionId: id,
+      })
+      return
+    }
+
+    router.refresh()
+    router.push(`/publicacion/${id}`)
+  }
+
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      {/* Type-first: pick what you're publishing before anything else */}
-      <TipoPicker value={tipo} onChange={setTipo} disabled={loading} />
+      {/* Type-first: pick what you're publishing before anything else.
+          Locked on edit (changing category would invalidate conditional fields). */}
+      <TipoPicker value={tipo} onChange={setTipo} disabled={loading || lockTipo} />
 
       {/* The rest of the form appears only after a type is chosen */}
       {tipo && (
@@ -187,7 +282,7 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
             required
             disabled={loading}
             placeholder="Breve descripción del contenido"
-            maxLength={250}
+            maxLength={700}
           />
 
           {esRecomendacion && (
@@ -282,6 +377,11 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
                 ref={fileInputRef}
                 className={FILE_CLASSES}
               />
+              {isEdit && hasExistingArchivo && !archivo && (
+                <p className="text-xs text-text-muted">
+                  Ya hay un archivo cargado. Elige uno nuevo para reemplazarlo.
+                </p>
+              )}
               <ArchivoPreview
                 file={archivo}
                 onClear={() => {
@@ -290,6 +390,22 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
                 }}
               />
             </div>
+          )}
+
+          {/* External link — optional on any normal type. For texto/otro it's the
+              alternative to the file (at least one is required). */}
+          {!esRecomendacion && (
+            <Field
+              label={
+                esVisual ? 'Enlace (opcional)' : 'Enlace a la obra (opcional)'
+              }
+              name="url_externa"
+              type="url"
+              value={urlExterna}
+              onChange={(e) => setUrlExterna(e.target.value)}
+              disabled={loading}
+              placeholder="https://..."
+            />
           )}
 
           {error && (
@@ -311,10 +427,41 @@ export default function PublicarForm({ tags }: { tags: Tag[] }) {
           )}
 
           <Button type="submit" loading={loading} className="self-start">
-            Publicar
+            {isEdit ? 'Guardar cambios' : 'Publicar'}
           </Button>
         </>
       )}
     </form>
   )
+}
+
+// --- Tag helpers ------------------------------------------------------------
+function postTag(publicacionId: string, tag_id: string): Promise<boolean> {
+  return fetch(`/api/publicaciones/${publicacionId}/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag_id }),
+  })
+    .then((res) => res.ok)
+    .catch(() => false)
+}
+
+function deleteTag(publicacionId: string, tag_id: string): Promise<boolean> {
+  return fetch(`/api/publicaciones/${publicacionId}/tags?tag_id=${tag_id}`, {
+    method: 'DELETE',
+  })
+    .then((res) => res.ok)
+    .catch(() => false)
+}
+
+// Best-effort Storage cleanup from the client (replaced file on edit, or rollback
+// after a failed save). Never throws — orphan cleanup must not break the flow.
+function removeUploadedFile(url: string): Promise<void> {
+  return fetch('/api/storage', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+    .then(() => undefined)
+    .catch(() => undefined)
 }

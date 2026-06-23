@@ -142,6 +142,23 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         </section>
       )}
 
+      {/* Enlace externo: publicación normal (no recomendación) con enlace */}
+      {data.tipo !== 'recomendacion' && data.url_externa && (
+        <section className="mb-8 rounded-md border border-border bg-surface p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
+            Enlace
+          </h2>
+          <a
+            href={data.url_externa}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline break-all"
+          >
+            Ver enlace ↗
+          </a>
+        </section>
+      )}
+
       {/* Archivo */}
       {data.archivo_url && (
         <div className="mb-8">
@@ -162,6 +179,12 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       {/* Acciones del autor */}
       {isAuthor && (
         <div className="mb-8 flex items-center gap-3">
+          <Link
+            href={`/publicacion/${id}/editar`}
+            className="inline-flex items-center justify-center rounded-md font-medium transition-colors h-8 px-3 text-sm bg-surface text-text border border-border hover:bg-surface-muted"
+          >
+            Editar
+          </Link>
           <SolicitarRevistaButton
             publicacionId={id}
             isAuthor={isAuthor}
