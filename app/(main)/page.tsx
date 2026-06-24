@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { getFeed } from '@/lib/data/feed'
+import { getTrendingFeed } from '@/lib/data/trending'
 import { getPublicacionPorArea } from '@/lib/data/publicaciones'
 import { getTags } from '@/lib/data/tags'
 import { shuffle } from '@/lib/utils/shuffle'
 import FeedList from '@/components/feed/FeedList'
 import FeedFilters from '@/components/feed/FeedFilters'
 import HeroBanner from '@/components/feed/HeroBanner'
+import TrendingSection from '@/components/feed/TrendingSection'
 import Pagination from '@/components/ui/Pagination'
 import type { PublicacionCardData, FeedPublicacion } from '@/lib/types/database'
 import { TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
@@ -30,6 +32,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
 
   // area wins when both are present
   let publicaciones: PublicacionCardData[] = []
+  let trending: PublicacionCardData[] = []
 
   if (area) {
     const { data } = await getPublicacionPorArea({ area, limit: LIMIT, offset })
@@ -45,9 +48,27 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       }))
     }
   } else {
-    const { data } = await getFeed({ tipo: tipo || undefined, limit: LIMIT, offset })
-    if (data) {
-      publicaciones = (data as FeedPublicacion[]).map((pub) => ({
+    // Fetch trending and main feed concurrently to avoid a waterfall.
+    // Trending is only fetched (and shown) when no filters are active.
+    const [feedRes, trendingRes] = await Promise.all([
+      getFeed({ tipo: tipo || undefined, limit: LIMIT, offset }),
+      !tipo ? getTrendingFeed({ limit: 3 }) : Promise.resolve({ data: [], error: null }),
+    ])
+
+    if (feedRes.data) {
+      publicaciones = (feedRes.data as FeedPublicacion[]).map((pub) => ({
+        id: pub.id,
+        titulo: pub.titulo,
+        resumen: pub.resumen,
+        tipo: pub.tipo,
+        nombre_autor: pub.autor_nombre,
+        autor_id: pub.autor_id,
+        creado_en: pub.creado_en,
+      }))
+    }
+
+    if (trendingRes.data) {
+      trending = (trendingRes.data as FeedPublicacion[]).map((pub) => ({
         id: pub.id,
         titulo: pub.titulo,
         resumen: pub.resumen,
@@ -62,6 +83,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   // Randomize display order so every reload shows a different arrangement.
   // The fetch/pagination set is still deterministic (creado_en + range); only
   // the visual order within the page is shuffled.
+  // Trending keeps score order (ordering IS the feature — no shuffle).
   publicaciones = shuffle(publicaciones)
 
   const { data: tags } = await getTags()
@@ -73,6 +95,9 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   return (
     <div className="animate-page">
       {!isAuthenticated && <HeroBanner />}
+
+      {/* Trending section: only shown on the unfiltered home page (no area, no tipo) */}
+      {!area && !tipo && <TrendingSection items={trending} />}
 
       <div id="feed">
         <div className="mb-8">

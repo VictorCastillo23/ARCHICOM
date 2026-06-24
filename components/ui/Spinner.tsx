@@ -16,7 +16,7 @@ export function Spinner({ size = 'md' }: SpinnerProps) {
   return (
     <span
       role="status"
-      aria-label="Loading"
+      aria-label="Cargando"
       style={{ width: dim, height: dim }}
       className="inline-block rounded-full border-2 border-border border-t-primary motion-safe:animate-spin shrink-0"
     />

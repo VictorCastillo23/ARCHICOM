@@ -1,3 +1,5 @@
+import { buttonClasses } from '@/components/ui/Button'
+
 export interface ErrorStateProps {
   title?: string
   description?: string
@@ -10,7 +12,10 @@ export default function ErrorState({
   retry,
 }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center py-16 px-4 text-center"
+    >
       <div className="w-12 h-12 rounded-full bg-danger-bg flex items-center justify-center mb-4">
         <svg
           className="w-5 h-5 text-danger"
@@ -35,7 +40,7 @@ export default function ErrorState({
         <button
           type="button"
           onClick={retry}
-          className="mt-4 inline-flex items-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text hover:bg-surface-muted transition-colors"
+          className={buttonClasses({ variant: 'secondary', size: 'sm', className: 'mt-4' })}
         >
           Reintentar
         </button>

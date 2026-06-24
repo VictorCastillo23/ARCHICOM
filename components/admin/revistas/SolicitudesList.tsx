@@ -32,6 +32,7 @@ export default function SolicitudesList({ revistaId }: Props) {
   const [solicitudes, setSolicitudes] = useState<SolicitudItem[]>([])
   const [fetchError, setFetchError] = useState('')
   const [actionId, setActionId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
   const [rejectPending, setRejectPending] = useState<{ solicitudId: string; motivo: string } | null>(null)
 
   // Initial fetch — all setState calls are inside promise callbacks (not synchronously in effect)
@@ -78,6 +79,7 @@ export default function SolicitudesList({ revistaId }: Props) {
 
   async function handleAction(solicitudId: string, action: 'aceptar' | 'rechazar', respuesta?: string) {
     setActionId(solicitudId)
+    setActionError('')
     setRejectPending(null)
     try {
       await apiClient(`/api/solicitudes/${solicitudId}/${action}`, {
@@ -89,7 +91,9 @@ export default function SolicitudesList({ revistaId }: Props) {
         router.refresh()
       }
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : `Error al ${action} la solicitud.`)
+      setActionError(
+        err instanceof ApiError ? err.message : `Error al ${action} la solicitud.`
+      )
     } finally {
       setActionId(null)
     }
@@ -101,6 +105,12 @@ export default function SolicitudesList({ revistaId }: Props) {
       <p className="text-xs text-text-muted mb-3">
         Las solicitudes pendientes se descartan automáticamente el viernes.
       </p>
+
+      {actionError && (
+        <p role="alert" className="text-sm text-danger mb-3">
+          {actionError}
+        </p>
+      )}
 
       {loading && (
         <p className="text-sm text-text-muted">Cargando solicitudes…</p>
@@ -175,11 +185,15 @@ export default function SolicitudesList({ revistaId }: Props) {
 
                 {rejectPending?.solicitudId === sol.id && (
                   <div className="mt-3 pt-3 border-t border-border">
-                    <label className="block text-xs font-medium text-text mb-1">
+                    <label
+                      htmlFor={`reject-motivo-${sol.id}`}
+                      className="block text-xs font-medium text-text mb-1"
+                    >
                       Motivo del rechazo <span className="text-danger">*</span>
                     </label>
                     <textarea
-                      className="w-full rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      id={`reject-motivo-${sol.id}`}
+                      className="w-full rounded-sm border border-input bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                       rows={3}
                       maxLength={250}
                       placeholder="Explicá brevemente por qué se rechaza esta solicitud…"

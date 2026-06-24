@@ -26,6 +26,32 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: 'h-12 px-6 text-lg gap-2',
 }
 
+/**
+ * Shared class string for button-styled elements. Reuse on `<Link>`/`<a>`
+ * elements that must look like a Button (e.g. EmptyState CTA, ErrorState retry)
+ * so styles and states stay consistent with the Button primitive.
+ */
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  className = '',
+}: {
+  variant?: ButtonVariant
+  size?: ButtonSize
+  className?: string
+} = {}): string {
+  return [
+    'inline-flex items-center justify-center rounded-md font-medium',
+    'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+    'disabled:pointer-events-none disabled:opacity-50',
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
 export default function Button({
   variant = 'primary',
   size = 'md',

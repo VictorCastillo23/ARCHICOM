@@ -29,6 +29,7 @@ export default function Pagination({
 
   const showPrev = offset > 0
   const showNext = hasMore
+  const currentPage = Math.floor(offset / limit) + 1
 
   if (!showPrev && !showNext) return null
 
@@ -47,6 +48,9 @@ export default function Pagination({
           </Link>
         )}
       </div>
+      <span aria-current="page" className="text-sm text-text-muted">
+        Página {currentPage}
+      </span>
       <div>
         {showNext && (
           <Link

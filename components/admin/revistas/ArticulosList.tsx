@@ -19,6 +19,7 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
   const router = useRouter()
   const [movingId, setMovingId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
   const [removePending, setRemovePending] = useState<{ publicacionId: string; motivo: string } | null>(null)
 
   const readonly = estado === 'publicada'
@@ -31,6 +32,7 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
     const a = sorted[index]
     const b = sorted[swapIndex]
     setMovingId(a.publicacion_id)
+    setActionError('')
 
     try {
       await apiClient(`/api/revistas/${revistaId}/articulos`, {
@@ -44,7 +46,7 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
       })
       router.refresh()
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Error al reordenar.')
+      setActionError(err instanceof ApiError ? err.message : 'Error al reordenar.')
     } finally {
       setMovingId(null)
     }
@@ -52,6 +54,7 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
 
   async function handleRemove(publicacionId: string, motivo: string) {
     setRemovingId(publicacionId)
+    setActionError('')
     setRemovePending(null)
     try {
       await apiClient(
@@ -63,7 +66,9 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
       )
       router.refresh()
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Error al quitar el artículo.')
+      setActionError(
+        err instanceof ApiError ? err.message : 'Error al quitar el artículo.'
+      )
     } finally {
       setRemovingId(null)
     }
@@ -81,6 +86,12 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
           )}
         </div>
       </div>
+
+      {actionError && (
+        <p role="alert" className="text-sm text-danger mb-3">
+          {actionError}
+        </p>
+      )}
 
       {sorted.length === 0 ? (
         <EmptyState
@@ -175,7 +186,10 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
 
                 {removePending?.publicacionId === art.publicacion_id && (
                   <div className="mt-3 pt-3 border-t border-border">
-                    <label className="block text-xs font-medium text-text mb-1">
+                    <label
+                      htmlFor={`remove-motivo-${art.publicacion_id}`}
+                      className="block text-xs font-medium text-text mb-1"
+                    >
                       Motivo de la cancelación
                     </label>
                     <div className="flex items-start gap-2">
@@ -183,7 +197,8 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
                         Aceptada y después cancelada por:
                       </span>
                       <textarea
-                        className="flex-1 rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        id={`remove-motivo-${art.publicacion_id}`}
+                        className="flex-1 rounded-sm border border-input bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                         rows={2}
                         maxLength={200}
                         placeholder="razón del retiro…"

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
+import { apiClient, ApiError } from '@/lib/api/client'
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean
@@ -27,36 +29,27 @@ export default function ConfirmDeleteModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!isOpen) return null
-
   async function handleConfirm() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/publicaciones/${publicacionId}`, {
+      await apiClient(`/api/publicaciones/${publicacionId}`, {
         method: 'DELETE',
       })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        setError(body?.error?.message ?? 'No se pudo eliminar la publicación.')
-        setLoading(false)
-        return
-      }
       router.push(redirectTo)
-    } catch {
-      setError('Error de red. Intenta de nuevo.')
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'No se pudo eliminar la publicación. Intentá de nuevo.'
+      )
       setLoading(false)
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-delete-title"
-    >
-      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg">
+    <Modal open={isOpen} onClose={onCancel} labelledById="confirm-delete-title">
+      <div>
         <h2
           id="confirm-delete-title"
           className="text-base font-semibold text-text mb-3"
@@ -101,6 +94,6 @@ export default function ConfirmDeleteModal({
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

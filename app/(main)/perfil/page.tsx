@@ -64,12 +64,20 @@ export default async function PerfilPage() {
       <section aria-label="Datos del perfil">
         <div className="flex items-start justify-between gap-4">
           <PerfilView perfil={perfil} esPropio email={user.email ?? undefined} links={links ?? []} />
-          <Link
-            href="/perfil/ajustes"
-            className="shrink-0 inline-flex items-center rounded-md bg-surface text-text border border-border h-8 px-3 text-sm font-medium hover:bg-surface-muted transition-colors"
-          >
-            Ajustes
-          </Link>
+          <div className="shrink-0 flex items-center gap-2">
+            <Link
+              href="/perfil/guardados"
+              className="inline-flex items-center rounded-md bg-surface text-text border border-border h-8 px-3 text-sm font-medium hover:bg-surface-muted transition-colors"
+            >
+              Guardados
+            </Link>
+            <Link
+              href="/perfil/ajustes"
+              className="inline-flex items-center rounded-md bg-surface text-text border border-border h-8 px-3 text-sm font-medium hover:bg-surface-muted transition-colors"
+            >
+              Ajustes
+            </Link>
+          </div>
         </div>
         <div className="mt-4">
           <PerfilStats

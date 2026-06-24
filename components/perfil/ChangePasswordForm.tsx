@@ -39,7 +39,7 @@ export default function ChangePasswordForm() {
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError('Error inesperado. Intenta de nuevo.')
+        setError('Error inesperado. Intentá de nuevo.')
       }
     } finally {
       setLoading(false)
@@ -73,7 +73,9 @@ export default function ChangePasswordForm() {
         required
         autoComplete="new-password"
         disabled={loading}
+        minLength={8}
         maxLength={72}
+        helper="Mínimo 8 caracteres. Debe ser distinta de la actual."
       />
 
       <Field

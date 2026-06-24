@@ -24,6 +24,7 @@ export default function TagsManager({ initialTags }: Props) {
   const [editState, setEditState] = useState<EditState>({ nombre: '', area: '' })
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
 
   // Create form state
   const [showCreate, setShowCreate] = useState(false)
@@ -65,6 +66,7 @@ export default function TagsManager({ initialTags }: Props) {
   async function handleSave(tagId: string) {
     if (!editState.nombre.trim() || !editState.area.trim()) return
     setSaving(true)
+    setActionError('')
     try {
       const result = await apiClient<{ tag: Tag }>(`/api/tags/${tagId}`, {
         method: 'PATCH',
@@ -78,7 +80,7 @@ export default function TagsManager({ initialTags }: Props) {
       setEditingId(null)
       router.refresh()
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Error al guardar.')
+      setActionError(err instanceof ApiError ? err.message : 'Error al guardar.')
     } finally {
       setSaving(false)
     }
@@ -86,12 +88,13 @@ export default function TagsManager({ initialTags }: Props) {
 
   async function handleDelete(tagId: string) {
     setDeletingId(tagId)
+    setActionError('')
     try {
       await apiClient(`/api/tags/${tagId}`, { method: 'DELETE' })
       setTags((prev) => prev.filter((t) => t.id !== tagId))
       router.refresh()
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Error al eliminar.')
+      setActionError(err instanceof ApiError ? err.message : 'Error al eliminar.')
     } finally {
       setDeletingId(null)
     }
@@ -111,6 +114,12 @@ export default function TagsManager({ initialTags }: Props) {
           {showCreate ? 'Cancelar' : 'Nuevo tag'}
         </Button>
       </div>
+
+      {actionError && (
+        <p role="alert" className="text-sm text-danger mb-4">
+          {actionError}
+        </p>
+      )}
 
       {showCreate && (
         <div className="border border-border rounded-md p-4 mb-6 bg-surface">
@@ -179,7 +188,7 @@ export default function TagsManager({ initialTags }: Props) {
                       {isEditing ? (
                         <>
                           <input
-                            className="flex-1 border border-border rounded-sm px-2 py-1 text-sm bg-surface"
+                            className="flex-1 border border-input rounded-sm px-2 py-1 text-sm bg-surface"
                             value={editState.nombre}
                             onChange={(e) =>
                               setEditState((s) => ({ ...s, nombre: e.target.value }))
@@ -188,7 +197,7 @@ export default function TagsManager({ initialTags }: Props) {
                             autoFocus
                           />
                           <input
-                            className="w-36 border border-border rounded-sm px-2 py-1 text-sm bg-surface"
+                            className="w-36 border border-input rounded-sm px-2 py-1 text-sm bg-surface"
                             value={editState.area}
                             onChange={(e) =>
                               setEditState((s) => ({ ...s, area: e.target.value }))
