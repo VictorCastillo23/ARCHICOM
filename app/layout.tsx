@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist_Mono, DM_Serif_Display, DM_Sans } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { GoogleAnalytics } from '@next/third-parties/google'
 import './globals.css'
 
 const geistMono = Geist_Mono({
@@ -46,6 +47,9 @@ export default function RootLayout({
         <Analytics/>
         <SpeedInsights />
       </body>
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      )}
     </html>
   )
 }
