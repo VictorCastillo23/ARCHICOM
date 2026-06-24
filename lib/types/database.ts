@@ -90,10 +90,26 @@ export type Comentario = {
   publicacion_id: string
   autor_id: string
   creado_en: string
-  usuario?: Pick<Usuario, 'id' | 'nombre'>
+  responde_a: string | null
+  usuario?: Pick<Usuario, 'id' | 'nombre'> | null
+}
+
+export type ComentarioConUsuario = Comentario & {
+  usuario?: Pick<Usuario, 'id' | 'nombre'> | null
+}
+
+export type ComentarioArbol = ComentarioConUsuario & {
+  respuestas: ComentarioConUsuario[]
 }
 
 export type Like = {
+  id: string
+  publicacion_id: string
+  usuario_id: string
+  creado_en: string
+}
+
+export type Guardado = {
   id: string
   publicacion_id: string
   usuario_id: string

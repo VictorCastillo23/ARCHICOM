@@ -27,20 +27,20 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
           </time>
         )}
       </div>
+      <Link
+        href={`/publicacion/${id}`}
+        className="text-text hover:text-primary transition-colors"
+      >
+        <h2 className="text-(length:--size-heading-sm) font-normal font-display leading-snug line-clamp-2 break-words min-h-[3rem]">
 
-      <h2 className="text-(length:--size-heading-sm) font-normal font-display leading-snug line-clamp-2 break-words min-h-[3rem]">
-        <Link
-          href={`/publicacion/${id}`}
-          className="text-text hover:text-primary transition-colors"
-        >
           {titulo}
-        </Link>
-      </h2>
 
-      <p className="text-sm text-text-muted leading-relaxed line-clamp-3 break-words ">
-        {resumen}
-      </p>
+        </h2>
 
+        <p className="text-sm text-text-muted leading-relaxed line-clamp-3 break-words ">
+          {resumen}
+        </p>
+      </Link>
       <div className="mt-auto pt-2 border-t border-border flex items-center gap-1 text-xs text-text-muted">
         <span>Por</span>
         {autor_id ? (

@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getPublicacion, getLikesInfo, getEstadoEliminacion } from '@/lib/data/publicaciones'
+import { getIsGuardado } from '@/lib/data/guardados'
+import { getComentariosArbol } from '@/lib/data/comentarios'
 import { esAdmin } from '@/lib/data/perfil'
 import { getRevistaActiva } from '@/lib/data/revistas'
 import { getSolicitudParaEdicion } from '@/lib/data/solicitudes'
@@ -10,13 +12,16 @@ import TagList from '@/components/publicacion/TagList'
 import ComentarioList from '@/components/publicacion/ComentarioList'
 import ComentarioForm from '@/components/publicacion/ComentarioForm'
 import LikeButton from '@/components/publicacion/LikeButton'
+import GuardarButton from '@/components/publicacion/GuardarButton'
 import SolicitarRevistaButton from '@/components/publicacion/SolicitarRevistaButton'
 import EliminarPublicacionButton from '@/components/publicacion/EliminarPublicacionButton'
 import ReportarButton from '@/components/publicacion/ReportarButton'
 import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
 import ArchivoVistaPrevia from '@/components/publicacion/ArchivoVistaPrevia'
+import AnonFollowCTA from '@/components/publicacion/AnonFollowCTA'
+import AnonViewBanner from '@/components/publicacion/AnonViewBanner'
 import Link from 'next/link'
-import type { Comentario, Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
+import type { Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
 
 interface PublicacionPageProps {
   params: Promise<{ id: string }>
@@ -43,17 +48,25 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
     .map((pt: PublicacionTag) => pt.tag)
     .filter((t): t is Tag => Boolean(t))
 
-  // Resolve comments
-  const comentarios = (data.comentario ?? []) as (Comentario & { usuario?: Pick<Usuario, 'id' | 'nombre'> | null })[]
-
   // Resolve session
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthenticated = Boolean(user)
   const isAuthor = Boolean(user && user.id === data.autor_id)
 
-  // Resolve real like count + whether the current user already liked it
-  const { count: likeCount, liked: likedByUser } = await getLikesInfo(id, user?.id)
+  // Resolve independent fetches in parallel (no waterfall)
+  const [
+    { count: likeCount, liked: likedByUser },
+    { data: guardadoByUser },
+    { data: comentariosData },
+  ] = await Promise.all([
+    getLikesInfo(id, user?.id),
+    getIsGuardado(id, user?.id),
+    getComentariosArbol(id),
+  ])
+
+  const arbol = comentariosData?.arbol ?? []
+  const totalComentarios = comentariosData?.total ?? 0
 
   // Admin moderation: a non-author admin can delete any publicacion (RLS: admin_elimina)
   const isAdmin = user && !isAuthor ? await esAdmin(user.id) : false
@@ -216,14 +229,21 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         </div>
       )}
 
-      {/* Like + report */}
+      {/* Like + save + report */}
       <div className="mb-10 pb-8 border-b border-border">
-        <LikeButton
-          publicacionId={id}
-          initialLiked={likedByUser}
-          initialCount={likeCount}
-          isAuthenticated={isAuthenticated}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <LikeButton
+            publicacionId={id}
+            initialLiked={likedByUser}
+            initialCount={likeCount}
+            isAuthenticated={isAuthenticated}
+          />
+          <GuardarButton
+            publicacionId={id}
+            initialSaved={guardadoByUser}
+            isAuthenticated={isAuthenticated}
+          />
+        </div>
         {isAuthenticated && !isAuthor && (
           <div className="mt-3">
             <ReportarButton publicacionId={id} isAuthenticated={isAuthenticated} />
@@ -231,13 +251,22 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         )}
       </div>
 
+      {/* Anon follow CTA: shown only to unauthenticated visitors when an author exists */}
+      {!isAuthenticated && autor && (
+        <AnonFollowCTA autorNombre={autor.nombre} />
+      )}
+
       {/* Comentarios */}
       <section>
         <h2 className="text-(length:--size-heading-sm) font-normal font-display text-text mb-6">
-          Comentarios ({comentarios.length})
+          Comentarios ({totalComentarios})
         </h2>
 
-        <ComentarioList comentarios={comentarios} />
+        <ComentarioList
+          comentarios={arbol}
+          publicacionId={id}
+          isAuthenticated={isAuthenticated}
+        />
 
         {isAuthenticated && (
           <div className="mt-8 pt-6 border-t border-border">
@@ -263,6 +292,10 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         tagIds={tags.map((t) => t.id)}
         tipo={data.tipo as TipoPublicacion}
       />
+
+      {/* Anon view banner: fixed bottom, self-gates via POST /api/view-count.
+          Shown only to unauthenticated visitors. Never blocks reading. */}
+      {!isAuthenticated && <AnonViewBanner />}
     </article>
   )
 }

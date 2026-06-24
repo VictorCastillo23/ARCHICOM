@@ -20,6 +20,10 @@
   /* Colors — border */
   --color-border:         #e4e0da;
   --color-border-focus:   #1a6b5e;
+  /* Form-control border — darker than --color-border to meet WCAG 1.4.11
+     non-text contrast (≥3:1) for input/select/textarea boundaries.
+     3.53:1 on #fff, 3.25:1 on surface-muted. */
+  --color-input:          #8c887f;
 
   /* Colors — semantic tones */
   --color-info:           #1d6fa4;

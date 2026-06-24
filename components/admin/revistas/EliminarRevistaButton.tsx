@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
+import { apiClient, ApiError } from '@/lib/api/client'
 
 interface EliminarRevistaButtonProps {
   revistaId: string
@@ -24,16 +26,14 @@ export default function EliminarRevistaButton({
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/revistas/${revistaId}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        setError(body?.error?.message ?? 'No se pudo eliminar la revista.')
-        setLoading(false)
-        return
-      }
+      await apiClient(`/api/revistas/${revistaId}`, { method: 'DELETE' })
       router.push('/admin/revistas')
-    } catch {
-      setError('Error de red. Intenta de nuevo.')
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'No se pudo eliminar la revista. Intentá de nuevo.'
+      )
       setLoading(false)
     }
   }
@@ -44,14 +44,12 @@ export default function EliminarRevistaButton({
         Eliminar revista
       </Button>
 
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-delete-revista-title"
-        >
-          <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg">
+      <Modal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        labelledById="confirm-delete-revista-title"
+      >
+        <div>
             <h2
               id="confirm-delete-revista-title"
               className="text-base font-semibold text-text mb-3"
@@ -96,9 +94,8 @@ export default function EliminarRevistaButton({
                 Eliminar
               </Button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   )
 }

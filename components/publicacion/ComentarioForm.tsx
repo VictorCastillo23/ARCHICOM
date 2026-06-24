@@ -8,13 +8,17 @@ import { apiClient, ApiError } from '@/lib/api/client'
 
 export interface ComentarioFormProps {
   publicacionId: string
+  respondaA?: string | null
+  onSuccess?: () => void
 }
 
-export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
+export default function ComentarioForm({ publicacionId, respondaA, onSuccess }: ComentarioFormProps) {
   const router = useRouter()
   const [contenido, setContenido] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isReply = Boolean(respondaA)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -29,10 +33,15 @@ export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
         body: JSON.stringify({
           publicacion_id: publicacionId,
           contenido: contenido.trim(),
+          ...(respondaA ? { responde_a: respondaA } : {}),
         }),
       })
       setContenido('')
-      router.refresh()
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        router.refresh()
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -47,13 +56,13 @@ export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <Field
-        label="Tu comentario"
+        label={isReply ? 'Tu respuesta' : 'Tu comentario'}
         name="contenido"
         multiline
         required
         value={contenido}
         onChange={(e) => setContenido(e.target.value)}
-        placeholder="Escribí tu comentario…"
+        placeholder={isReply ? 'Escribí tu respuesta…' : 'Escribí tu comentario…'}
         maxLength={250}
       />
       {error && (
@@ -67,7 +76,7 @@ export default function ComentarioForm({ publicacionId }: ComentarioFormProps) {
       )}
       <div className="flex justify-end">
         <Button type="submit" loading={loading} disabled={!contenido.trim()}>
-          Comentar
+          {isReply ? 'Responder' : 'Comentar'}
         </Button>
       </div>
     </form>

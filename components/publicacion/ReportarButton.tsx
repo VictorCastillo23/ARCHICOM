@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 import { ApiError, apiClient } from '@/lib/api/client'
 import { MOTIVOS_REPORTE } from '@/lib/types/database'
 import type { MotivoReporte } from '@/lib/types/database'
@@ -87,14 +88,8 @@ export default function ReportarButton({
         Reportar publicación
       </button>
 
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reportar-title"
-        >
-          <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg">
+      <Modal open={isOpen} onClose={handleClose} labelledById="reportar-title">
+        <div>
             <h2
               id="reportar-title"
               className="text-base font-semibold text-text mb-4"
@@ -119,7 +114,7 @@ export default function ReportarButton({
                     id="motivo-select"
                     value={motivo}
                     onChange={(e) => setMotivo(e.target.value as MotivoReporte)}
-                    className="w-full rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-sm border border-input bg-surface-muted px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
                     required
                   >
                     {MOTIVOS_REPORTE.map((m) => (
@@ -144,8 +139,8 @@ export default function ReportarButton({
                     onChange={(e) => setDetalle(e.target.value)}
                     rows={3}
                     maxLength={500}
-                    placeholder="Describe brevemente el problema…"
-                    className="w-full rounded-sm border border-border bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Describí brevemente el problema…"
+                    className="w-full rounded-sm border border-input bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <p className="text-xs text-text-muted mt-0.5 text-right">
                     {detalle.length}/500
@@ -180,9 +175,8 @@ export default function ReportarButton({
                 </div>
               </form>
             )}
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   )
 }

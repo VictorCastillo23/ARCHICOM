@@ -9,6 +9,12 @@ export default function Footer() {
         </span>
         <nav className="flex items-center gap-4">
           <Link
+            href="/areas"
+            className="hover:text-text transition-colors"
+          >
+            Áreas
+          </Link>
+          <Link
             href="/sobre-nosotros"
             className="hover:text-text transition-colors"
           >

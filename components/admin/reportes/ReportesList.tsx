@@ -21,6 +21,7 @@ export default function ReportesList() {
   const [reportes, setReportes] = useState<ReporteConDetalle[]>([])
   const [fetchError, setFetchError] = useState('')
   const [actionId, setActionId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
 
   // Initial fetch — all setState calls are inside promise callbacks (not synchronously in effect)
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function ReportesList() {
 
   async function handleAction(reporteId: string, action: 'bloquear' | 'descartar') {
     setActionId(reporteId)
+    setActionError('')
     try {
       await apiClient(`/api/reportes/${reporteId}/${action}`, {
         method: 'POST',
@@ -70,7 +72,9 @@ export default function ReportesList() {
       // Optimistic removal from list on success
       setReportes((prev) => prev.filter((r) => r.id !== reporteId))
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : `Error al ${action} el reporte.`)
+      setActionError(
+        err instanceof ApiError ? err.message : `Error al ${action} el reporte.`
+      )
     } finally {
       setActionId(null)
     }
@@ -82,6 +86,12 @@ export default function ReportesList() {
       <p className="text-xs text-text-muted mb-3">
         Revisá cada reporte y decidí si bloquear la publicación o descartar el reporte.
       </p>
+
+      {actionError && (
+        <p role="alert" className="text-sm text-danger mb-3">
+          {actionError}
+        </p>
+      )}
 
       {loading && (
         <p className="text-sm text-text-muted">Cargando reportes…</p>

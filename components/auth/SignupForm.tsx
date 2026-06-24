@@ -61,7 +61,7 @@ export default function SignupForm() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
       } else {
-        setErrorMessage('Error inesperado. Intenta de nuevo.')
+        setErrorMessage('Error inesperado. Intentá de nuevo.')
       }
     } finally {
       setLoading(false)
@@ -171,7 +171,9 @@ export default function SignupForm() {
         required
         autoComplete="new-password"
         disabled={loading}
+        minLength={8}
         maxLength={72}
+        helper="Mínimo 8 caracteres."
       />
 
       <label className="flex items-start gap-2 text-sm text-text-muted">
@@ -202,12 +204,7 @@ export default function SignupForm() {
         </p>
       )}
 
-      <Button
-        type="submit"
-        loading={loading}
-        disabled={!acceptedTerms}
-        className="w-full mt-2"
-      >
+      <Button type="submit" loading={loading} className="w-full mt-2">
         Crear cuenta
       </Button>
     </form>
