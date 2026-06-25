@@ -4,11 +4,6 @@ import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 
-function truncate(text: string, maxLen = 200): string {
-  if (text.length <= maxLen) return text
-  return text.slice(0, maxLen).trimEnd() + '…'
-}
-
 export default async function RevistasPage() {
   const { data: revistas } = await getRevistas({ estado: 'publicada' })
 
@@ -56,12 +51,6 @@ export default async function RevistasPage() {
                     {revista.titulo}
                   </Link>
                 </h2>
-
-                {revista.descripcion && (
-                  <p className="text-sm text-text-muted leading-relaxed">
-                    {truncate(revista.descripcion)}
-                  </p>
-                )}
 
               </div>
             </Card>

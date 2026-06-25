@@ -120,7 +120,6 @@ export type Revista = {
   id: string
   titulo: string
   volumen?: number
-  descripcion?: string
   estado: EstadoRevista
   publicada_en?: string | null
   //creado_en: string
