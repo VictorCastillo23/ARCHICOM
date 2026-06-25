@@ -49,12 +49,6 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
         <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight mb-4">
           {data.titulo}
         </h1>
-
-        {data.descripcion && (
-          <p className="text-base text-text-muted leading-relaxed max-w-[60ch]">
-            {data.descripcion}
-          </p>
-        )}
       </header>
 
       {/* Curated article list */}
