@@ -112,7 +112,7 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
                 </p>
                 {s.revisor_id == null && s.estado === 'rechazada' && (
                   <p className="text-xs text-text-muted mt-0.5">
-                    (cierre automático del viernes)
+                    (cierre automático mensual)
                   </p>
                 )}
               </div>

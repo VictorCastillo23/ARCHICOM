@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const { data: activa } = await getRevistaActiva()
   if (!activa) {
     return NextResponse.json(
-      { error: { code: 'no_active_revista', message: 'No hay una revista abierta esta semana' } },
+      { error: { code: 'no_active_revista', message: 'No hay una revista abierta este mes' } },
       { status: 404 }
     )
   }

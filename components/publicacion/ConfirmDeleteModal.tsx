@@ -69,7 +69,7 @@ export default function ConfirmDeleteModal({
 
         {tieneSolicitudPendiente && (
           <p className="text-sm text-text-muted mb-2">
-            Tenés una solicitud pendiente para la revista de esta semana; también se eliminará.
+            Tenés una solicitud pendiente para la revista de este mes; también se eliminará.
           </p>
         )}
 

@@ -28,7 +28,7 @@ export default async function RevistasPage() {
           Revistas
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Ediciones semanales de la comunidad.
+          Ediciones mensuales de la comunidad.
         </p>
       </div>
 

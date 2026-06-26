@@ -64,8 +64,8 @@ export default function EliminarRevistaButton({
 
             {esBorrador && (
               <p className="text-sm text-text-muted mb-2">
-                Es la edición en borrador (activa): al borrarla, no habrá edición de la
-                semana hasta que el ciclo cree la siguiente.
+                Es la edición en borrador (activa): al borrarla, no habrá edición del
+                mes hasta que el ciclo cree la siguiente.
               </p>
             )}
 

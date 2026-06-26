@@ -19,7 +19,7 @@ Publicá tus obras, recominendá las de otros, y dejá que la comunidad las desc
 
 ## ✨ Qué es
 
-**Vitrina** es una plataforma donde los jóvenes comparten sus creaciones —investigaciones, artículos, tesis, trabajos académicos, proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, poesía y revistas— y recomiendan obras de terceros. La comunidad las explora por disciplina, las comenta y las likea; los administradores aceptan las publicaciones postuladas para componer **revistas temáticas semanales** que se publican automáticamente.
+**Vitrina** es una plataforma donde los jóvenes comparten sus creaciones —investigaciones, artículos, tesis, trabajos académicos, proyectos tecnológicos, libros, escritos literarios, ilustraciones, arte visual, poesía y revistas— y recomiendan obras de terceros. La comunidad las explora por disciplina, las comenta y las likea; los administradores aceptan las publicaciones postuladas para componer **revistas temáticas mensuales** que se publican automáticamente.
 
 Una sola app **Next.js** (App Router): área pública + área de administración separadas por segmentos de ruta (`/admin`), protegidas por rol.
 
@@ -31,7 +31,7 @@ Una sola app **Next.js** (App Router): área pública + área de administración
 | 📝 **Publicaciones** | Crear obra propia o **recomendar obra de terceros**, subir archivo (PDF/imagen), editar y eliminar lo propio, etiquetar por disciplina |
 | 🔎 **Descubrimiento** | Feed paginado, filtros por **tipo de obra** y por **área de conocimiento**, página de detalle, perfiles públicos de autor |
 | 💬 **Interacción** | Comentarios y likes en cada publicación |
-| 📰 **Revistas temáticas** | Una edición activa por semana; los usuarios postulan sus obras y los administradores las curan (aceptar/rechazar) |
+| 📰 **Revistas temáticas** | Una edición activa por mes; los usuarios postulan sus obras y los administradores las curan (aceptar/rechazar) |
 | 🛡️ **Panel de administración** | Gestión de revistas y artículos curados, catálogo de tags y resolución de solicitudes — todo bajo `/admin`, protegido por rol |
 
 ## 🧱 Stack

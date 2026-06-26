@@ -48,7 +48,7 @@ export default function TerminosPage() {
               Interacción social mediante comentarios, &laquo;me gusta&raquo; y seguimiento de
               otros usuarios.
             </li>
-            <li>Postulación de obras a la revista semanal curada de la comunidad.</li>
+            <li>Postulación de obras a la revista mensual curada de la comunidad.</li>
             <li>Búsqueda de publicaciones y perfiles, y gestión de enlaces de perfil.</li>
           </ul>
           <p className="text-text-muted leading-relaxed">
@@ -99,7 +99,7 @@ export default function TerminosPage() {
             Al publicar contenido, concedes a Vitrina una licencia mundial, no exclusiva y libre de
             regalías para alojar, almacenar, reproducir, mostrar y distribuir dicho contenido con
             el único fin de operar y ofrecer el servicio (por ejemplo, mostrar tu obra en el feed,
-            en tu perfil o en la revista semanal). Esta licencia termina cuando eliminas el
+            en tu perfil o en la revista mensual). Esta licencia termina cuando eliminas el
             contenido, salvo por copias residuales en respaldos.
           </p>
           <p className="text-text-muted leading-relaxed">
@@ -192,23 +192,23 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          6. Revista semanal
+          6. Revista mensual
         </h2>
         <div className="space-y-4">
           <p className="text-text-muted leading-relaxed">
-            Vitrina publica una revista temática que se renueva cada semana. El funcionamiento es
+            Vitrina publica una revista temática que se renueva cada mes. El funcionamiento es
             el siguiente:
           </p>
           <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
-            <li>Solo el autor de una obra puede postularla a la edición activa de la semana.</li>
+            <li>Solo el autor de una obra puede postularla a la edición activa del mes.</li>
             <li>
               La curación de las solicitudes (aceptar o rechazar) corresponde a los
               administradores.
             </li>
             <li>
-              El cierre y la publicación de cada edición se realizan de forma automática cada
-              viernes; las solicitudes que sigan pendientes al cierre se rechazan automáticamente y
-              se abre una nueva edición para la semana siguiente.
+              El cierre y la publicación de cada edición se realizan de forma automática el primer
+              día de cada mes (13:00, hora de México); las solicitudes que sigan pendientes al
+              cierre se rechazan automáticamente y se abre una nueva edición para el mes siguiente.
             </li>
             <li>
               La inclusión de una obra en la revista no genera contraprestación económica ni
