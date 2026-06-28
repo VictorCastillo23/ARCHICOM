@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getSeSiguenMutuamente } from '@/lib/data/mensajes'
+import { getSeSiguenMutuamente, getConversacionConUsuario } from '@/lib/data/mensajes'
 import { getPerfil } from '@/lib/data/perfil'
 import HiloMensajes from '@/components/mensajes/HiloMensajes'
 import type { Metadata } from 'next'
@@ -43,6 +43,14 @@ export default async function NuevoMensajePage({ searchParams }: NuevoMensajePag
 
   if (!seSiguen || !otroPerfil) {
     notFound()
+  }
+
+  // If a conversation already exists (e.g. they were mutual before, unfollowed,
+  // then re-followed via a request), open the real thread with its history
+  // instead of showing an empty "new conversation" composer.
+  const { data: conversacionExistente } = await getConversacionConUsuario(user.id, otroId)
+  if (conversacionExistente) {
+    redirect(`/mensajes/${conversacionExistente.id}`)
   }
 
   return (

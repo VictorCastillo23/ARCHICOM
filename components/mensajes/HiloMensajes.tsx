@@ -73,30 +73,49 @@ export default function HiloMensajes({
     if (!conversacionId) return
 
     const supabase = createClient()
-    const channel = supabase
-      .channel(`mensaje:conv:${conversacionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'mensaje',
-          filter: `conversacion_id=eq.${conversacionId}`,
-        },
-        (payload) => {
-          const nuevo = payload.new as Mensaje
-          setMensajes((prev) => {
-            // Dedupe by id — sender also receives their own INSERT echo,
-            // which may already be optimistically appended.
-            if (prev.some((m) => m.id === nuevo.id)) return prev
-            return [...prev, nuevo]
-          })
-        }
-      )
-      .subscribe()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
+
+    async function subscribe() {
+      // The realtime socket must carry the user's JWT, otherwise it authenticates
+      // with the publishable (anon) key and the `mensaje_lectura` RLS policy denies
+      // delivery — the channel reaches SUBSCRIBED but no INSERT events ever arrive.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (cancelled) return
+      if (session?.access_token) {
+        await supabase.realtime.setAuth(session.access_token)
+      }
+
+      channel = supabase
+        .channel(`mensaje:conv:${conversacionId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'mensaje',
+            filter: `conversacion_id=eq.${conversacionId}`,
+          },
+          (payload) => {
+            const nuevo = payload.new as Mensaje
+            setMensajes((prev) => {
+              // Dedupe by id — sender also receives their own INSERT echo,
+              // which may already be optimistically appended.
+              if (prev.some((m) => m.id === nuevo.id)) return prev
+              return [...prev, nuevo]
+            })
+          }
+        )
+        .subscribe()
+    }
+
+    subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      cancelled = true
+      if (channel) supabase.removeChannel(channel)
     }
   }, [conversacionId])
 
