@@ -29,7 +29,7 @@ export default function SobreNosotrosPage() {
         <p className="text-text-muted leading-relaxed">
           La comunidad explora las obras por disciplina, las comenta y las apoya con likes.
           Los usuarios postulan sus publicaciones para componer revistas temáticas
-          que se publican cada semana. Nuestra meta es darle a cada joven un espacio
+          que se publican cada mes. Nuestra meta es darle a cada joven un espacio
           serio para mostrar su trabajo y descubrir el de sus pares.
         </p>
       </section>
@@ -55,7 +55,7 @@ export default function SobreNosotrosPage() {
           reconocido por conectar talento entre instituciones, dar visibilidad al trabajo
           intelectual y artístico de cada autor, y construir una red de conocimiento colaborativa
           donde las mejores creaciones encuentren a su audiencia a través de revistas temáticas
-          semanales.
+          mensuales.
         </p>
       </section>
 

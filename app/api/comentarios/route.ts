@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     if (padreErr) return handleError(padreErr)
     if (!padre) return validationError('El comentario al que respondés no existe.')
     if (padre.publicacion_id !== publicacion_id)
-      return validationError('No podés responder a un comentario de otra publicación.')
+      return validationError('No puedes responder a un comentario de otra publicación.')
 
     // Re-parent: if target is itself a reply, anchor to its root (depth-2 invariant)
     efectivoRespondeA = padre.responde_a ?? padre.id

@@ -239,3 +239,51 @@ export type ReporteConDetalle = Reporte & {
   publicacion: { id: string; titulo: string } | null
   reportante: { id: string; nombre: string } | null
 }
+
+// Solicitudes de mensaje DTOs
+
+export type EstadoSolicitudMensaje = 'pendiente' | 'aceptada' | 'rechazada'
+
+export type SolicitudMensaje = {
+  id: string
+  emisor_id: string
+  receptor_id: string
+  estado: EstadoSolicitudMensaje
+  creado_en: string
+  resuelto_en: string | null
+}
+
+export type SolicitudMensajeRecibida = {
+  id: string
+  emisor: UsuarioCardData
+  creado_en: string
+}
+
+// Mensajería directa DTOs
+
+export type Conversacion = {
+  id: string
+  usuario_a: string
+  usuario_b: string
+  creado_en: string
+  actualizado_en: string
+}
+
+export type Mensaje = {
+  id: string
+  conversacion_id: string
+  emisor_id: string
+  contenido: string
+  leido: boolean
+  creado_en: string
+}
+
+export type ConversacionResumen = {
+  conversacion_id: string
+  otro: UsuarioCardData
+  ultimo_contenido: string | null
+  ultimo_emisor_id: string | null
+  ultimo_creado_en: string | null
+  actualizado_en: string
+  no_leidos: number
+}

@@ -35,7 +35,7 @@ export default function SolicitarRevistaButton({
 
   if (!revistaActiva) {
     return (
-      <p className="text-sm text-text-muted">No hay una revista abierta esta semana.</p>
+      <p className="text-sm text-text-muted">No hay una revista abierta este mes.</p>
     )
   }
 
@@ -60,9 +60,9 @@ export default function SolicitarRevistaButton({
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
-          setError('Ya postulaste esta obra a la edición de esta semana.')
+          setError('Ya postulaste esta obra a la edición de este mes.')
         } else if (err.status === 404) {
-          setError('No hay una revista abierta esta semana.')
+          setError('No hay una revista abierta este mes.')
         } else {
           setError(err.message)
         }

@@ -103,7 +103,7 @@ export default function SolicitudesList({ revistaId }: Props) {
     <div>
       <h2 className="font-semibold text-lg mb-1">Solicitudes pendientes</h2>
       <p className="text-xs text-text-muted mb-3">
-        Las solicitudes pendientes se descartan automáticamente el viernes.
+        Las solicitudes pendientes se descartan automáticamente el primer día de cada mes.
       </p>
 
       {actionError && (

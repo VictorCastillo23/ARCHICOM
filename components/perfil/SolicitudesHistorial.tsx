@@ -35,7 +35,7 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
     return (
       <EmptyState
         title="No postulaste obras todavía"
-        description="Podés postular desde la página de cualquiera de tus publicaciones."
+        description="Puedes postular desde la página de cualquiera de tus publicaciones."
       />
     )
   }
@@ -112,7 +112,7 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
                 </p>
                 {s.revisor_id == null && s.estado === 'rechazada' && (
                   <p className="text-xs text-text-muted mt-0.5">
-                    (cierre automático del viernes)
+                    (cierre automático mensual)
                   </p>
                 )}
               </div>

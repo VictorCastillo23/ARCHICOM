@@ -12,7 +12,7 @@ export default function HeroBanner() {
       </h1>
       <p className="text-sm text-text-muted max-w-lg">
         Vitrina es el portafolio digital para jóvenes. Publica tus obras, recibe
-        retroalimentación y participa en la revista semanal de la comunidad.
+        retroalimentación y participa en la revista mensual de la comunidad.
       </p>
       <div className="flex flex-wrap justify-center gap-3 mt-2">
         <Link

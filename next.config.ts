@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const SUPABASE_HOST = 'https://fdfbyhjwnbteccagulxb.supabase.co'
+// Supabase Realtime uses a WebSocket; connect-src must allow the wss:// origin too.
+const SUPABASE_WSS = 'wss://fdfbyhjwnbteccagulxb.supabase.co'
+
+// React + Turbopack require 'unsafe-eval' in development (dev-only debugging such as
+// callstack reconstruction). Production keeps the stricter policy without it.
+const isDev = process.env.NODE_ENV === 'development'
+const scriptSrc = `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`
 
 const securityHeaders = [
   {
@@ -8,10 +15,10 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       `img-src 'self' data: blob: ${SUPABASE_HOST}`,
-      "script-src 'self' 'unsafe-inline'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       `frame-src 'self' blob: ${SUPABASE_HOST}`,
-      `connect-src 'self' ${SUPABASE_HOST}`,
+      `connect-src 'self' ${SUPABASE_HOST} ${SUPABASE_WSS}`,
       "font-src 'self' data:",
       "object-src 'none'",
       "base-uri 'self'",

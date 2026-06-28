@@ -20,7 +20,7 @@ export default function FeedList({
       return (
         <EmptyState
           title={`No hay publicaciones en ${areaActivo}`}
-          description="Esta disciplina aún no tiene obras. Podés ser quien la inaugure."
+          description="Esta disciplina aún no tiene obras. Puedes ser quien la inaugure."
           action={{ label: `Publicar en ${areaActivo}`, href: '/publicar' }}
         />
       )
