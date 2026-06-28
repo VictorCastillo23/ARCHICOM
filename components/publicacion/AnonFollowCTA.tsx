@@ -20,7 +20,7 @@ export default function AnonFollowCTA({ autorNombre }: AnonFollowCTAProps) {
         href="/signup"
         className="inline-flex items-center justify-center rounded-md font-medium transition-colors h-10 px-4 text-sm bg-primary text-primary-fg hover:bg-primary-hover"
       >
-        Seguí a {autorNombre} para ver más
+        Sigue a {autorNombre} para ver más
       </Link>
     </div>
   )

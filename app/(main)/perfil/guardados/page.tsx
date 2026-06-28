@@ -37,7 +37,7 @@ export default async function GuardadosPage() {
       {!pubs || pubs.length === 0 ? (
         <EmptyState
           title="No guardaste ninguna publicación"
-          description="Usá el botón Guardar en cualquier publicación para verla acá."
+          description="Usá el botón Guardar en cualquier publicación para verla aqui."
           action={{ label: 'Explorar publicaciones', href: '/' }}
         />
       ) : (

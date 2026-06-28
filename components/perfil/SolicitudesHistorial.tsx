@@ -35,7 +35,7 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
     return (
       <EmptyState
         title="No postulaste obras todavía"
-        description="Podés postular desde la página de cualquiera de tus publicaciones."
+        description="Puedes postular desde la página de cualquiera de tus publicaciones."
       />
     )
   }
