@@ -4,9 +4,11 @@ import { getPerfil, getPerfilStats } from '@/lib/data/perfil'
 import { getMisPublicaciones } from '@/lib/data/publicaciones'
 import { getLinksUsuario } from '@/lib/data/links'
 import { getConteos, getEsSeguido } from '@/lib/data/seguidores'
+import { getSeSiguenMutuamente, getConversacionConUsuario, getSolicitudMensajePendiente } from '@/lib/data/mensajes'
 import PerfilView from '@/components/perfil/PerfilView'
 import PerfilStats from '@/components/perfil/PerfilStats'
 import SeguirButton from '@/components/usuario/SeguirButton'
+import EnviarMensajeButton from '@/components/usuario/EnviarMensajeButton'
 import FeedList from '@/components/feed/FeedList'
 import ErrorState from '@/components/ui/ErrorState'
 import type { PublicacionCardData, Publicacion } from '@/lib/types/database'
@@ -45,6 +47,7 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
     { data: links },
     { data: conteos },
     { data: isFollowing },
+    { data: seSiguen },
   ] = await Promise.all([
     getMisPublicaciones(id),
     getPerfilStats(id),
@@ -53,6 +56,22 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
     // Only resolve follow state when there is a session AND it's not own profile
     viewer && !esPropio
       ? getEsSeguido(viewer.id, id)
+      : Promise.resolve({ data: false, error: null }),
+    // Mutual-follow check for the "Enviar mensaje" button
+    viewer && !esPropio
+      ? getSeSiguenMutuamente(viewer.id, id)
+      : Promise.resolve({ data: false, error: null }),
+  ])
+
+  // Resolve conversation and solicitud state in parallel (conditional on follow state)
+  const [{ data: conversacion }, { data: solicitudPendiente }] = await Promise.all([
+    // Only fetch conversation when mutual follow is confirmed
+    viewer && !esPropio && seSiguen
+      ? getConversacionConUsuario(viewer.id, id)
+      : Promise.resolve({ data: null, error: null }),
+    // Only check pending request when NOT mutual (avoids unnecessary query)
+    viewer && !esPropio && !seSiguen
+      ? getSolicitudMensajePendiente(viewer.id, id)
       : Promise.resolve({ data: false, error: null }),
   ])
 
@@ -85,6 +104,15 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
               seguidoId={id}
               initialFollowing={isFollowing ?? false}
               isAuthenticated={true}
+            />
+          )}
+          {/* EnviarMensajeButton: always shown when there is a session and it's not own profile */}
+          {viewer && !esPropio && (
+            <EnviarMensajeButton
+              otroId={id}
+              seSiguen={seSiguen ?? false}
+              conversacionId={conversacion?.id ?? null}
+              solicitudPendiente={solicitudPendiente ?? false}
             />
           )}
         </div>

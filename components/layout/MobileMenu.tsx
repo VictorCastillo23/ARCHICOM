@@ -11,11 +11,13 @@ interface MobileMenuProps {
   links: NavLink[]
   onLogout?: () => void
   className?: string
+  /** Total unread message count — passed from NavClient to show a badge in the drawer. */
+  unreadCount?: number
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
 
-export default function MobileMenu({ links, onLogout, className = '' }: MobileMenuProps) {
+export default function MobileMenu({ links, onLogout, className = '', unreadCount = 0 }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const drawerId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -150,9 +152,21 @@ export default function MobileMenu({ links, onLogout, className = '' }: MobileMe
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="block py-3 text-text-muted hover:text-text transition-colors"
+                className="flex items-center justify-between py-3 text-text-muted hover:text-text transition-colors"
               >
-                {l.label}
+                <span>{l.label}</span>
+                {l.href === '/mensajes' && unreadCount > 0 && (
+                  <span
+                    aria-label={`${unreadCount} mensajes sin leer`}
+                    className={[
+                      'inline-flex items-center justify-center',
+                      'min-w-[1.2rem] h-[1.2rem] px-1 rounded-full',
+                      'bg-primary text-primary-fg text-[length:0.65rem] font-bold leading-none',
+                    ].join(' ')}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
             ))}
             {onLogout && (

@@ -15,9 +15,11 @@ export type SessionProp = {
 
 interface NavClientProps {
   session: SessionProp | null
+  /** Total unread message count — passed from Nav.server.tsx RSC fetch. */
+  unreadCount?: number
 }
 
-export default function NavClient({ session }: NavClientProps) {
+export default function NavClient({ session, unreadCount = 0 }: NavClientProps) {
   const router = useRouter()
 
   async function handleLogout() {
@@ -34,6 +36,7 @@ export default function NavClient({ session }: NavClientProps) {
   const userLinks: NavLink[] = session
     ? [
         { href: '/revistas', label: 'Revistas' },
+        { href: '/mensajes', label: 'Mensajes' },
         { href: '/perfil', label: session.nombre },
         { href: '/publicar', label: 'Publicar' },
         ...(session.rol === 'administrador'
@@ -78,9 +81,23 @@ export default function NavClient({ session }: NavClientProps) {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-text-muted hover:text-text transition-colors"
+                className="relative text-text-muted hover:text-text transition-colors"
               >
                 {l.label}
+                {/* Unread badge — only on the /mensajes link */}
+                {l.href === '/mensajes' && unreadCount > 0 && (
+                  <span
+                    aria-label={`${unreadCount} mensajes sin leer`}
+                    className={[
+                      'absolute -top-1.5 -right-2.5',
+                      'inline-flex items-center justify-center',
+                      'min-w-[1.1rem] h-[1.1rem] px-0.5 rounded-full',
+                      'bg-primary text-primary-fg text-[length:0.6rem] font-bold leading-none',
+                    ].join(' ')}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
             ))}
             <button
@@ -100,6 +117,7 @@ export default function NavClient({ session }: NavClientProps) {
         className="md:hidden"
         links={mobileLinks}
         onLogout={session ? handleLogout : undefined}
+        unreadCount={unreadCount}
       />
     </>
   )

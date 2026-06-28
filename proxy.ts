@@ -45,6 +45,7 @@ export async function proxy(request: NextRequest) {
     !user &&
     (pathname.startsWith('/perfil') ||
       pathname.startsWith('/publicar') ||
+      pathname.startsWith('/mensajes') ||
       isEditarPublicacion)
   ) {
     return NextResponse.redirect(new URL('/login', request.url))
