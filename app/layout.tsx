@@ -42,7 +42,13 @@ export default function RootLayout({
       lang="es"
       className={`${dmSans.variable} ${dmSerif.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-surface-muted text-text">
+      {/* suppressHydrationWarning: browser extensions inject attributes on <body>
+          (e.g. cz-shortcut-listen). Scoped to the body element's own attributes —
+          it does NOT mask hydration mismatches in children. */}
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-surface-muted text-text"
+      >
         {children}
         <Analytics/>
         <SpeedInsights />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import SearchBox from '@/components/buscar/SearchBox'
@@ -17,11 +17,19 @@ interface MobileMenuProps {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
 
+// Stable no-op subscribe for useSyncExternalStore (the "is mounted" value never changes).
+const emptySubscribe = () => () => {}
+
 export default function MobileMenu({ links, onLogout, className = '', unreadCount = 0 }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const drawerId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // The drawer is portaled to document.body (client-only). useSyncExternalStore
+  // returns false during SSR + first hydration render and true thereafter, so the
+  // server and first client render match — avoiding a portal hydration mismatch.
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
 
   // While open: lock body scroll, trap focus (Escape closes, Tab cycles within the
   // panel), move focus in, and return it to the trigger on close.
@@ -98,7 +106,7 @@ export default function MobileMenu({ links, onLogout, className = '', unreadCoun
       {/* Drawer — portaled to <body> so `fixed` is measured against the viewport.
           Rendered inside the header it would be confined to the 56px bar, because the
           header's backdrop-filter creates a containing block for fixed descendants. */}
-      {typeof document !== 'undefined' &&
+      {mounted &&
         createPortal(
           <div
             className={`fixed inset-0 z-50 ${open ? '' : 'pointer-events-none'}`}
