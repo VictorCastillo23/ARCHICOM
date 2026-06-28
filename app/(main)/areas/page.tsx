@@ -33,7 +33,7 @@ export default async function AreasPage() {
       {mapped.length === 0 ? (
         <EmptyState
           title="No hay áreas disponibles"
-          description="Cuando haya suficientes publicaciones en un área, aparecerá aqui."
+          description="Cuando haya suficientes publicaciones en un área, aparecerá aquí."
         />
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0">

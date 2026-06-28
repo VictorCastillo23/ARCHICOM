@@ -121,7 +121,7 @@ export default async function PerfilPage() {
         {pubs.length === 0 ? (
           <EmptyState
             title={`Tu portafolio está vacío, ${perfil.nombre}`}
-            description="Comparte tu primera obra con la comunidad. Puede ser una investigación, un poema, un dibujo… lo que tu quieras."
+            description="Comparte tu primera obra con la comunidad. Puede ser una investigación, un poema, un dibujo… lo que tú quieras."
             action={{ label: 'Publicar mi primera obra', href: '/publicar' }}
           />
         ) : (

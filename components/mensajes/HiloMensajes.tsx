@@ -106,7 +106,7 @@ export default function HiloMensajes({
     setErrorMsg(null)
     setSending(true)
 
-    // Optimistic message (temporary negative-id to signal pending)
+    // Optimistic message (temp- prefixed id to signal pending)
     const tempId = `temp-${Date.now()}`
     const optimistic: Mensaje = {
       id: tempId,

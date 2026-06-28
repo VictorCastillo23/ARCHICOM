@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   // Pre-check: prevent self-follow at app layer (DB CHECK is defense-in-depth only)
   if (seguido_id === user.id) {
-    return validationError('No puedes seguirte ti mismo')
+    return validationError('No puedes seguirte a ti mismo')
   }
 
   const { error } = await supabase

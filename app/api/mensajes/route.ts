@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return unauthorized()
 
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const { receptor_id, contenido } = body
 
   if (!receptor_id) {

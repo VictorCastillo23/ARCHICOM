@@ -40,7 +40,7 @@ export async function DELETE(
 
   if (!deleted) {
     return NextResponse.json(
-      { error: { code: 'not_found', message: 'No segues a este usuario' } },
+      { error: { code: 'not_found', message: 'No sigues a este usuario' } },
       { status: 404 }
     )
   }

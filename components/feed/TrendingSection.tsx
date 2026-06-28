@@ -30,7 +30,7 @@ export default function TrendingSection({ items }: TrendingSectionProps) {
       {items.length === 0 ? (
         <EmptyState
           title="No hay tendencias aún"
-          description="Cuando la comunidad interactúe, lo más popular aparecerá aqui."
+          description="Cuando la comunidad interactúe, lo más popular aparecerá aquí."
         />
       ) : (
         <FeedList publicaciones={items} />
