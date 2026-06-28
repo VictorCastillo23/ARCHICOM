@@ -51,7 +51,7 @@ export default function AnonViewBanner() {
             >
               Creá tu vitrina
             </Link>{' '}
-            y compartí tu trabajo con la comunidad.
+            y comparte tu trabajo con la comunidad.
           </p>
         </div>
         <button
