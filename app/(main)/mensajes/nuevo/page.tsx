@@ -54,7 +54,8 @@ export default async function NuevoMensajePage({ searchParams }: NuevoMensajePag
   }
 
   return (
-    <div className="animate-page flex flex-col" style={{ height: 'calc(100dvh - 4rem)' }}>
+    <div className="fixed inset-x-0 top-14 bottom-0 z-10 bg-surface-muted">
+      <div className="animate-page mx-auto flex h-full max-w-6xl flex-col px-(--space-page) py-4">
       {/* Thread header */}
       <header className="shrink-0 flex items-center gap-3 pb-3 border-b border-border mb-2">
         <Link
@@ -86,11 +87,12 @@ export default async function NuevoMensajePage({ searchParams }: NuevoMensajePag
       {/* HiloMensajes in "new conversation" mode — no conversacionId yet.
           On first send, the client reads mensaje.conversacion_id and router.replace
           to /mensajes/<convId>, so the Realtime channel opens naturally. */}
-      <HiloMensajes
-        viewerId={user.id}
-        otroId={otroId}
-        initialMensajes={[]}
-      />
+        <HiloMensajes
+          viewerId={user.id}
+          otroId={otroId}
+          initialMensajes={[]}
+        />
+      </div>
     </div>
   )
 }

@@ -51,7 +51,8 @@ export default async function ConversacionPage({ params }: ConversacionPageProps
   const otroNombre = otroPerfil?.nombre ?? 'Usuario'
 
   return (
-    <div className="animate-page flex flex-col" style={{ height: 'calc(100dvh - 4rem)' }}>
+    <div className="fixed inset-x-0 top-14 bottom-0 z-10 bg-surface-muted">
+      <div className="animate-page mx-auto flex h-full max-w-6xl flex-col px-(--space-page) py-4">
       {/* Thread header */}
       <header className="shrink-0 flex items-center gap-3 pb-3 border-b border-border mb-2">
         <Link
@@ -78,12 +79,13 @@ export default async function ConversacionPage({ params }: ConversacionPageProps
         </Link>
       </header>
 
-      <HiloMensajes
-        conversacionId={conversacionId}
-        viewerId={user.id}
-        otroId={otroId}
-        initialMensajes={initialMensajes ?? []}
-      />
+        <HiloMensajes
+          conversacionId={conversacionId}
+          viewerId={user.id}
+          otroId={otroId}
+          initialMensajes={initialMensajes ?? []}
+        />
+      </div>
     </div>
   )
 }
