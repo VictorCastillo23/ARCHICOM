@@ -1,8 +1,10 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api/client'
+import { createClient } from '@/lib/supabase/client'
 import type { RolUsuario } from '@/lib/types/database'
 import SearchBox from '@/components/buscar/SearchBox'
 import MobileMenu, { type NavLink } from './MobileMenu'
@@ -21,6 +23,70 @@ interface NavClientProps {
 
 export default function NavClient({ session, unreadCount = 0 }: NavClientProps) {
   const router = useRouter()
+  const pathname = usePathname()
+
+  // The RSC nav lives in the persistent layout and doesn't recompute on
+  // client-side navigation, so the server `unreadCount` goes stale.
+  const [count, setCount] = useState(unreadCount)
+  const sessionId = session?.id
+
+  const refetchCount = useCallback(() => {
+    apiClient<{ total: number }>('/api/mensajes/no-leidos')
+      .then((d) => setCount(d.total))
+      .catch(() => {
+        // Non-critical — keep the last known count
+      })
+  }, [])
+
+  // Keep the badge fresh on client-side navigation.
+  useEffect(() => {
+    if (sessionId) refetchCount()
+  }, [pathname, sessionId, refetchCount])
+
+  // Live updates — refetch when a message or request touches the current user.
+  // RLS (user JWT) scopes delivery to this user's own conversations/requests.
+  useEffect(() => {
+    if (!sessionId) return
+
+    const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
+
+    async function subscribe() {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession()
+      if (cancelled) return
+      if (s?.access_token) {
+        await supabase.realtime.setAuth(s.access_token)
+      }
+      channel = supabase
+        .channel(`nav:notificaciones:${sessionId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'mensaje' },
+          () => refetchCount()
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'mensaje' },
+          () => refetchCount()
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'solicitud_mensaje' },
+          () => refetchCount()
+        )
+        .subscribe()
+    }
+
+    subscribe()
+
+    return () => {
+      cancelled = true
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [sessionId, refetchCount])
 
   async function handleLogout() {
     try {
@@ -85,9 +151,9 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
               >
                 {l.label}
                 {/* Unread badge — only on the /mensajes link */}
-                {l.href === '/mensajes' && unreadCount > 0 && (
+                {l.href === '/mensajes' && count > 0 && (
                   <span
-                    aria-label={`${unreadCount} mensajes sin leer`}
+                    aria-label={`${count} mensajes sin leer`}
                     className={[
                       'absolute -top-1.5 -right-2.5',
                       'inline-flex items-center justify-center',
@@ -95,7 +161,7 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
                       'bg-primary text-primary-fg text-[length:0.6rem] font-bold leading-none',
                     ].join(' ')}
                   >
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {count > 9 ? '9+' : count}
                   </span>
                 )}
               </Link>
@@ -117,7 +183,7 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
         className="md:hidden"
         links={mobileLinks}
         onLogout={session ? handleLogout : undefined}
-        unreadCount={unreadCount}
+        unreadCount={count}
       />
     </>
   )

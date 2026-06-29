@@ -49,7 +49,7 @@ export default function AnonViewBanner() {
               href="/signup"
               className="font-semibold text-primary hover:underline"
             >
-              Creá tu vitrina
+              Crea tu vitrina
             </Link>{' '}
             y comparte tu trabajo con la comunidad.
           </p>
