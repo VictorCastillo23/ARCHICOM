@@ -14,10 +14,17 @@ interface HiloMensajesProps {
   initialMensajes: Mensaje[]
 }
 
+// Pin the timezone so the server (UTC on Vercel) and the client format dates
+// identically — otherwise SSR and the first client render disagree and React
+// throws a hydration mismatch on the timestamps. Vitrina is a Mexican academic
+// platform, so everyone sees Mexico City time.
+const TIME_ZONE = 'America/Mexico_City'
+
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('es', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: TIME_ZONE,
   })
 }
 
@@ -26,6 +33,7 @@ function formatDay(iso: string): string {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: TIME_ZONE,
   })
 }
 
@@ -51,6 +59,17 @@ export default function HiloMensajes({
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Marks the other participant's messages in this conversation as read.
+  const marcarLeido = useCallback((convId: string) => {
+    fetch('/api/mensajes/leer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversacion_id: convId }),
+    }).catch(() => {
+      // Non-critical — ignore failures
+    })
+  }, [])
+
   // Autoscroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -59,18 +78,13 @@ export default function HiloMensajes({
   // Mark messages as read on mount (when we have a conversacionId)
   useEffect(() => {
     if (!conversacionId) return
-    fetch('/api/mensajes/leer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversacion_id: conversacionId }),
-    }).catch(() => {
-      // Non-critical — ignore failures
-    })
-  }, [conversacionId])
+    marcarLeido(conversacionId)
+  }, [conversacionId, marcarLeido])
 
   // Realtime subscription — only when conversacionId is known
   useEffect(() => {
     if (!conversacionId) return
+    const convId = conversacionId
 
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
@@ -79,7 +93,7 @@ export default function HiloMensajes({
     async function subscribe() {
       // The realtime socket must carry the user's JWT, otherwise it authenticates
       // with the publishable (anon) key and the `mensaje_lectura` RLS policy denies
-      // delivery — the channel reaches SUBSCRIBED but no INSERT events ever arrive.
+      // delivery — the channel reaches SUBSCRIBED but no event ever arrives.
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -88,16 +102,12 @@ export default function HiloMensajes({
         await supabase.realtime.setAuth(session.access_token)
       }
 
+      const filter = `conversacion_id=eq.${convId}`
       channel = supabase
-        .channel(`mensaje:conv:${conversacionId}`)
+        .channel(`mensaje:conv:${convId}`)
         .on(
           'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'mensaje',
-            filter: `conversacion_id=eq.${conversacionId}`,
-          },
+          { event: 'INSERT', schema: 'public', table: 'mensaje', filter },
           (payload) => {
             const nuevo = payload.new as Mensaje
             setMensajes((prev) => {
@@ -106,6 +116,22 @@ export default function HiloMensajes({
               if (prev.some((m) => m.id === nuevo.id)) return prev
               return [...prev, nuevo]
             })
+            // Incoming message from the other participant while we're viewing the
+            // thread → mark it read now so they get the read receipt live.
+            if (nuevo.emisor_id !== viewerId) {
+              marcarLeido(convId)
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'mensaje', filter },
+          (payload) => {
+            // Reflect updates — notably `leido` flipping to true (✓✓ read receipt).
+            const actualizado = payload.new as Mensaje
+            setMensajes((prev) =>
+              prev.map((m) => (m.id === actualizado.id ? actualizado : m))
+            )
           }
         )
         .subscribe()
@@ -117,7 +143,7 @@ export default function HiloMensajes({
       cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
-  }, [conversacionId])
+  }, [conversacionId, viewerId, marcarLeido])
 
   const handleSend = useCallback(async () => {
     const contenido = texto.trim()
@@ -190,7 +216,7 @@ export default function HiloMensajes({
       >
         {mensajes.length === 0 && (
           <p className="text-center text-sm text-text-muted py-8">
-            Aún no hay mensajes. ¡Escribí el primero!
+            Aún no hay mensajes. ¡Escribe el primero!
           </p>
         )}
 
@@ -279,7 +305,7 @@ export default function HiloMensajes({
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Escribí un mensaje… (Ctrl+Enter para enviar)"
+            placeholder="Escribe un mensaje… (Ctrl+Enter para enviar)"
             maxLength={2100} /* allow typing to show the counter feedback before hard cut */
             rows={2}
             disabled={sending}
