@@ -13,7 +13,7 @@ export default function TerminosPage() {
           Términos de servicio
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Versión 1.0 · Última actualización: 21 de junio de 2026.
+          Versión 1.1 · Última actualización: 28 de junio de 2026.
         </p>
       </div>
 
@@ -47,6 +47,10 @@ export default function TerminosPage() {
             <li>
               Interacción social mediante comentarios, &laquo;me gusta&raquo; y seguimiento de
               otros usuarios.
+            </li>
+            <li>
+              Mensajería privada entre usuarios que se siguen mutuamente, incluida la posibilidad
+              de enviar una solicitud de mensaje para iniciar la conversación.
             </li>
             <li>Postulación de obras a la revista mensual curada de la comunidad.</li>
             <li>Búsqueda de publicaciones y perfiles, y gestión de enlaces de perfil.</li>
@@ -148,6 +152,10 @@ export default function TerminosPage() {
             <li>Distribuir spam, malware o contenido engañoso.</li>
             <li>Acosar, suplantar o vulnerar la privacidad de otras personas.</li>
             <li>
+              Utilizar la mensajería privada para acosar, enviar spam, contenido no solicitado o
+              cualquier material prohibido por estos Términos.
+            </li>
+            <li>
               Intentar acceder sin autorización a la plataforma, a las cuentas de otros usuarios o
               a la infraestructura subyacente.
             </li>
@@ -220,7 +228,41 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          7. Privacidad y datos personales
+          7. Mensajería privada
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Quién puede escribirte.</span> La mensajería
+            directa entre dos usuarios solo se habilita cuando ambos se siguen mutuamente. Mientras
+            no exista seguimiento mutuo no es posible enviar ni recibir mensajes con esa persona.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Solicitudes de mensaje.</span> Si todavía no
+            se siguen mutuamente, puedes enviar una solicitud de mensaje. Al hacerlo comenzarás a
+            seguir automáticamente a esa persona y le llegará tu solicitud. Si la acepta, comenzará
+            a seguirte de vuelta y quedará habilitada la conversación; si la rechaza, no se inicia
+            ninguna conversación.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Privacidad de los mensajes.</span> Tus
+            conversaciones privadas solo son visibles para los participantes; el control de acceso a
+            nivel de base de datos impide que terceros las lean. Los mensajes no están cifrados de
+            extremo a extremo y se almacenan en la infraestructura del servicio. Vitrina no revisa
+            de forma rutinaria los mensajes privados, pero podrá acceder a ellos cuando sea
+            estrictamente necesario para cumplir la ley, atender un requerimiento de autoridad
+            competente, investigar abusos o hacer cumplir estos Términos.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Conducta.</span> Las normas de la cláusula 4
+            se aplican íntegramente a la mensajería privada. El uso indebido puede derivar en la
+            suspensión o cancelación de tu cuenta.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          8. Privacidad y datos personales
         </h2>
         <div className="space-y-4">
           <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
@@ -238,6 +280,11 @@ export default function TerminosPage() {
               incluso sin sesión iniciada.
             </li>
             <li>
+              El contenido de tus mensajes privados solo es accesible para los participantes de la
+              conversación; se almacena en el servicio (sin cifrado de extremo a extremo) y no se
+              comparte públicamente.
+            </li>
+            <li>
               Aplicamos medidas técnicas razonables para proteger tus datos, incluido el control de
               acceso a nivel de base de datos. Sin embargo, ningún sistema es completamente seguro y
               no podemos garantizar seguridad absoluta.
@@ -252,7 +299,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          8. Propiedad intelectual de la plataforma
+          9. Propiedad intelectual de la plataforma
         </h2>
         <p className="text-text-muted leading-relaxed">
           El software, el diseño, la marca &laquo;Vitrina&raquo;, los logotipos y los demás
@@ -264,14 +311,14 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          9. Terminación
+          10. Terminación
         </h2>
         <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
           <li>
             Puedes dejar de usar el servicio en cualquier momento. Para eliminar tu cuenta,
             comunícate con el equipo de soporte de la plataforma; al ejecutarse la baja se eliminan
             en cascada tus publicaciones, comentarios, &laquo;me gusta&raquo;, enlaces, relaciones
-            de seguimiento y postulaciones.
+            de seguimiento, conversaciones y mensajes, y postulaciones.
           </li>
           <li>
             Podemos suspender o cancelar tu cuenta, con o sin aviso previo, si incumples estos
@@ -282,7 +329,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          10. Exención de garantías
+          11. Exención de garantías
         </h2>
         <p className="text-text-muted leading-relaxed">
           El servicio se proporciona &laquo;tal cual&raquo; y &laquo;según disponibilidad&raquo;,
@@ -295,7 +342,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          11. Limitación de responsabilidad
+          12. Limitación de responsabilidad
         </h2>
         <p className="text-text-muted leading-relaxed">
           En la máxima medida permitida por la ley, Vitrina no será responsable por daños
@@ -307,7 +354,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          12. Modificaciones a los Términos
+          13. Modificaciones a los Términos
         </h2>
         <p className="text-text-muted leading-relaxed">
           Podemos actualizar estos Términos en cualquier momento. Cuando los cambios sean
@@ -319,7 +366,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          13. Ley aplicable
+          14. Ley aplicable
         </h2>
         <p className="text-text-muted leading-relaxed">
           Estos Términos se rigen por las leyes de los Estados Unidos Mexicanos. Cualquier
@@ -330,7 +377,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          14. Contacto
+          15. Contacto
         </h2>
         <p className="text-text-muted leading-relaxed">
           Para preguntas sobre estos Términos, reportes o solicitudes relacionadas con tu cuenta,
