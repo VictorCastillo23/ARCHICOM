@@ -62,7 +62,7 @@ export default function ComentarioForm({ publicacionId, respondaA, onSuccess }: 
         required
         value={contenido}
         onChange={(e) => setContenido(e.target.value)}
-        placeholder={isReply ? 'Escribí tu respuesta…' : 'Escribí tu comentario…'}
+        placeholder={isReply ? 'Escribe tu respuesta…' : 'Escribe tu comentario…'}
         maxLength={250}
       />
       {error && (
