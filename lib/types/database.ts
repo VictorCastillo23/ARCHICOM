@@ -106,7 +106,13 @@ export type Like = {
   id: string
   publicacion_id: string
   usuario_id: string
-  creado_en: string
+}
+
+/** A user who liked a publicacion (public profile fields). */
+export type Liker = {
+  id: string
+  nombre: string
+  institucion?: string | null
 }
 
 export type Guardado = {

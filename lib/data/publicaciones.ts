@@ -74,6 +74,33 @@ export async function getLikesInfo(
   }
 }
 
+/**
+ * A few users who liked a publicacion, for the avatar-stack social proof.
+ * Server-only (SSR). The full ordered list is served by GET /api/likes.
+ */
+export async function getLikersPreview(
+  publicacionId: string,
+  limit = 3
+): Promise<{ id: string; nombre: string }[]> {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('like')
+    .select('usuario(id, nombre)')
+    .eq('publicacion_id', publicacionId)
+    .limit(limit)
+
+  const preview: { id: string; nombre: string }[] = []
+  for (const row of data ?? []) {
+    // PostgREST types a to-one embed as an array; the FK guarantees at most one.
+    const usuario = (
+      Array.isArray(row.usuario) ? row.usuario[0] : row.usuario
+    ) as { id: string; nombre: string } | null
+    if (usuario) preview.push({ id: usuario.id, nombre: usuario.nombre })
+  }
+  return preview
+}
+
 export async function getPublicacionesRelacionadas(
   publicacionId: string,
   tagIds: string[],
