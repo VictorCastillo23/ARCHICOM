@@ -9,6 +9,7 @@ import PerfilView from '@/components/perfil/PerfilView'
 import PerfilStats from '@/components/perfil/PerfilStats'
 import SeguirButton from '@/components/usuario/SeguirButton'
 import EnviarMensajeButton from '@/components/usuario/EnviarMensajeButton'
+import CompartirButton from '@/components/ui/CompartirButton'
 import FeedList from '@/components/feed/FeedList'
 import ErrorState from '@/components/ui/ErrorState'
 import type { PublicacionCardData, Publicacion } from '@/lib/types/database'
@@ -115,6 +116,8 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
               solicitudPendiente={solicitudPendiente ?? false}
             />
           )}
+          {/* CompartirButton: siempre visible — copia el enlace del perfil al portapapeles */}
+          <CompartirButton path={`/usuario/${id}`} label="Compartir perfil" />
         </div>
       </div>
 

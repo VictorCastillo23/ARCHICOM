@@ -20,6 +20,7 @@ import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRel
 import ArchivoVistaPrevia from '@/components/publicacion/ArchivoVistaPrevia'
 import AnonFollowCTA from '@/components/publicacion/AnonFollowCTA'
 import AnonViewBanner from '@/components/publicacion/AnonViewBanner'
+import CompartirButton from '@/components/ui/CompartirButton'
 import Link from 'next/link'
 import type { Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
 
@@ -243,6 +244,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             initialSaved={guardadoByUser}
             isAuthenticated={isAuthenticated}
           />
+          <CompartirButton path={`/publicacion/${id}`} label="Compartir" />
         </div>
         {isAuthenticated && !isAuthor && (
           <div className="mt-3">
