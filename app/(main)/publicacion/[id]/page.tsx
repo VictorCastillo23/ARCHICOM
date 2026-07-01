@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getPublicacion, getLikesInfo, getEstadoEliminacion } from '@/lib/data/publicaciones'
+import { getPublicacion, getLikesInfo, getLikersPreview, getEstadoEliminacion } from '@/lib/data/publicaciones'
 import { getIsGuardado } from '@/lib/data/guardados'
 import { getComentariosArbol } from '@/lib/data/comentarios'
 import { esAdmin } from '@/lib/data/perfil'
@@ -19,6 +19,7 @@ import ReportarButton from '@/components/publicacion/ReportarButton'
 import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
 import ArchivoVistaPrevia from '@/components/publicacion/ArchivoVistaPrevia'
 import AnonFollowCTA from '@/components/publicacion/AnonFollowCTA'
+import LikersStack from '@/components/publicacion/LikersStack'
 import AnonViewBanner from '@/components/publicacion/AnonViewBanner'
 import CompartirButton from '@/components/ui/CompartirButton'
 import Link from 'next/link'
@@ -58,10 +59,12 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
   // Resolve independent fetches in parallel (no waterfall)
   const [
     { count: likeCount, liked: likedByUser },
+    likersPreview,
     { data: guardadoByUser },
     { data: comentariosData },
   ] = await Promise.all([
     getLikesInfo(id, user?.id),
+    getLikersPreview(id),
     getIsGuardado(id, user?.id),
     getComentariosArbol(id),
   ])
@@ -245,6 +248,13 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             isAuthenticated={isAuthenticated}
           />
           <CompartirButton path={`/publicacion/${id}`} label="Compartir" />
+        </div>
+        <div className="mt-3">
+          <LikersStack
+            publicacionId={id}
+            preview={likersPreview}
+            count={likeCount}
+          />
         </div>
         {isAuthenticated && !isAuthor && (
           <div className="mt-3">
