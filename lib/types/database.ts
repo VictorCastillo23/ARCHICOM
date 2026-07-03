@@ -265,6 +265,21 @@ export type SolicitudMensajeRecibida = {
   creado_en: string
 }
 
+// RAG DTOs (rag-publicacion)
+
+export type PublicacionChunk = {
+  id: string
+  publicacion_id: string
+  indice: number
+  contenido: string
+  creado_en: string
+}
+
+export type RagMensaje = {
+  rol: 'user' | 'assistant'
+  contenido: string
+}
+
 // Mensajería directa DTOs
 
 export type Conversacion = {
