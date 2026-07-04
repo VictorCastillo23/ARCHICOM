@@ -54,3 +54,10 @@ export const CONDENSE_PROMPT =
   'historial (resolviendo referencias como "eso", "lo anterior", pronombres, etc.). ' +
   'Respondé ÚNICAMENTE con la pregunta reformulada, sin explicaciones ni prefijos. ' +
   'Si ya es autónoma, devolvela igual. Mantené el idioma original de la pregunta.'
+
+/**
+ * Max chat questions per user per hour, account-wide. Enforcement is atomic in
+ * the `consumir_cuota_rag` RPC; this constant only feeds the 429 message shown
+ * to the user, so it must stay in sync with the limit hardcoded in the RPC.
+ */
+export const RATE_LIMIT_MAX = 15

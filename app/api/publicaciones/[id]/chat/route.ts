@@ -9,6 +9,7 @@ import {
   CONDENSE_PROMPT,
   MAX_HISTORIAL,
   MAX_PREGUNTA,
+  RATE_LIMIT_MAX,
   SIMILARITY_TOP_K,
   SYSTEM_PROMPT,
 } from '@/lib/rag/config'
@@ -21,7 +22,8 @@ type Context = { params: Promise<{ id: string }> }
 type ChunkMatch = { id: string; contenido: string; similaridad: number }
 
 // Logged-in-only grounded Q&A over título+resumen plus top-K retrieved chunks.
-// Login gate is a cost guardrail (no rate limit yet — see design deferred §9).
+// Login gate + a per-account hourly quota (RATE_LIMIT_MAX questions/hour via
+// consumir_cuota_rag) guard the cost of the LLM calls.
 export async function POST(request: NextRequest, ctx: Context) {
   const { id } = await ctx.params
 
@@ -76,6 +78,24 @@ export async function POST(request: NextRequest, ctx: Context) {
       { error: { code: 'not_found', message: 'Publicación no encontrada' } },
       { status: 404 },
     )
+
+  // Rate limit: 15 questions/hour per account. Enforced atomically by the RPC,
+  // which mutates a tamper-proof counter (RLS denies direct writes). Checked
+  // before the expensive condense/embed/generate work.
+  const { data: cuotaData, error: cuotaError } = await supabase.rpc('consumir_cuota_rag')
+  if (cuotaError) return handleError(cuotaError)
+  const cuota = (cuotaData ?? []) as Array<{ permitido: boolean; restantes: number }>
+  if (!cuota[0]?.permitido) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'rate_limited',
+          message: `Alcanzaste el límite de ${RATE_LIMIT_MAX} preguntas por hora. Probá de nuevo más tarde.`,
+        },
+      },
+      { status: 429 },
+    )
+  }
 
   // Condense: rewrite a follow-up into a standalone question so it retrieves
   // well. Only when there is history; failure is non-fatal (fall back to raw).
