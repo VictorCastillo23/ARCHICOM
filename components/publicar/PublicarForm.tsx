@@ -445,6 +445,7 @@ export default function PublicarForm({
                 Habilitar chat sobre el documento
                 <span className="block text-xs text-text-muted">
                   Indexa el PDF para que se le puedan hacer preguntas. Puedes cambiarlo luego desde la publicación.
+                  Tu obra no sera usada para entrenar nada, solo para responder preguntas.
                 </span>
               </span>
             </label>
