@@ -14,12 +14,14 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
   const [pregunta, setPregunta] = useState('')
   const [sending, setSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Autoscroll to bottom when messages change
+  // Keep the latest message in view by scrolling ONLY the inner list container.
+  // (scrollIntoView would scroll the whole page, making it jump on each message.)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = listRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [mensajes])
 
   async function handleSend() {
@@ -75,6 +77,7 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
     <div className="rounded-lg border border-border">
       {/* Message list */}
       <div
+        ref={listRef}
         className="max-h-96 overflow-y-auto p-3 flex flex-col gap-2"
         aria-live="polite"
         aria-label="Conversación con el asistente"
@@ -105,8 +108,6 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
             </div>
           )
         })}
-
-        <div ref={bottomRef} />
       </div>
 
       {/* Error banner */}
