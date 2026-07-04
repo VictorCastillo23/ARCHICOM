@@ -7,8 +7,15 @@ export const CHUNK_SIZE = 2000
 /** Sliding-window overlap in characters between consecutive chunks. */
 export const CHUNK_OVERLAP = 200
 
-/** Number of top-K chunks retrieved via match_publicacion_chunks. */
-export const SIMILARITY_TOP_K = 3
+/**
+ * Number of top-K chunks retrieved via match_publicacion_chunks. Set to 8
+ * (not 3) for better recall on longer documents: with gte-small embeddings
+ * and cross-language queries (Spanish question over an English paper), a small
+ * top-K often misses the relevant section. 8 chunks (~16k chars) stays well
+ * within the chat model's context budget while covering a large share of a
+ * typical academic PDF.
+ */
+export const SIMILARITY_TOP_K = 8
 
 /** Embedding vector dimensionality (gte-small, edge function `embed`). */
 export const EMBEDDING_DIM = 384
@@ -31,3 +38,26 @@ export const SYSTEM_PROMPT =
   'claramente que esa información no está en el documento. No inventes, no uses ' +
   'conocimiento externo, no completes con suposiciones. Respondé en español, ' +
   'de forma breve y precisa.'
+
+/** How many previous messages the chat sends/uses as conversational memory. */
+export const MAX_HISTORIAL = 5
+
+/**
+ * Condense prompt: given the recent conversation and a follow-up question,
+ * rewrite the follow-up as a standalone question that makes sense without the
+ * history (so it embeds well for retrieval). The model must return ONLY the
+ * rewritten question — no explanations, no prefixes.
+ */
+export const CONDENSE_PROMPT =
+  'Dada la conversación previa y una pregunta de seguimiento, reformulá la ' +
+  'pregunta de seguimiento como una pregunta autónoma que se entienda sin el ' +
+  'historial (resolviendo referencias como "eso", "lo anterior", pronombres, etc.). ' +
+  'Respondé ÚNICAMENTE con la pregunta reformulada, sin explicaciones ni prefijos. ' +
+  'Si ya es autónoma, devolvela igual. Mantené el idioma original de la pregunta.'
+
+/**
+ * Max chat questions per user per hour, account-wide. Enforcement is atomic in
+ * the `consumir_cuota_rag` RPC; this constant only feeds the 429 message shown
+ * to the user, so it must stay in sync with the limit hardcoded in the RPC.
+ */
+export const RATE_LIMIT_MAX = 15

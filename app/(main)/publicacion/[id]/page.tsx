@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getPublicacion, getLikesInfo, getLikersPreview, getEstadoEliminacion } from '@/lib/data/publicaciones'
 import { getIsGuardado } from '@/lib/data/guardados'
 import { getComentariosArbol } from '@/lib/data/comentarios'
+import { getEstadoRag } from '@/lib/data/rag'
 import { esAdmin } from '@/lib/data/perfil'
 import { getRevistaActiva } from '@/lib/data/revistas'
 import { getSolicitudParaEdicion } from '@/lib/data/solicitudes'
@@ -18,6 +19,8 @@ import EliminarPublicacionButton from '@/components/publicacion/EliminarPublicac
 import ReportarButton from '@/components/publicacion/ReportarButton'
 import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
 import ArchivoVistaPrevia from '@/components/publicacion/ArchivoVistaPrevia'
+import ChatRAGWidget from '@/components/publicacion/ChatRAGWidget'
+import IndexarButton from '@/components/publicacion/IndexarButton'
 import AnonFollowCTA from '@/components/publicacion/AnonFollowCTA'
 import LikersStack from '@/components/publicacion/LikersStack'
 import AnonViewBanner from '@/components/publicacion/AnonViewBanner'
@@ -62,12 +65,17 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
     likersPreview,
     { data: guardadoByUser },
     { data: comentariosData },
+    estadoRag,
   ] = await Promise.all([
     getLikesInfo(id, user?.id),
     getLikersPreview(id),
     getIsGuardado(id, user?.id),
     getComentariosArbol(id),
+    getEstadoRag(id),
   ])
+
+  const tienePdf = Boolean(data.archivo_url && data.archivo_url.toLowerCase().endsWith('.pdf'))
+  const ragIndexado = estadoRag?.indexado ?? false
 
   const arbol = comentariosData?.arbol ?? []
   const totalComentarios = comentariosData?.total ?? 0
@@ -181,6 +189,34 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         <div className="mb-8">
           <ArchivoVistaPrevia url={data.archivo_url} titulo={data.titulo} />
         </div>
+      )}
+
+      {/* Chat sobre el documento (RAG) — solo cuando hay un PDF que preguntar */}
+      {tienePdf && (
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
+            Preguntá al documento
+          </h2>
+          {isAuthor && (
+            <div className="mb-3">
+              <IndexarButton publicacionId={id} yaIndexado={ragIndexado} />
+            </div>
+          )}
+          {isAuthenticated && ragIndexado && <ChatRAGWidget publicacionId={id} />}
+          {isAuthenticated && !ragIndexado && !isAuthor && (
+            <p className="text-sm text-text-muted">
+              El autor todavía no preparó este documento para preguntas.
+            </p>
+          )}
+          {!isAuthenticated && (
+            <p className="text-sm text-text-muted">
+              <Link href="/login" className="text-primary hover:underline">
+                Iniciá sesión
+              </Link>{' '}
+              para preguntarle al documento.
+            </p>
+          )}
+        </section>
       )}
 
       {/* Tags */}
