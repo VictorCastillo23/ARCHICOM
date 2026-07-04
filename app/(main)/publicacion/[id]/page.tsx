@@ -195,7 +195,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
       {tienePdf && (
         <section className="mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
-            Preguntá al documento
+            Pregunta al documento
           </h2>
           {isAuthor && (
             <div className="mb-3">
@@ -211,7 +211,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           {!isAuthenticated && (
             <p className="text-sm text-text-muted">
               <Link href="/login" className="text-primary hover:underline">
-                Iniciá sesión
+                Inicia sesión
               </Link>{' '}
               para preguntarle al documento.
             </p>
@@ -319,7 +319,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         {isAuthenticated && (
           <div className="mt-8 pt-6 border-t border-border">
             <h3 className="text-sm font-semibold text-text mb-3">
-              Dejá tu comentario
+              Deja tu comentario
             </h3>
             <ComentarioForm publicacionId={id} />
           </div>
@@ -328,7 +328,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         {!isAuthenticated && (
           <p className="mt-6 text-sm text-text-muted">
             <Link href="/login" className="text-primary hover:underline">
-              Iniciá sesión
+              Inicia sesión
             </Link>{' '}
             para comentar.
           </p>

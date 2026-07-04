@@ -55,7 +55,7 @@ export default async function MensajesPage() {
 
       {lista.length === 0 ? (
         <EmptyState
-          title="No tenés conversaciones"
+          title="No tienes conversaciones"
           description="Cuando alguien con quien te sigues mutuamente te escriba, aparecerá aqui."
           action={{ label: 'Explorar perfiles', href: '/' }}
         />

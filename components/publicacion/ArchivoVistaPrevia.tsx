@@ -49,7 +49,7 @@ export default function ArchivoVistaPrevia({ url, titulo }: ArchivoVistaPreviaPr
           className="w-full rounded object-contain"
           style={{ maxHeight: '480px' }}
         />
-        <p className="mt-2 text-xs text-text-muted">Hacé click para abrir en otra pestaña ↗</p>
+        <p className="mt-2 text-xs text-text-muted">Haz clic para abrir en otra pestaña ↗</p>
       </a>
     )
   }

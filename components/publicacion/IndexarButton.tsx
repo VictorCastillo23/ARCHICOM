@@ -31,7 +31,7 @@ export default function IndexarButton({ publicacionId, yaIndexado }: IndexarButt
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError('Error al indexar el documento. Intentá de nuevo.')
+        setError('Error al indexar el documento. Intenta de nuevo.')
       }
     } finally {
       setLoading(false)

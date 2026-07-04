@@ -41,7 +41,7 @@ export default function ConfirmDeleteModal({
       setError(
         err instanceof ApiError
           ? err.message
-          : 'No se pudo eliminar la publicación. Intentá de nuevo.'
+          : 'No se pudo eliminar la publicación. Intenta de nuevo.'
       )
       setLoading(false)
     }
@@ -69,7 +69,7 @@ export default function ConfirmDeleteModal({
 
         {tieneSolicitudPendiente && (
           <p className="text-sm text-text-muted mb-2">
-            Tenés una solicitud pendiente para la revista de este mes; también se eliminará.
+            Tienes una solicitud pendiente para la revista de este mes; también se eliminará.
           </p>
         )}
 

@@ -106,7 +106,7 @@ export default function EnviarMensajeButton({
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Error al enviar la solicitud. Intentá de nuevo.'
+          : 'Error al enviar la solicitud. Intenta de nuevo.'
       )
     } finally {
       setSending(false)
@@ -146,7 +146,7 @@ export default function EnviarMensajeButton({
       {panelOpen && (
         <div className="rounded-md border border-border bg-surface p-4 max-w-sm">
           <p className="text-sm text-text mb-3">
-            Para conversar, ambos se tienen que seguir. Si enviás una solicitud
+            Para conversar, ambos se tienen que seguir. Si envías una solicitud
             vas a empezar a seguir a esta persona y le va a llegar tu pedido.
           </p>
 

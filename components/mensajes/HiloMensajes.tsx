@@ -187,7 +187,7 @@ export default function HiloMensajes({
       if (err instanceof ApiError) {
         setErrorMsg(err.message)
       } else {
-        setErrorMsg('Error al enviar el mensaje. Intentá de nuevo.')
+        setErrorMsg('Error al enviar el mensaje. Intenta de nuevo.')
       }
     } finally {
       setSending(false)

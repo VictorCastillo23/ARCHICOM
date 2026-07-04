@@ -13,7 +13,7 @@ export default function ReportesPage() {
           Reportes
         </h1>
         <p className="mt-2 text-text-muted">
-          Revisá las publicaciones reportadas por la comunidad.
+          Revisa las publicaciones reportadas por la comunidad.
         </p>
       </div>
 

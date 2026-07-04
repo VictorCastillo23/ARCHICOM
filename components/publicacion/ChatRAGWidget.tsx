@@ -55,7 +55,7 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
       if (err instanceof ApiError) {
         setErrorMsg(err.message)
       } else {
-        setErrorMsg('Error al enviar la pregunta. Intentá de nuevo.')
+        setErrorMsg('Error al enviar la pregunta. Intenta de nuevo.')
       }
     } finally {
       setSending(false)
@@ -84,7 +84,7 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
       >
         {mensajes.length === 0 && (
           <p className="text-center text-sm text-text-muted py-6">
-            Preguntá sobre este documento.
+            Pregunta sobre este documento.
           </p>
         )}
 
@@ -136,7 +136,7 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
             value={pregunta}
             onChange={(e) => setPregunta(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Preguntá sobre este documento… (Ctrl+Enter para enviar)"
+            placeholder="Pregunta sobre este documento… (Ctrl+Enter para enviar)"
             maxLength={MAX_PREGUNTA + 50}
             rows={2}
             disabled={sending}

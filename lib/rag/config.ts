@@ -32,11 +32,11 @@ export const MAX_PREGUNTA = 500
  * answer or invent content outside that context.
  */
 export const SYSTEM_PROMPT =
-  'Sos un asistente que responde preguntas SOBRE UN DOCUMENTO ACADÉMICO. ' +
-  'Respondé ÚNICAMENTE con la información del contexto provisto (título, resumen y ' +
-  'fragmentos del documento). Si la respuesta no está en el contexto, decí ' +
+  'Eres un asistente que responde preguntas SOBRE UN DOCUMENTO ACADÉMICO. ' +
+  'Responde ÚNICAMENTE con la información del contexto provisto (título, resumen y ' +
+  'fragmentos del documento). Si la respuesta no está en el contexto, di ' +
   'claramente que esa información no está en el documento. No inventes, no uses ' +
-  'conocimiento externo, no completes con suposiciones. Respondé en español, ' +
+  'conocimiento externo, no completes con suposiciones. Responde en español, ' +
   'de forma breve y precisa.'
 
 /** How many previous messages the chat sends/uses as conversational memory. */
@@ -49,11 +49,11 @@ export const MAX_HISTORIAL = 5
  * rewritten question — no explanations, no prefixes.
  */
 export const CONDENSE_PROMPT =
-  'Dada la conversación previa y una pregunta de seguimiento, reformulá la ' +
+  'Dada la conversación previa y una pregunta de seguimiento, reformula la ' +
   'pregunta de seguimiento como una pregunta autónoma que se entienda sin el ' +
   'historial (resolviendo referencias como "eso", "lo anterior", pronombres, etc.). ' +
-  'Respondé ÚNICAMENTE con la pregunta reformulada, sin explicaciones ni prefijos. ' +
-  'Si ya es autónoma, devolvela igual. Mantené el idioma original de la pregunta.'
+  'Responde ÚNICAMENTE con la pregunta reformulada, sin explicaciones ni prefijos. ' +
+  'Si ya es autónoma, devuélvela igual. Mantén el idioma original de la pregunta.'
 
 /**
  * Max chat questions per user per hour, account-wide. Enforcement is atomic in

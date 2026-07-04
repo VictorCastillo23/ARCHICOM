@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (padreErr) return handleError(padreErr)
-    if (!padre) return validationError('El comentario al que respondés no existe.')
+    if (!padre) return validationError('El comentario al que respondes no existe.')
     if (padre.publicacion_id !== publicacion_id)
       return validationError('No puedes responder a un comentario de otra publicación.')
 

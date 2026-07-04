@@ -14,7 +14,7 @@ export default function SignupPage() {
           Crear cuenta
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Creá tu portafolio académico
+          Crea tu portafolio académico
         </p>
       </div>
 
@@ -23,12 +23,12 @@ export default function SignupPage() {
       </div>
 
       <p className="text-center text-sm text-text-muted">
-        ¿Ya tenés cuenta?{' '}
+        ¿Ya tienes cuenta?{' '}
         <Link
           href="/login"
           className="text-primary hover:underline font-medium"
         >
-          Ingresá
+          Ingresa
         </Link>
       </p>
     </div>

@@ -87,7 +87,7 @@ export default function LinksEditor({ initialLinks }: LinksEditorProps) {
 
       {links.length === 0 && !showAddForm && (
         <p className="text-sm text-text-muted">
-          No tenés enlaces todavía. Agregá hasta {LINK_LIMIT} para que aparezcan en tu perfil.
+          No tienes enlaces todavía. Agrega hasta {LINK_LIMIT} para que aparezcan en tu perfil.
         </p>
       )}
     </div>

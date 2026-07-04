@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, ctx: Context) {
       {
         error: {
           code: 'rate_limited',
-          message: `Alcanzaste el límite de ${RATE_LIMIT_MAX} preguntas por hora. Probá de nuevo más tarde.`,
+          message: `Alcanzaste el límite de ${RATE_LIMIT_MAX} preguntas por hora. Prueba de nuevo más tarde.`,
         },
       },
       { status: 429 },

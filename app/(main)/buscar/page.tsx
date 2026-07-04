@@ -32,8 +32,8 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
     return (
       <div className="animate-page">
         <EmptyState
-          title="Buscá en Vitrina"
-          description="Ingresá al menos 2 caracteres para encontrar publicaciones y personas."
+          title="Busca en Vitrina"
+          description="Ingresa al menos 2 caracteres para encontrar publicaciones y personas."
         />
       </div>
     )

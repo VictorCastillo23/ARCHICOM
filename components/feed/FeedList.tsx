@@ -30,7 +30,7 @@ export default function FeedList({
       return (
         <EmptyState
           title={`No hay ${tipoActivo} todavía`}
-          description={`¿Tenés un ${tipoActivo}? Compartilo con la comunidad.`}
+          description={`¿Tienes un ${tipoActivo}? Compártelo con la comunidad.`}
           action={{ label: `Publicar un ${tipoActivo}`, href: '/publicar' }}
         />
       )
