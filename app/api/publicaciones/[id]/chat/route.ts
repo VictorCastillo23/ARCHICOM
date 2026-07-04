@@ -4,7 +4,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { handleError, jsonOk, unauthorized, validationError } from '@/lib/supabase/handleError'
 import { embedTexts } from '@/lib/rag/embed'
-import { CHAT_MODEL, MAX_PREGUNTA, SIMILARITY_TOP_K, SYSTEM_PROMPT } from '@/lib/rag/config'
+import {
+  CHAT_MODEL,
+  CONDENSE_PROMPT,
+  MAX_HISTORIAL,
+  MAX_PREGUNTA,
+  SIMILARITY_TOP_K,
+  SYSTEM_PROMPT,
+} from '@/lib/rag/config'
+import type { RagMensaje } from '@/lib/types/database'
 
 export const runtime = 'nodejs'
 
@@ -31,12 +39,29 @@ export async function POST(request: NextRequest, ctx: Context) {
   } catch {
     return validationError('Body inválido')
   }
-  const { pregunta } = body as { pregunta?: string }
+  const { pregunta, historial } = body as { pregunta?: string; historial?: unknown }
   const preguntaTrim = pregunta?.trim()
 
   if (!preguntaTrim) return validationError('pregunta es requerida')
   if (preguntaTrim.length > MAX_PREGUNTA) {
     return validationError(`pregunta no puede superar ${MAX_PREGUNTA} caracteres`)
+  }
+
+  // Optional conversational memory: validate, keep only the last MAX_HISTORIAL
+  // turns, and cap each message length to bound the prompt size.
+  let historialLimpio: RagMensaje[] = []
+  if (historial !== undefined) {
+    if (!Array.isArray(historial)) return validationError('historial inválido')
+    for (const item of historial) {
+      const rol = (item as RagMensaje)?.rol
+      const contenido = (item as RagMensaje)?.contenido
+      if ((rol !== 'user' && rol !== 'assistant') || typeof contenido !== 'string') {
+        return validationError('historial inválido')
+      }
+    }
+    historialLimpio = (historial as RagMensaje[])
+      .slice(-MAX_HISTORIAL)
+      .map((m) => ({ rol: m.rol, contenido: m.contenido.slice(0, 2000) }))
   }
 
   const { data: publicacion, error: fetchError } = await supabase
@@ -52,9 +77,29 @@ export async function POST(request: NextRequest, ctx: Context) {
       { status: 404 },
     )
 
+  // Condense: rewrite a follow-up into a standalone question so it retrieves
+  // well. Only when there is history; failure is non-fatal (fall back to raw).
+  let preguntaBusqueda = preguntaTrim
+  if (historialLimpio.length > 0) {
+    try {
+      const historialTexto = historialLimpio
+        .map((m) => `${m.rol === 'user' ? 'Usuario' : 'Asistente'}: ${m.contenido}`)
+        .join('\n')
+      const { text } = await generateText({
+        model: anthropic(CHAT_MODEL),
+        system: CONDENSE_PROMPT,
+        prompt: `Conversación previa:\n${historialTexto}\n\nPregunta de seguimiento: ${preguntaTrim}`,
+      })
+      const condensada = text.trim()
+      if (condensada) preguntaBusqueda = condensada
+    } catch {
+      preguntaBusqueda = preguntaTrim
+    }
+  }
+
   let queryEmbedding: number[]
   try {
-    const [embedding] = await embedTexts(supabase, [preguntaTrim])
+    const [embedding] = await embedTexts(supabase, [preguntaBusqueda])
     queryEmbedding = embedding
   } catch (error) {
     return handleError(error)
@@ -76,7 +121,14 @@ export async function POST(request: NextRequest, ctx: Context) {
       : '(sin fragmentos indexados)'
 
   const contexto = `Título: ${publicacion.titulo}\nResumen: ${publicacion.resumen}\n\nFragmentos del documento:\n${fragmentos}`
-  const prompt = `${contexto}\n\nPregunta: ${preguntaTrim}`
+  const conversacion =
+    historialLimpio.length > 0
+      ? '\n\nConversación previa:\n' +
+        historialLimpio
+          .map((m) => `${m.rol === 'user' ? 'Usuario' : 'Asistente'}: ${m.contenido}`)
+          .join('\n')
+      : ''
+  const prompt = `${contexto}${conversacion}\n\nPregunta actual: ${preguntaTrim}`
 
   try {
     const { text } = await generateText({

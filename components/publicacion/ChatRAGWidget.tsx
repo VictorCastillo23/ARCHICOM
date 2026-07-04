@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { apiClient, ApiError } from '@/lib/api/client'
-import { MAX_PREGUNTA } from '@/lib/rag/config'
+import { MAX_HISTORIAL, MAX_PREGUNTA } from '@/lib/rag/config'
 import type { RagMensaje } from '@/lib/types/database'
 
 interface ChatRAGWidgetProps {
@@ -29,6 +29,9 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
     setErrorMsg(null)
     setSending(true)
 
+    // Last N turns as conversational memory (captured before the optimistic add).
+    const historial = mensajes.slice(-MAX_HISTORIAL)
+
     // Optimistic add of the user's question
     setMensajes((prev) => [...prev, { rol: 'user', contenido }])
     setPregunta('')
@@ -38,7 +41,7 @@ export default function ChatRAGWidget({ publicacionId }: ChatRAGWidgetProps) {
         `/api/publicaciones/${publicacionId}/chat`,
         {
           method: 'POST',
-          body: JSON.stringify({ pregunta: contenido }),
+          body: JSON.stringify({ pregunta: contenido, historial }),
         }
       )
       setMensajes((prev) => [...prev, { rol: 'assistant', contenido: respuesta }])
