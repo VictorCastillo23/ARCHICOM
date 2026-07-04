@@ -10,7 +10,7 @@ export default function NotFound() {
         Página no encontrada
       </h1>
       <p className="text-text-muted max-w-sm mb-8">
-        El recurso que buscás no existe o fue movido.
+        El recurso que buscas no existe o fue movido.
       </p>
       <Link
         href="/"

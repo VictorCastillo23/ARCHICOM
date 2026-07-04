@@ -32,7 +32,7 @@ export default function EliminarRevistaButton({
       setError(
         err instanceof ApiError
           ? err.message
-          : 'No se pudo eliminar la revista. Intentá de nuevo.'
+          : 'No se pudo eliminar la revista. Intenta de nuevo.'
       )
       setLoading(false)
     }

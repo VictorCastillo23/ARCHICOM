@@ -14,7 +14,7 @@ export default function LoginPage() {
           Iniciar sesión
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Ingresá con tu cuenta
+          Ingresa con tu cuenta
         </p>
       </div>
 
@@ -23,7 +23,7 @@ export default function LoginPage() {
       </div>
 
       <p className="text-center text-sm text-text-muted">
-        ¿No tenés cuenta?{' '}
+        ¿No tienes cuenta?{' '}
         <Link
           href="/signup"
           className="text-primary hover:underline font-medium"

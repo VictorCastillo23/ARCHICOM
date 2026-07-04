@@ -6,7 +6,7 @@ import EmptyState from '@/components/ui/EmptyState'
 
 export const metadata: Metadata = {
   title: 'Áreas — Vitrina',
-  description: 'Explorá publicaciones académicas organizadas por área de conocimiento en Vitrina.',
+  description: 'Explora publicaciones académicas organizadas por área de conocimiento en Vitrina.',
 }
 
 export default async function AreasPage() {
@@ -26,7 +26,7 @@ export default async function AreasPage() {
           Áreas
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Explorá publicaciones organizadas por área de conocimiento.
+          Explora publicaciones organizadas por área de conocimiento.
         </p>
       </div>
 

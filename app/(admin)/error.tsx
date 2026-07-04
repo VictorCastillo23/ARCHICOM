@@ -12,7 +12,7 @@ export default function AdminError({ error, reset }: ErrorPageProps) {
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <ErrorState
         title="Algo salió mal"
-        description={error.message || 'Ocurrió un error inesperado. Intentá de nuevo.'}
+        description={error.message || 'Ocurrió un error inesperado. Intenta de nuevo.'}
         retry={reset}
       />
     </div>

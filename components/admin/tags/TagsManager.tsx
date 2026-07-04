@@ -163,7 +163,7 @@ export default function TagsManager({ initialTags }: Props) {
       )}
 
       {tags.length === 0 ? (
-        <EmptyState title="Sin tags" description="Creá el primer tag del catálogo." />
+        <EmptyState title="Sin tags" description="Crea el primer tag del catálogo." />
       ) : (
         <div className="flex flex-col gap-6">
           {Object.entries(grouped).map(([area, areaTags]) => (

@@ -96,7 +96,7 @@ export default function ArticulosList({ revistaId, articulos, estado }: Props) {
       {sorted.length === 0 ? (
         <EmptyState
           title="Sin artículos"
-          description="Añadí publicaciones para curar esta revista."
+          description="Añade publicaciones para curar esta revista."
         />
       ) : (
         <div className="flex flex-col gap-2">

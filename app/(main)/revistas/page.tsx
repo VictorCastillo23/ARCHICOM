@@ -15,7 +15,7 @@ export default async function RevistasPage() {
         </h1>
         <EmptyState
           title="Sin revistas publicadas"
-          description="Todavía no hay revistas publicadas. Volvé pronto."
+          description="Todavía no hay revistas publicadas. Vuelve pronto."
         />
       </div>
     )

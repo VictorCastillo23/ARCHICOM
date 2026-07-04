@@ -105,7 +105,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             Publicaciones
           </h1>
           <p className="mt-2 text-sm text-text-muted">
-            Explorá el trabajo de la comunidad.
+            Explora el trabajo de la comunidad.
           </p>
         </div>
 

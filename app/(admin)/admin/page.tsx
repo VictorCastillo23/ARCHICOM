@@ -14,7 +14,7 @@ export default function AdminPage() {
           Vitrina
         </h1>
         <p className="mt-2 text-text-muted">
-          Gestioná las revistas y el catálogo de tags.
+          Gestiona las revistas y el catálogo de tags.
         </p>
       </div>
 
@@ -41,7 +41,7 @@ export default function AdminPage() {
           <Card className="group-hover:shadow-md transition-shadow h-full border-l-4 border-l-primary">
             <h2 className="font-display font-normal text-(length:--size-heading-sm) mb-1">Reportes</h2>
             <p className="text-sm text-text-muted">
-              Revisá y moderá publicaciones reportadas.
+              Revisa y modera publicaciones reportadas.
             </p>
           </Card>
         </Link>

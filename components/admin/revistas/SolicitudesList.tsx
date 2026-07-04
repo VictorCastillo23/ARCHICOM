@@ -196,7 +196,7 @@ export default function SolicitudesList({ revistaId }: Props) {
                       className="w-full rounded-sm border border-input bg-surface-muted px-3 py-2 text-sm text-text resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                       rows={3}
                       maxLength={250}
-                      placeholder="Explicá brevemente por qué se rechaza esta solicitud…"
+                      placeholder="Explica brevemente por qué se rechaza esta solicitud…"
                       value={rejectPending.motivo}
                       onChange={(e) =>
                         setRejectPending({ solicitudId: sol.id, motivo: e.target.value })

@@ -24,7 +24,7 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
     return (
       <p className="text-sm text-text-muted">
         <Link href="/login" className="text-primary hover:underline font-medium">
-          Iniciá sesión
+          Inicia sesión
         </Link>{' '}
         para proponer tus publicaciones a esta revista.
       </p>
@@ -34,9 +34,9 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
   if (misPublicaciones.length === 0) {
     return (
       <p className="text-sm text-text-muted">
-        Todavía no tenés publicaciones para proponer.{' '}
+        Todavía no tienes publicaciones para proponer.{' '}
         <Link href="/publicar" className="text-primary hover:underline font-medium">
-          Publicá una
+          Publica una
         </Link>
         .
       </p>
@@ -70,7 +70,7 @@ export default function SolicitudRevistaForm({ revistaId, misPublicaciones, isAu
       setSuccess(true)
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setError('Ya tenés una solicitud pendiente para esa publicación en esta revista.')
+        setError('Ya tienes una solicitud pendiente para esa publicación en esta revista.')
       } else if (err instanceof ApiError) {
         setError(err.message)
       } else {

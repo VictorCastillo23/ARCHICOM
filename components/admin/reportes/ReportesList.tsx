@@ -84,7 +84,7 @@ export default function ReportesList() {
     <div>
       <h2 className="font-semibold text-lg mb-1">Reportes pendientes</h2>
       <p className="text-xs text-text-muted mb-3">
-        Revisá cada reporte y decidí si bloquear la publicación o descartar el reporte.
+        Revisa cada reporte y decide si bloquear la publicación o descartar el reporte.
       </p>
 
       {actionError && (

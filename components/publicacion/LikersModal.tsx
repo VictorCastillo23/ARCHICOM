@@ -40,7 +40,7 @@ export default function LikersModal({
         setError(
           err instanceof ApiError
             ? err.message
-            : 'No se pudo cargar la lista. Intentá de nuevo.',
+            : 'No se pudo cargar la lista. Intenta de nuevo.',
         )
       } finally {
         if (!cancelled) setLoading(false)

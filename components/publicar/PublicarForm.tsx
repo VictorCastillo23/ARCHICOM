@@ -230,7 +230,7 @@ export default function PublicarForm({
       // Publication exists — don't lose it. Surface the partial failure with a link
       // instead of auto-redirecting (re-submitting would create a duplicate).
       setTagWarning({
-        message: `La publicación se creó, pero ${problemas.join(' y ')}. Podés resolverlo desde la publicación.`,
+        message: `La publicación se creó, pero ${problemas.join(' y ')}. Puedes resolverlo desde la publicación.`,
         publicacionId: publicacion.id,
       })
       return
@@ -282,7 +282,7 @@ export default function PublicarForm({
 
     if (problemas.length > 0) {
       setTagWarning({
-        message: `Se guardaron los cambios, pero ${problemas.join(' y ')}. Podés resolverlo desde la publicación.`,
+        message: `Se guardaron los cambios, pero ${problemas.join(' y ')}. Puedes resolverlo desde la publicación.`,
         publicacionId: id,
       })
       return
@@ -444,7 +444,7 @@ export default function PublicarForm({
               <span className="text-sm text-text">
                 Habilitar chat sobre el documento
                 <span className="block text-xs text-text-muted">
-                  Indexa el PDF para que se le puedan hacer preguntas. Podés cambiarlo luego desde la publicación.
+                  Indexa el PDF para que se le puedan hacer preguntas. Puedes cambiarlo luego desde la publicación.
                 </span>
               </span>
             </label>

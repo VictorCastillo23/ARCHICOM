@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: AreaPageProps): Promise<Metad
 
   return {
     title: `${area} — Vitrina`,
-    description: `Explorá publicaciones académicas de ${area} creadas por la comunidad en Vitrina.`,
+    description: `Explora publicaciones académicas de ${area} creadas por la comunidad en Vitrina.`,
     alternates: {
       canonical: `${siteUrl}/area/${slug}`,
     },
