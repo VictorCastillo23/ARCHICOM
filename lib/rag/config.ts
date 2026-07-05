@@ -61,3 +61,21 @@ export const CONDENSE_PROMPT =
  * to the user, so it must stay in sync with the limit hardcoded in the RPC.
  */
 export const RATE_LIMIT_MAX = 15
+
+// --- Hybrid search (semantic layer over the buscador) ---
+
+/** Top-K chunks (deduped to publications) retrieved by match_publicacion_chunks_global. */
+export const SEARCH_SEMANTIC_TOP_K = 20
+
+/** How many FTS rows to pull for the fusion (ranked list feeding RRF). */
+export const SEARCH_FTS_TOP_K = 20
+
+/**
+ * Reciprocal Rank Fusion constant. score(id) = Σ 1/(RRF_K + rank_in_list).
+ * The standard k≈60 damps the weight of any single list's top positions so the
+ * fusion favours items that rank well across BOTH lexical and semantic lists.
+ */
+export const RRF_K = 60
+
+/** Publications shown on the first (hybrid-ranked) page of /buscar. */
+export const SEARCH_HYBRID_PAGE = 12

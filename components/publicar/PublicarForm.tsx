@@ -63,8 +63,10 @@ export default function PublicarForm({
   const esRecomendacion = categoria === 'recomendacion'
   const esVisual = categoria === 'visual'
 
-  // The RAG chat can only be enabled for PDFs (the effective file: new or existing).
-  const puedeIndexar = archivo
+  // Whether there's a PDF to (re)index — a newly picked file or an existing one.
+  // Any save (título/resumen/PDF) re-runs indexing; the route is idempotent by
+  // sha256, so a metadata-only edit is a cheap no-op.
+  const tienePdf = archivo
     ? archivo.type === 'application/pdf'
     : (existingArchivoUrl?.toLowerCase().endsWith('.pdf') ?? false)
 
@@ -74,8 +76,6 @@ export default function PublicarForm({
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Opt-in: index the PDF on save so the RAG chat works right away.
-  const [habilitarChat, setHabilitarChat] = useState(false)
   const [indexando, setIndexando] = useState(false)
   // Soft warning: publication saved, but some tags failed to attach/detach. Carries a link.
   const [tagWarning, setTagWarning] = useState<{ message: string; publicacionId: string } | null>(
@@ -179,17 +179,22 @@ export default function PublicarForm({
     }
   }
 
-  // Index the publication's PDF so the chat works, when the author opted in.
-  // Best-effort: returns true if it failed (the publication itself is fine and
-  // can be indexed later from its detail page).
-  async function indexarSiCorresponde(id: string): Promise<boolean> {
-    if (!habilitarChat || !puedeIndexar) return false
+  // Auto-index the PDF on every save (título/resumen/PDF) so the content stays
+  // searchable and the chat works — no manual step. Best-effort and fully
+  // silent: retries up to 3 times on failure, then gives up without surfacing
+  // anything (re-editing will retry; the admin backfill is the fallback).
+  async function indexarSiCorresponde(id: string): Promise<void> {
+    if (!tienePdf) return
     setIndexando(true)
     try {
-      await apiClient(`/api/publicaciones/${id}/index`, { method: 'POST' })
-      return false
-    } catch {
-      return true
+      for (let intento = 1; intento <= 3; intento++) {
+        try {
+          await apiClient(`/api/publicaciones/${id}/index`, { method: 'POST' })
+          return
+        } catch {
+          if (intento < 3) await new Promise((r) => setTimeout(r, 1500))
+        }
+      }
     } finally {
       setIndexando(false)
     }
@@ -218,13 +223,12 @@ export default function PublicarForm({
     )
     const failed = results.filter((ok) => !ok).length
 
-    // Enable chat: index the PDF now if the author opted in (best-effort).
-    const indexFailed = await indexarSiCorresponde(publicacion.id)
+    // Auto-index the PDF (best-effort, silent — retries internally).
+    await indexarSiCorresponde(publicacion.id)
 
     const problemas: string[] = []
     if (failed > 0)
       problemas.push(failed === 1 ? '1 área no se asoció' : `${failed} áreas no se asociaron`)
-    if (indexFailed) problemas.push('no se pudo preparar el chat del documento')
 
     if (problemas.length > 0) {
       // Publication exists — don't lose it. Surface the partial failure with a link
@@ -273,12 +277,12 @@ export default function PublicarForm({
     ])
     const failed = results.filter((ok) => !ok).length
 
-    const indexFailed = await indexarSiCorresponde(id)
+    // Auto-index the PDF (best-effort, silent — retries internally).
+    await indexarSiCorresponde(id)
 
     const problemas: string[] = []
     if (failed > 0)
       problemas.push(failed === 1 ? '1 área no se actualizó' : `${failed} áreas no se actualizaron`)
-    if (indexFailed) problemas.push('no se pudo preparar el chat del documento')
 
     if (problemas.length > 0) {
       setTagWarning({
@@ -431,25 +435,8 @@ export default function PublicarForm({
             </div>
           )}
 
-          {/* Opt-in RAG chat — only for PDFs (the effective file). */}
-          {puedeIndexar && (
-            <label className="flex items-start gap-2 cursor-pointer select-none rounded-md border border-border bg-surface p-3">
-              <input
-                type="checkbox"
-                checked={habilitarChat}
-                onChange={(e) => setHabilitarChat(e.target.checked)}
-                disabled={loading}
-                className="accent-primary w-3.5 h-3.5 mt-0.5"
-              />
-              <span className="text-sm text-text">
-                Habilitar chat sobre el documento
-                <span className="block text-xs text-text-muted">
-                  Indexa el PDF para que se le puedan hacer preguntas. Puedes cambiarlo luego desde la publicación.
-                  Tu obra no sera usada para entrenar nada, solo para responder preguntas.
-                </span>
-              </span>
-            </label>
-          )}
+          {/* PDFs are indexed automatically on save (best-effort) so the
+              publication is searchable by content and its chat works. */}
 
           {/* External link — optional on any normal type. For texto/otro it's the
               alternative to the file (at least one is required). */}

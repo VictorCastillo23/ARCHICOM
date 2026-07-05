@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { apiClient, ApiError } from '@/lib/api/client'
 import Button from '@/components/ui/Button'
 import PublicacionCard from '@/components/feed/PublicacionCard'
@@ -22,6 +22,12 @@ interface VerMasBase {
 interface VerMasPublicacion extends VerMasBase {
   tipo: 'publicacion'
   initialItems: PublicacionCardData[]
+  /**
+   * Ids already shown on the (hybrid-ranked) first page. "Ver más" continues
+   * via FTS pagination, which may re-return some of them; we filter them out so
+   * the appended pages never duplicate what's already on screen.
+   */
+  excludeIds?: string[]
 }
 
 interface VerMasUsuario extends VerMasBase {
@@ -45,6 +51,12 @@ export default function VerMas(props: VerMasProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Ids already on screen (first page + appended) — dedupes FTS "Ver más" pages
+  // against the hybrid first page. Only relevant for the publicacion section.
+  const seenIds = useRef<Set<string>>(
+    new Set(props.tipo === 'publicacion' ? props.excludeIds ?? [] : []),
+  )
+
   async function loadMore() {
     setLoading(true)
     setError(null)
@@ -53,10 +65,13 @@ export default function VerMas(props: VerMasProps) {
         const res = await apiClient<PaginatedResponse<PublicacionCardData>>(
           `/api/buscar?tipo=publicacion&q=${encodeURIComponent(q)}&offset=${offset}`,
         )
+        const nuevos = res.items.filter((it) => !seenIds.current.has(it.id))
+        nuevos.forEach((it) => seenIds.current.add(it.id))
         setExtraItems((prev) => [
           ...(prev as PublicacionCardData[]),
-          ...res.items,
+          ...nuevos,
         ] as PublicacionCardData[])
+        // Advance by the raw page size (FTS positions consumed), not the filtered count.
         setOffset((prev) => prev + res.items.length)
         setHasMore(res.hasMore)
       } else {
