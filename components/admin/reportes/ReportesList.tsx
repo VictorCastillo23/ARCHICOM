@@ -148,7 +148,7 @@ export default function ReportesList() {
                     )}
 
                     <p className="text-xs text-text-muted mt-1">
-                      {new Date(rep.creado_en).toLocaleDateString('es-AR', {
+                      {new Date(rep.creado_en).toLocaleDateString('es-MX', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',

@@ -72,7 +72,7 @@ export default function RevistaPatchForm({ revista }: Props) {
           {revista.publicada_en && (
             <p className="text-xs text-text-muted">
               Publicada el{' '}
-              {new Date(revista.publicada_en).toLocaleDateString('es-AR', {
+              {new Date(revista.publicada_en).toLocaleDateString('es-MX', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

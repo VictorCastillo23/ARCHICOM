@@ -151,7 +151,7 @@ export default function SolicitudesList({ revistaId }: Props) {
                       </p>
                     )}
                     <p className="text-xs text-text-muted mt-1">
-                      {new Date(sol.creado_en).toLocaleDateString('es-AR', {
+                      {new Date(sol.creado_en).toLocaleDateString('es-MX', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',
