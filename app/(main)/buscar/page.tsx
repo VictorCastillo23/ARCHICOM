@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { buscarPublicaciones, buscarUsuarios } from '@/lib/data/buscar'
+import { buscarPublicacionesHibrido, buscarUsuarios } from '@/lib/data/buscar'
+import { SEARCH_HYBRID_PAGE } from '@/lib/rag/config'
 import PublicacionCard from '@/components/feed/PublicacionCard'
 import UsuarioCard from '@/components/usuario/UsuarioCard'
 import VerMas from '@/components/buscar/VerMas'
@@ -39,9 +40,10 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
     )
   }
 
-  // Parallel SSR fetch — per-section error isolation
+  // Parallel SSR fetch — per-section error isolation. Publicaciones use hybrid
+  // (FTS + semantic) ranking for logged-in users; anonymous falls back to FTS.
   const [pubsResult, usersResult] = await Promise.all([
-    buscarPublicaciones(q, 0, 6),
+    buscarPublicacionesHibrido(q, SEARCH_HYBRID_PAGE),
     buscarUsuarios(q, 0, 6),
   ])
 
@@ -75,8 +77,9 @@ export default async function BuscarPage({ searchParams }: BuscarPageProps) {
             tipo="publicacion"
             q={q}
             initialItems={pubsResult.items as PublicacionCardData[]}
-            initialOffset={pubsResult.items.length}
+            initialOffset={SEARCH_HYBRID_PAGE}
             initialHasMore={pubsResult.hasMore}
+            excludeIds={pubsResult.items.map((p) => p.id)}
           >
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none p-0">
               {pubsResult.items.map((pub) => (

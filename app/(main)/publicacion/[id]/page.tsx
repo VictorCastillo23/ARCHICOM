@@ -20,7 +20,6 @@ import ReportarButton from '@/components/publicacion/ReportarButton'
 import PublicacionesRelacionadas from '@/components/publicacion/PublicacionesRelacionadas'
 import ArchivoVistaPrevia from '@/components/publicacion/ArchivoVistaPrevia'
 import ChatRAGWidget from '@/components/publicacion/ChatRAGWidget'
-import IndexarButton from '@/components/publicacion/IndexarButton'
 import AnonFollowCTA from '@/components/publicacion/AnonFollowCTA'
 import LikersStack from '@/components/publicacion/LikersStack'
 import AnonViewBanner from '@/components/publicacion/AnonViewBanner'
@@ -197,15 +196,12 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
             Pregunta al documento
           </h2>
-          {isAuthor && (
-            <div className="mb-3">
-              <IndexarButton publicacionId={id} yaIndexado={ragIndexado} />
-            </div>
-          )}
           {isAuthenticated && ragIndexado && <ChatRAGWidget publicacionId={id} />}
-          {isAuthenticated && !ragIndexado && !isAuthor && (
+          {isAuthenticated && !ragIndexado && (
             <p className="text-sm text-text-muted">
-              El autor todavía no preparó este documento para preguntas.
+              {isAuthor
+                ? 'Este documento se está preparando para preguntas. Si acabas de subirlo, vuelve a intentarlo en un momento.'
+                : 'El autor todavía no preparó este documento para preguntas.'}
             </p>
           )}
           {!isAuthenticated && (

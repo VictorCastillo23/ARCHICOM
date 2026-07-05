@@ -123,9 +123,11 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
       {/* Desktop nav — inline links, hidden below md (mobile uses the drawer below) */}
       <nav
         aria-label="Navegación principal"
-        className="hidden md:flex items-center gap-4 text-sm font-medium"
+        className="hidden md:flex flex-1 items-center gap-4 text-sm font-medium"
       >
-        <SearchBox />
+        <div className="flex-1 min-w-0">
+          <SearchBox fullWidth />
+        </div>
         {session === null ? (
           <>
             <Link
