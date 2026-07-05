@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest, ctx: Context) {
 
   if (!user) return unauthorized()
 
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const { titulo, resumen, tipo, archivo_url, obra_autor_externo, url_externa } = body as {
     titulo?: string
     resumen?: string
@@ -39,9 +39,9 @@ export async function PATCH(request: NextRequest, ctx: Context) {
     url_externa?: string | null
   }
 
-  if (titulo !== undefined && titulo.length > 150)
+  if (titulo !== undefined && (typeof titulo !== 'string' || titulo.length > 150))
     return validationError('El título no puede superar 150 caracteres.')
-  if (resumen !== undefined && resumen.length > 700)
+  if (resumen !== undefined && (typeof resumen !== 'string' || resumen.length > 700))
     return validationError('El resumen no puede superar 700 caracteres.')
 
   if (tipo !== undefined && !TIPOS_PUBLICACION.includes(tipo as TipoPublicacion)) {

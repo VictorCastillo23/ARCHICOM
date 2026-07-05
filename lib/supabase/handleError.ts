@@ -22,6 +22,14 @@ export function validationError(message: string): NextResponse {
   return err('validation_error', message, 400)
 }
 
+// Logs only the fields needed to diagnose an error — never the raw object,
+// which for Postgres/PostgREST errors can carry `details`/`hint` with query
+// values or row data (N-8, SECURITY_AUDIT.md 2026-07-04).
+function logServerError(tag: string, error: unknown): void {
+  const e = error as { code?: string; message?: string; status?: number }
+  console.error(tag, { code: e?.code, status: e?.status, message: e?.message })
+}
+
 export function handleError(error: unknown): NextResponse {
   const e = error as {
     code?: string
@@ -40,7 +48,7 @@ export function handleError(error: unknown): NextResponse {
       case 429:
         return err('rate_limit', 'Demasiados intentos. Intenta más tarde', 429)
       default:
-        console.error('[handleError] AuthError', error)
+        logServerError('[handleError] AuthError', error)
         return err('internal_error', 'Error interno', 500)
     }
   }
@@ -59,7 +67,7 @@ export function handleError(error: unknown): NextResponse {
     case '23514':
       return err('validation_error', 'Operación no permitida', 400)
     default:
-      console.error('[handleError]', error)
+      logServerError('[handleError]', error)
       return err('internal_error', 'Error interno', 500)
   }
 }

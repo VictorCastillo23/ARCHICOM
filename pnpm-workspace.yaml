@@ -1,3 +1,10 @@
 allowBuilds:
   sharp: true
   unrs-resolver: true
+
+# N-9 (SECURITY_AUDIT.md 2026-07-04): pin transitive deps past their known
+# moderate CVEs — postcss (GHSA-qx2v-qp2m-jg93) via next, js-yaml
+# (GHSA-h67p-54hq-rp68) via eslint (dev-only).
+overrides:
+  postcss: ">=8.5.10"
+  js-yaml: ">=4.1.2"

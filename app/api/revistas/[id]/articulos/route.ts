@@ -9,7 +9,7 @@ export async function POST(request: Request, ctx: Context) {
   if (admin.error) return admin.error
 
   const { id: revista_id } = await ctx.params
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const { publicacion_id, orden } = body
 
   if (!publicacion_id) return validationError('Se requiere publicacion_id')
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, ctx: Context) {
   if (admin.error) return admin.error
 
   const { id: revista_id } = await ctx.params
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const { articulos } = body as {
     articulos: Array<{ publicacion_id: string; orden: number }>
   }
@@ -55,7 +55,10 @@ export async function PATCH(request: Request, ctx: Context) {
 
   const { data, error } = await admin.supabase
     .from('revista_articulo')
-    .select('*, publicacion(*, usuario(id, nombre))')
+    .select(
+      'revista_id, publicacion_id, orden, ' +
+        'publicacion(id, titulo, resumen, tipo, usuario(id, nombre))',
+    )
     .eq('revista_id', revista_id)
     .order('orden', { ascending: true })
 

@@ -29,7 +29,10 @@ export async function getRevista(
 
   const { data, error } = await supabase
     .from('revista')
-    .select('*, revista_articulo(*, publicacion(*, usuario!autor_id(id, nombre)))')
+    .select(
+      '*, revista_articulo(revista_id, publicacion_id, orden, ' +
+        'publicacion(id, titulo, resumen, tipo, usuario!autor_id(id, nombre)))',
+    )
     .eq('id', id)
     .order('orden', { referencedTable: 'revista_articulo', ascending: true })
     .single()
