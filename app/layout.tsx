@@ -40,8 +40,21 @@ export default function RootLayout({
   return (
     <html
       lang="es"
+      suppressHydrationWarning
       className={`${dmSans.variable} ${dmSerif.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Apply the saved theme before first paint to avoid a flash of the wrong
+            theme (FOUC). Manual only: dark iff localStorage.theme === 'dark',
+            otherwise light. suppressHydrationWarning on <html> covers the attribute
+            this mutates. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}",
+          }}
+        />
+      </head>
       {/* suppressHydrationWarning: browser extensions inject attributes on <body>
           (e.g. cz-shortcut-listen). Scoped to the body element's own attributes —
           it does NOT mask hydration mismatches in children. */}

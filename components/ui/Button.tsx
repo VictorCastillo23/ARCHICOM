@@ -17,7 +17,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-text hover:bg-surface-muted focus-visible:ring-border-focus',
   danger:
-    'bg-danger text-black hover:opacity-90 focus-visible:ring-danger',
+    'bg-danger text-danger-fg hover:opacity-90 focus-visible:ring-danger',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {

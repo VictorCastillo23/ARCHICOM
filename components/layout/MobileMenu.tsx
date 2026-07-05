@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import SearchBox from '@/components/buscar/SearchBox'
+import ThemeToggle from './ThemeToggle'
 
 export type NavLink = { href: string; label: string }
 
@@ -190,6 +191,11 @@ export default function MobileMenu({ links, onLogout, className = '', unreadCoun
               </button>
             )}
           </nav>
+
+          <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
+            <span className="text-sm text-text-muted">Tema</span>
+            <ThemeToggle />
+          </div>
         </div>
           </div>,
           document.body,
