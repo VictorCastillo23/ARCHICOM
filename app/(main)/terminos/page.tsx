@@ -13,7 +13,7 @@ export default function TerminosPage() {
           Términos de servicio
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Versión 1.1 · Última actualización: 28 de junio de 2026.
+          Versión 1.2 · Última actualización: 4 de julio de 2026.
         </p>
       </div>
 
@@ -53,7 +53,14 @@ export default function TerminosPage() {
               de enviar una solicitud de mensaje para iniciar la conversación.
             </li>
             <li>Postulación de obras a la revista mensual curada de la comunidad.</li>
-            <li>Búsqueda de publicaciones y perfiles, y gestión de enlaces de perfil.</li>
+            <li>
+              Búsqueda de publicaciones y perfiles, incluida la búsqueda por el contenido de los
+              documentos PDF publicados, y gestión de enlaces de perfil.
+            </li>
+            <li>
+              Un asistente de preguntas y respuestas que, a partir del contenido de un documento PDF
+              publicado, responde consultas sobre dicho documento.
+            </li>
           </ul>
           <p className="text-text-muted leading-relaxed">
             Vitrina se ofrece &laquo;tal cual&raquo; y puede modificarse, suspenderse o
@@ -101,10 +108,12 @@ export default function TerminosPage() {
           <p className="text-text-muted leading-relaxed">
             <span className="font-semibold text-text">Licencia que nos otorgas.</span>{' '}
             Al publicar contenido, concedes a Vitrina una licencia mundial, no exclusiva y libre de
-            regalías para alojar, almacenar, reproducir, mostrar y distribuir dicho contenido con
-            el único fin de operar y ofrecer el servicio (por ejemplo, mostrar tu obra en el feed,
-            en tu perfil o en la revista mensual). Esta licencia termina cuando eliminas el
-            contenido, salvo por copias residuales en respaldos.
+            regalías para alojar, almacenar, reproducir, mostrar, distribuir y <span className="font-semibold text-text">procesar</span>{' '}
+            dicho contenido con el único fin de operar y ofrecer el servicio (por ejemplo, mostrar tu
+            obra en el feed, en tu perfil o en la revista mensual, e indexar el contenido de tus
+            documentos PDF para habilitar la búsqueda y el asistente descritos en la cláusula 8).
+            Esta licencia termina cuando eliminas el contenido, salvo por copias residuales en
+            respaldos.
           </p>
           <p className="text-text-muted leading-relaxed">
             <span className="font-semibold text-text">Tus declaraciones.</span> Al
@@ -262,7 +271,44 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          8. Privacidad y datos personales
+          8. Indexado, búsqueda y asistente de documentos
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Indexado automático.</span> Cuando publicas o
+            editas una obra con un archivo PDF, la plataforma procesa automáticamente su contenido:
+            extrae el texto y genera representaciones numéricas (&laquo;embeddings&raquo;) que se
+            almacenan para habilitar la búsqueda por contenido y el asistente de preguntas y
+            respuestas. Este procesamiento ocurre sin intervención manual y puede repetirse cuando
+            guardas cambios en la publicación o reemplazas el archivo.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Asistente de preguntas y respuestas.</span> Los
+            usuarios con sesión iniciada pueden formular preguntas sobre un documento PDF publicado.
+            Las respuestas las genera un modelo de inteligencia artificial a partir del contenido de
+            ese documento (título, resumen y fragmentos recuperados), no del conocimiento general del
+            modelo. Para generar cada respuesta, los fragmentos pertinentes y tu pregunta se envían a
+            un proveedor de modelos de inteligencia artificial con el único fin de producir la
+            respuesta.
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Uso limitado.</span> El contenido que publicas
+            y las preguntas que formulas se utilizan únicamente para operar el servicio (búsqueda y
+            asistente). <span className="font-semibold text-text">No se emplean para entrenar modelos
+            de inteligencia artificial.</span>
+          </p>
+          <p className="text-text-muted leading-relaxed">
+            <span className="font-semibold text-text">Límites y exactitud.</span> El asistente puede
+            cometer errores, omitir información o malinterpretar el documento; sus respuestas no
+            constituyen asesoría profesional y no deben tomarse como definitivas. Para prevenir
+            abusos y controlar costos, la cantidad de preguntas por cuenta está limitada por hora.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          9. Privacidad y datos personales
         </h2>
         <div className="space-y-4">
           <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
@@ -285,6 +331,12 @@ export default function TerminosPage() {
               comparte públicamente.
             </li>
             <li>
+              El contenido de tus documentos PDF se procesa de forma automatizada (extracción de
+              texto y generación de &laquo;embeddings&raquo;) para habilitar la búsqueda por
+              contenido y el asistente de documentos, conforme a la cláusula 8. Este procesamiento no
+              se utiliza para entrenar modelos de inteligencia artificial.
+            </li>
+            <li>
               Aplicamos medidas técnicas razonables para proteger tus datos, incluido el control de
               acceso a nivel de base de datos. Sin embargo, ningún sistema es completamente seguro y
               no podemos garantizar seguridad absoluta.
@@ -299,7 +351,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          9. Propiedad intelectual de la plataforma
+          10. Propiedad intelectual de la plataforma
         </h2>
         <p className="text-text-muted leading-relaxed">
           El software, el diseño, la marca &laquo;Vitrina&raquo;, los logotipos y los demás
@@ -311,7 +363,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          10. Terminación
+          11. Terminación
         </h2>
         <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
           <li>
@@ -329,20 +381,22 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          11. Exención de garantías
+          12. Exención de garantías
         </h2>
         <p className="text-text-muted leading-relaxed">
           El servicio se proporciona &laquo;tal cual&raquo; y &laquo;según disponibilidad&raquo;,
           sin garantías de ningún tipo, expresas o implícitas, incluyendo —sin limitarse a—
           garantías de comerciabilidad, idoneidad para un fin particular, disponibilidad
           ininterrumpida o ausencia de errores. No garantizamos que el contenido publicado por
-          otros usuarios sea exacto, legal o adecuado.
+          otros usuarios sea exacto, legal o adecuado, ni que las respuestas del asistente de
+          documentos (generadas por inteligencia artificial) sean exactas, completas o libres de
+          errores; no debes basarte en ellas como única fuente.
         </p>
       </section>
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          12. Limitación de responsabilidad
+          13. Limitación de responsabilidad
         </h2>
         <p className="text-text-muted leading-relaxed">
           En la máxima medida permitida por la ley, Vitrina no será responsable por daños
@@ -354,7 +408,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          13. Modificaciones a los Términos
+          14. Modificaciones a los Términos
         </h2>
         <p className="text-text-muted leading-relaxed">
           Podemos actualizar estos Términos en cualquier momento. Cuando los cambios sean
@@ -366,7 +420,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          14. Ley aplicable
+          15. Ley aplicable
         </h2>
         <p className="text-text-muted leading-relaxed">
           Estos Términos se rigen por las leyes de los Estados Unidos Mexicanos. Cualquier
@@ -377,7 +431,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          15. Contacto
+          16. Contacto
         </h2>
         <p className="text-text-muted leading-relaxed">
           Para preguntas sobre estos Términos, reportes o solicitudes relacionadas con tu cuenta,
