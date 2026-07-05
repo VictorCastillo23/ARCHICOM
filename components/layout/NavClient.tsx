@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api/client'
 import { createClient } from '@/lib/supabase/client'
 import type { RolUsuario } from '@/lib/types/database'
 import SearchBox from '@/components/buscar/SearchBox'
+import ThemeToggle from './ThemeToggle'
 import MobileMenu, { type NavLink } from './MobileMenu'
 
 export type SessionProp = {
@@ -103,7 +104,7 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
     ? [
         { href: '/revistas', label: 'Revistas' },
         { href: '/mensajes', label: 'Mensajes' },
-        { href: '/perfil', label: session.nombre },
+        { href: '/perfil', label: 'Mi Perfil' },
         { href: '/publicar', label: 'Publicar' },
         ...(session.rol === 'administrador'
           ? [{ href: '/admin', label: 'Admin' }]
@@ -178,6 +179,7 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
             </button>
           </>
         )}
+        <ThemeToggle className="shrink-0" />
       </nav>
 
       {/* Mobile nav — hamburger + drawer, hidden at md and up */}

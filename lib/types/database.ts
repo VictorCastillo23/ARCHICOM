@@ -132,11 +132,12 @@ export type Revista = {
 }
 
 export type RevistaArticulo = {
-  id: string
   revista_id: string
   publicacion_id: string
   orden: number
-  publicacion?: Publicacion & { usuario?: Pick<Usuario, 'id' | 'nombre'> }
+  publicacion?: Pick<Publicacion, 'id' | 'titulo' | 'resumen' | 'tipo'> & {
+    usuario?: Pick<Usuario, 'id' | 'nombre'>
+  }
 }
 
 export type SolicitudRevista = {

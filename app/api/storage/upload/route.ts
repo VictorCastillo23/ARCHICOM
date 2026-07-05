@@ -6,6 +6,22 @@ import {
   validationError,
 } from '@/lib/supabase/handleError'
 
+// Leading-byte signatures per allowed MIME type (F-003, SECURITY_AUDIT.md
+// 2026-07-04): the declared `file.type` is client-controlled, so it is
+// cross-checked against the file's actual magic bytes before upload.
+const MAGIC_BYTES: Record<string, number[]> = {
+  'application/pdf': [0x25, 0x50, 0x44, 0x46], // %PDF
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/png': [0x89, 0x50, 0x4e, 0x47],
+}
+
+async function matchesMagicBytes(file: File, mime: string): Promise<boolean> {
+  const signature = MAGIC_BYTES[mime]
+  if (!signature) return false
+  const header = new Uint8Array(await file.slice(0, signature.length).arrayBuffer())
+  return signature.every((byte, i) => header[i] === byte)
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
 
@@ -28,6 +44,11 @@ export async function POST(request: Request) {
   const ext = MIME_EXT[file.type]
   if (!ext) {
     return validationError('Solo se permiten archivos PDF, JPG o PNG')
+  }
+
+  // 1b. Validate the file's actual signature matches the declared MIME type
+  if (!(await matchesMagicBytes(file, file.type))) {
+    return validationError('El contenido del archivo no coincide con el tipo declarado')
   }
 
   // 2. Validate size (max 10 MB)

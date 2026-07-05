@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   if (!user) return unauthorized()
 
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const { titulo, resumen, tipo, archivo_url, obra_autor_externo, url_externa } = body as {
     titulo?: string
     resumen?: string
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     url_externa?: string
   }
 
-  if (!titulo || !resumen || !tipo) {
+  if (!titulo || typeof titulo !== 'string' || !resumen || typeof resumen !== 'string' || !tipo) {
     return validationError('titulo, resumen y tipo son requeridos')
   }
 

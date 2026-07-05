@@ -66,7 +66,9 @@ export async function GET(request: Request) {
   let query = admin.supabase
     .from('reporte')
     .select(
-      '*, publicacion!reporte_publicacion_id_fkey(id, titulo), reportante:usuario!reporte_reportante_id_fkey(id, nombre)',
+      'id, publicacion_id, reportante_id, motivo, detalle, estado, revisor_id, resuelto_en, creado_en, ' +
+        'publicacion!reporte_publicacion_id_fkey(id, titulo), ' +
+        'reportante:usuario!reporte_reportante_id_fkey(id, nombre)',
     )
     .order('creado_en', { ascending: false })
 

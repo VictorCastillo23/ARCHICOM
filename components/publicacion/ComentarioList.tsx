@@ -13,7 +13,7 @@ export interface ComentarioListProps {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('es-AR', {
+  return new Date(dateString).toLocaleDateString('es-MX', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

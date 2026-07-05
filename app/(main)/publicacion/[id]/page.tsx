@@ -112,7 +112,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             dateTime={data.creado_en}
             className="text-sm text-text-muted"
           >
-            {new Date(data.creado_en).toLocaleDateString('es-AR', {
+            {new Date(data.creado_en).toLocaleDateString('es-MX', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',

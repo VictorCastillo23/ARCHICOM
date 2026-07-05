@@ -19,7 +19,7 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
             dateTime={creado_en}
             className="text-xs text-text-muted shrink-0"
           >
-            {new Date(creado_en).toLocaleDateString('es-AR', {
+            {new Date(creado_en).toLocaleDateString('es-MX', {
               year: 'numeric',
               month: 'short',
               day: 'numeric',

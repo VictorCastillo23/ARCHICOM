@@ -72,7 +72,7 @@ export default async function RevistaDetallePage({ params }: RevistaDetallePageP
 
               return (
                 <li
-                  key={articulo.id}
+                  key={articulo.publicacion_id}
                   className="flex gap-4 py-5 border-b border-border last:border-b-0"
                 >
                   <span className="text-2xl font-display font-normal text-text-muted w-8 shrink-0 pt-0.5 leading-none">

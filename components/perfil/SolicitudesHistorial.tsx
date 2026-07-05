@@ -23,7 +23,7 @@ const estadoLabel: Record<EstadoSolicitud, string> = {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('es-AR', {
+  return new Date(iso).toLocaleDateString('es-MX', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

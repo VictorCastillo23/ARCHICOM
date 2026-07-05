@@ -34,6 +34,7 @@
   --color-warning-bg:     #fdf3df;
   --color-danger:         #c0392b;
   --color-danger-bg:      #fdecea;
+  --color-danger-fg:      #ffffff;  /* foreground on a solid danger surface */
   --color-neutral:        #5a5652;
   --color-neutral-bg:     #f0ede9;
   --color-accent:         #6b4d9a;
@@ -66,6 +67,37 @@
   --radius-md:    0.5rem;
   --radius-lg:    0.75rem;
   --radius-full:  9999px;
+}
+
+/* ─── Dark theme ──────────────────────────────────────────────────────────────
+   Manual toggle only (no prefers-color-scheme): active when <html data-theme="dark">.
+   Redefining the @theme color tokens here re-colors every utility (they compile
+   to var(--color-…)) without touching any component. Warm editorial dark palette;
+   contrast checked for WCAG (text ≥4.5:1, form borders ≥3:1). */
+:root[data-theme='dark'] {
+  --color-primary:        #2f9e8f;
+  --color-primary-hover:  #3cb3a2;
+  --color-primary-fg:     #0b1f1b;  /* dark text on the brighter teal */
+
+  --color-surface:        #211f1c;
+  --color-surface-muted:  #17150f;
+  --color-surface-border: #35312b;
+
+  --color-text:           #f2efe9;
+  --color-text-muted:     #ada69c;
+  --color-text-inverse:   #1c1917;
+
+  --color-border:         #35312b;
+  --color-border-focus:   #3cb3a2;
+  --color-input:          #7d766b;  /* ≥3:1 non-text against surface */
+
+  --color-info:           #6db8e0;  --color-info-bg:    #14303f;
+  --color-success:        #5cc98a;  --color-success-bg: #143024;
+  --color-warning:        #e0b24e;  --color-warning-bg: #33280f;
+  --color-danger:         #e57366;  --color-danger-bg:  #3a1c18;
+  --color-danger-fg:      #2a0f0c;  /* dark text on the lighter danger red */
+  --color-neutral:        #ada69c;  --color-neutral-bg: #2a2622;
+  --color-accent:         #b79ae0;  --color-accent-bg:  #241c33;
 }
 
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
