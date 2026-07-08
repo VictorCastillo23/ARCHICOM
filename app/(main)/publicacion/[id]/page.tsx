@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { getPublicacion, getLikesInfo, getLikersPreview, getEstadoEliminacion } from '@/lib/data/publicaciones'
 import { getIsGuardado } from '@/lib/data/guardados'
 import { getComentariosArbol } from '@/lib/data/comentarios'
@@ -14,6 +15,7 @@ import ComentarioList from '@/components/publicacion/ComentarioList'
 import ComentarioForm from '@/components/publicacion/ComentarioForm'
 import LikeButton from '@/components/publicacion/LikeButton'
 import GuardarButton from '@/components/publicacion/GuardarButton'
+import AgregarAColeccionButton from '@/components/publicacion/AgregarAColeccionButton'
 import SolicitarRevistaButton from '@/components/publicacion/SolicitarRevistaButton'
 import EliminarPublicacionButton from '@/components/publicacion/EliminarPublicacionButton'
 import ReportarButton from '@/components/publicacion/ReportarButton'
@@ -29,6 +31,39 @@ import type { Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/
 
 interface PublicacionPageProps {
   params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: PublicacionPageProps): Promise<Metadata> {
+  const { id } = await params
+  const { data } = await getPublicacion(id)
+
+  // Blocked or non-existent publications get minimal safe metadata — no
+  // titulo/author/resumen leak. RLS already hides these rows anonymously;
+  // this is defense-in-depth.
+  if (!data || data.bloqueada) return {}
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vitrina.vercel.app'
+  const url = `${siteUrl}/publicacion/${id}`
+  const description = data.resumen.length > 160 ? data.resumen.slice(0, 160).trimEnd() + '…' : data.resumen
+
+  return {
+    title: data.titulo,
+    description,
+    alternates: { canonical: url },
+    // Image tags are owned by the opengraph-image/twitter-image file convention —
+    // setting `openGraph.images`/`twitter.images` here would duplicate them.
+    openGraph: {
+      title: data.titulo,
+      description,
+      type: 'article',
+      url,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: data.titulo,
+      description,
+    },
+  }
 }
 
 export default async function PublicacionPage({ params }: PublicacionPageProps) {
@@ -277,6 +312,10 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
           <GuardarButton
             publicacionId={id}
             initialSaved={guardadoByUser}
+            isAuthenticated={isAuthenticated}
+          />
+          <AgregarAColeccionButton
+            publicacionId={id}
             isAuthenticated={isAuthenticated}
           />
           <CompartirButton path={`/publicacion/${id}`} label="Compartir" />

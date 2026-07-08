@@ -72,6 +72,12 @@ export default async function PerfilPage() {
               Guardados
             </Link>
             <Link
+              href="/perfil/colecciones"
+              className="inline-flex items-center rounded-md bg-surface text-text border border-border h-8 px-3 text-sm font-medium hover:bg-surface-muted transition-colors"
+            >
+              Colecciones
+            </Link>
+            <Link
               href="/perfil/ajustes"
               className="inline-flex items-center rounded-md bg-surface text-text border border-border h-8 px-3 text-sm font-medium hover:bg-surface-muted transition-colors"
             >

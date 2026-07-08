@@ -8,7 +8,7 @@ import { apiClient, ApiError } from '@/lib/api/client'
 import type { Usuario } from '@/lib/types/database'
 
 export interface PerfilEditFormProps {
-  perfil: Pick<Usuario, 'nombre' | 'institucion' | 'carrera'>
+  perfil: Pick<Usuario, 'nombre' | 'institucion' | 'carrera' | 'ciudad'>
 }
 
 export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
@@ -17,6 +17,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
   const [nombre, setNombre] = useState(perfil.nombre)
   const [institucion, setInstitucion] = useState(perfil.institucion ?? '')
   const [carrera, setCarrera] = useState(perfil.carrera ?? '')
+  const [ciudad, setCiudad] = useState(perfil.ciudad ?? '')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,7 +32,7 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
     try {
       await apiClient<Usuario>('/api/perfil', {
         method: 'PATCH',
-        body: JSON.stringify({ nombre, institucion, carrera }),
+        body: JSON.stringify({ nombre, institucion, carrera, ciudad }),
       })
       setSuccess(true)
       router.refresh()
@@ -79,6 +80,16 @@ export default function PerfilEditForm({ perfil }: PerfilEditFormProps) {
         onChange={(e) => setCarrera(e.target.value)}
         disabled={loading}
         placeholder="Carrera o área de estudio"
+        maxLength={50}
+      />
+
+      <Field
+        label="Ciudad"
+        name="ciudad"
+        value={ciudad}
+        onChange={(e) => setCiudad(e.target.value)}
+        disabled={loading}
+        placeholder="Ciudad donde resides"
         maxLength={50}
       />
 

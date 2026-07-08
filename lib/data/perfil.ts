@@ -10,7 +10,7 @@ export async function getPerfil(
   // rol column is revoked from anon to prevent admin-account enumeration.
   const { data, error } = await supabase
     .from('usuario')
-    .select('id, nombre, institucion, carrera, creado_en')
+    .select('id, nombre, institucion, carrera, ciudad, creado_en')
     .eq('id', id)
     .single()
 

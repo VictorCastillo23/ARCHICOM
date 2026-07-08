@@ -1,15 +1,17 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { SLUG_TO_AREA, AREA_TO_SLUG } from '@/lib/constants/areas'
-import { getAreasConMinimo, countForArea } from '@/lib/data/areas'
+import { SLUG_TO_AREA } from '@/lib/constants/areas'
+import { countForArea } from '@/lib/data/areas'
 import { getPublicacionPorArea } from '@/lib/data/publicaciones'
 import FeedList from '@/components/feed/FeedList'
 import Pagination from '@/components/ui/Pagination'
 import type { PublicacionCardData } from '@/lib/types/database'
 
-// Keep dynamicParams = true (default) so runtime thin-content notFound() fires
-// for slugs that are not in generateStaticParams (e.g. areas that drop below 3 pubs).
-// export const dynamicParams = true  // this is the default — no need to set explicitly
+// Forced dynamic: this page reads `searchParams` (offset) per request, which
+// conflicts with generateStaticParams-based ISR — background revalidation has
+// no real request to read searchParams from, causing a DYNAMIC_SERVER_USAGE
+// crash (500) in production. See prod incident 2026-07-08.
+export const dynamic = 'force-dynamic'
 
 const LIMIT = 24
 
@@ -31,22 +33,6 @@ export async function generateMetadata({ params }: AreaPageProps): Promise<Metad
     alternates: {
       canonical: `${siteUrl}/area/${slug}`,
     },
-  }
-}
-
-/**
- * Pre-build pages for areas with ≥3 publications.
- * Empty fallback if Supabase is unreachable at build time — pages are still
- * served on-demand via SSR (dynamicParams = true).
- */
-export async function generateStaticParams() {
-  try {
-    const areas = await getAreasConMinimo(3)
-    return areas
-      .map((a) => ({ slug: AREA_TO_SLUG[a.area] }))
-      .filter((p): p is { slug: string } => Boolean(p.slug))
-  } catch {
-    return []
   }
 }
 
