@@ -53,6 +53,7 @@ export default async function AjustesPage() {
             nombre: perfil.nombre,
             institucion: perfil.institucion,
             carrera: perfil.carrera,
+            ciudad: perfil.ciudad,
           }}
         />
       </section>

@@ -11,9 +11,10 @@ export async function PATCH(request: Request) {
   if (!user) return unauthorized()
 
   const body = await request.json()
-  const { institucion, carrera, nombre } = body as {
+  const { institucion, carrera, ciudad, nombre } = body as {
     institucion?: string
     carrera?: string
+    ciudad?: string
     nombre?: string
   }
 
@@ -23,17 +24,20 @@ export async function PATCH(request: Request) {
     return validationError('La institución no puede superar 50 caracteres.')
   if (carrera !== undefined && carrera.length > 50)
     return validationError('La carrera no puede superar 50 caracteres.')
+  if (ciudad !== undefined && typeof ciudad === 'string' && ciudad.length > 50)
+    return validationError('La ciudad no puede superar 50 caracteres.')
 
   const updates: Record<string, string> = {}
   if (institucion !== undefined) updates.institucion = institucion
   if (carrera !== undefined) updates.carrera = carrera
+  if (ciudad !== undefined) updates.ciudad = ciudad
   if (nombre !== undefined) updates.nombre = nombre
 
   const { data, error } = await supabase
     .from('usuario')
     .update(updates)
     .eq('id', user.id)
-    .select('id, nombre, rol, institucion, carrera, creado_en')
+    .select('id, nombre, rol, institucion, carrera, ciudad, creado_en')
     .single()
 
   if (error) return handleError(error)

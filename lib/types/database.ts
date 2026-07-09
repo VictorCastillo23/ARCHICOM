@@ -49,6 +49,7 @@ export type Usuario = {
   rol: RolUsuario
   institucion?: string
   carrera?: string
+  ciudad?: string
   creado_en: string
 }
 
@@ -120,6 +121,45 @@ export type Guardado = {
   publicacion_id: string
   usuario_id: string
   creado_en: string
+}
+
+// Coleccion DTOs
+
+export type VisibilidadColeccion = 'publica' | 'privada'
+
+export type Coleccion = {
+  id: string
+  usuario_id: string
+  titulo: string
+  descripcion: string | null
+  visibilidad: VisibilidadColeccion
+  creado_en: string
+}
+
+export type ColeccionPublicacion = {
+  coleccion_id: string
+  publicacion_id: string
+  orden: number
+  agregado_en: string
+  publicacion?: Pick<Publicacion, 'id' | 'titulo' | 'resumen' | 'tipo'> & {
+    usuario?: Pick<Usuario, 'id' | 'nombre'>
+  }
+}
+
+export type ColeccionDetalle = Coleccion & {
+  coleccion_publicacion?: ColeccionPublicacion[]
+}
+
+/** `Coleccion` + si ya contiene una publicación dada — ver GET /api/colecciones?publicacion_id= */
+export type ColeccionConMembership = Coleccion & {
+  agregada: boolean
+}
+
+export type ColeccionCardData = {
+  id: string
+  titulo: string
+  visibilidad: VisibilidadColeccion
+  total_publicaciones: number
 }
 
 export type Revista = {

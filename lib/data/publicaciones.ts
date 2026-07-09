@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { Publicacion, PublicacionCardData, PublicacionDetalle, TipoPublicacion } from '@/lib/types/database'
 
@@ -34,9 +35,13 @@ export async function getPublicacionPorArea({
   return { data: data as (Publicacion & { usuario?: { id: string; nombre: string } | null })[] | null, error }
 }
 
-export async function getPublicacion(
+/**
+ * Wrapped in React `cache()` so the page component, `generateMetadata`, and the
+ * `opengraph-image` route dedupe into a single Supabase query per request.
+ */
+export const getPublicacion = cache(async (
   id: string
-): Promise<{ data: PublicacionDetalle | null; error: unknown }> {
+): Promise<{ data: PublicacionDetalle | null; error: unknown }> => {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -46,7 +51,7 @@ export async function getPublicacion(
     .single()
 
   return { data: data as PublicacionDetalle | null, error }
-}
+})
 
 export async function getLikesInfo(
   publicacionId: string,

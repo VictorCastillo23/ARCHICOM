@@ -34,6 +34,12 @@ export default function PerfilView({ perfil, esPropio = false, email, links = []
           </p>
         )}
 
+        {perfil.ciudad && (
+          <p className="text-sm text-text-muted">
+            {perfil.ciudad}
+          </p>
+        )}
+
         {esPropio && (
           <>
             {email && (
