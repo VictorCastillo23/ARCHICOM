@@ -150,6 +150,11 @@ export type ColeccionDetalle = Coleccion & {
   coleccion_publicacion?: ColeccionPublicacion[]
 }
 
+/** `Coleccion` + si ya contiene una publicación dada — ver GET /api/colecciones?publicacion_id= */
+export type ColeccionConMembership = Coleccion & {
+  agregada: boolean
+}
+
 export type ColeccionCardData = {
   id: string
   titulo: string

@@ -5,7 +5,7 @@ import {
   unauthorized,
   validationError,
 } from '@/lib/supabase/handleError'
-import type { Coleccion, VisibilidadColeccion } from '@/lib/types/database'
+import type { Coleccion, ColeccionConMembership, VisibilidadColeccion } from '@/lib/types/database'
 
 const VISIBILIDADES: VisibilidadColeccion[] = ['publica', 'privada']
 
@@ -58,13 +58,18 @@ export async function POST(request: Request) {
   return jsonOk<Coleccion>(data, 201)
 }
 
-export async function GET() {
+// `publicacion_id` es opcional: cuando viene, cada colección incluye `agregada`
+// (si ya contiene esa publicación) — lo consume AgregarAColeccionButton para
+// no mostrar "Agregar" en colecciones que ya la tienen al reabrir el modal.
+export async function GET(request: Request) {
   const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return unauthorized()
+
+  const publicacionId = new URL(request.url).searchParams.get('publicacion_id')
 
   const { data, error } = await supabase
     .from('coleccion')
@@ -74,5 +79,32 @@ export async function GET() {
 
   if (error) return handleError(error)
 
-  return jsonOk<Coleccion[]>(data ?? [])
+  const colecciones = data ?? []
+
+  if (!publicacionId) {
+    return jsonOk<Coleccion[]>(colecciones)
+  }
+
+  if (colecciones.length === 0) {
+    return jsonOk<ColeccionConMembership[]>([])
+  }
+
+  const { data: miembros, error: miembrosError } = await supabase
+    .from('coleccion_publicacion')
+    .select('coleccion_id')
+    .eq('publicacion_id', publicacionId)
+    .in(
+      'coleccion_id',
+      colecciones.map((c) => c.id)
+    )
+
+  if (miembrosError) return handleError(miembrosError)
+
+  const agregadas = new Set((miembros ?? []).map((m) => m.coleccion_id))
+  const conMembership: ColeccionConMembership[] = colecciones.map((c) => ({
+    ...c,
+    agregada: agregadas.has(c.id),
+  }))
+
+  return jsonOk<ColeccionConMembership[]>(conMembership)
 }

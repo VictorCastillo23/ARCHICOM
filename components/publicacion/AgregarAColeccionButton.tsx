@@ -8,7 +8,7 @@ import Field from '@/components/ui/Field'
 import Modal from '@/components/ui/Modal'
 import Spinner from '@/components/ui/Spinner'
 import { ApiError, apiClient } from '@/lib/api/client'
-import type { Coleccion, VisibilidadColeccion } from '@/lib/types/database'
+import type { Coleccion, ColeccionConMembership, VisibilidadColeccion } from '@/lib/types/database'
 
 export interface AgregarAColeccionButtonProps {
   publicacionId: string
@@ -30,7 +30,7 @@ export default function AgregarAColeccionButton({
   const [isOpen, setIsOpen] = useState(false)
   const [status, setStatus] = useState<FetchStatus>('idle')
   const [fetchErrorMsg, setFetchErrorMsg] = useState<string | null>(null)
-  const [collections, setCollections] = useState<Coleccion[] | null>(null)
+  const [collections, setCollections] = useState<ColeccionConMembership[] | null>(null)
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [listErrorMsg, setListErrorMsg] = useState<string | null>(null)
@@ -40,7 +40,9 @@ export default function AgregarAColeccionButton({
   const [creating, setCreating] = useState(false)
   const [createErrorMsg, setCreateErrorMsg] = useState<string | null>(null)
 
-  // Fetch the user's collections every time the modal opens.
+  // Fetch the user's collections every time the modal opens, along with which
+  // of them already contain this publication (`?publicacion_id=`) — otherwise
+  // reopening the modal would show every collection as "not added" again.
   useEffect(() => {
     if (!isOpen) return
 
@@ -50,9 +52,12 @@ export default function AgregarAColeccionButton({
       setStatus('loading')
       setFetchErrorMsg(null)
       try {
-        const data = await apiClient<Coleccion[]>('/api/colecciones')
+        const data = await apiClient<ColeccionConMembership[]>(
+          `/api/colecciones?publicacion_id=${encodeURIComponent(publicacionId)}`
+        )
         if (cancelled) return
         setCollections(data)
+        setAddedIds(new Set(data.filter((c) => c.agregada).map((c) => c.id)))
         setStatus('idle')
       } catch (err) {
         if (cancelled) return
@@ -68,7 +73,7 @@ export default function AgregarAColeccionButton({
     return () => {
       cancelled = true
     }
-  }, [isOpen])
+  }, [isOpen, publicacionId])
 
   function handleOpen() {
     if (!isAuthenticated) {
@@ -128,7 +133,10 @@ export default function AgregarAColeccionButton({
         body: JSON.stringify({ titulo, visibilidad: newVisibilidad }),
       })
 
-      setCollections((prev) => (prev ? [nueva, ...prev] : [nueva]))
+      const nuevaConMembership: ColeccionConMembership = { ...nueva, agregada: false }
+      setCollections((prev) =>
+        prev ? [nuevaConMembership, ...prev] : [nuevaConMembership]
+      )
       setShowCreateForm(false)
       setNewTitulo('')
       setNewVisibilidad('privada')
