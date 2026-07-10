@@ -18,5 +18,14 @@ export async function GET() {
 
   if (error) return handleError(error)
 
-  return jsonOk({ user, perfil: data })
+  // notif_email_habilitado is column-grant-blocked from direct SELECT (see
+  // BD §3.21 — a plain column GRANT to `authenticated` would leak this
+  // preference across users, since usuario's SELECT policy is row-public,
+  // not row-scoped). Read via the self-scoped RPC instead.
+  const { data: notifEmailHabilitado, error: notifError } = await supabase.rpc(
+    'mi_notif_email_habilitado',
+  )
+  if (notifError) return handleError(notifError)
+
+  return jsonOk({ user, perfil: { ...data, notif_email_habilitado: notifEmailHabilitado } })
 }
