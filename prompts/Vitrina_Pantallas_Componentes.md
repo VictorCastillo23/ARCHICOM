@@ -351,6 +351,8 @@
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
   │ LinksEditor        │ Gestionar enlaces (alta/edición/orden/borrado)│ getLinksUsuario → POST/PATCH/DELETE /api/perfil/links* │  
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
+  │ NotificacionesForm │ Alternar notificaciones por correo (Toggle)   │ getPreferenciasNotificacion → notif_email_habilitado → PATCH /api/perfil │  
+  ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
   │ ChangePasswordForm │ Cambiar contraseña (actual + nueva + confirmar)│ POST /api/auth/change-password               │  
   └────────────────────┴───────────────────────────────────────────────┴──────────────────────────────────────────────┘  
 
@@ -358,7 +360,10 @@
   1. Cabecera: "Ajustes de cuenta" + link "← Volver al perfil"
   2. Editar perfil (PerfilEditForm)
   3. Mis enlaces (LinksEditor)
-  4. Seguridad — cambio de contraseña (ChangePasswordForm). La confirmación se valida en el cliente;
+  4. Notificaciones (NotificacionesForm) — Toggle (`components/ui/Toggle.tsx`, `role="switch"` +
+     `aria-checked`, distinto del `aria-pressed` de ThemeToggle) que persiste `notif_email_habilitado`
+     vía PATCH /api/perfil en cada cambio (optimistic update con rollback si falla).
+  5. Seguridad — cambio de contraseña (ChangePasswordForm). La confirmación se valida en el cliente;
      el backend re-verifica la contraseña actual antes de actualizar. POST a `/api/auth/change-password`.
 
   ---
