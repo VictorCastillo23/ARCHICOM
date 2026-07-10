@@ -50,15 +50,18 @@ export type Usuario = {
   institucion?: string
   carrera?: string
   ciudad?: string
+  /** Email notification preference (opt-out model, default true). Private — never granted to anon. */
+  notif_email_habilitado: boolean
   creado_en: string
 }
 
 /**
  * Public profile fields — excludes email (sourced from auth.getUser() for own
- * profile) and rol (not readable by anon at the DB grant level; the own user's
- * rol is fetched separately for nav/admin gating).
+ * profile), rol (not readable by anon at the DB grant level; the own user's
+ * rol is fetched separately for nav/admin gating), and notif_email_habilitado
+ * (private notification preference, never granted to anon — see BD §3.21).
  */
-export type PerfilPublico = Omit<Usuario, 'email' | 'rol'>
+export type PerfilPublico = Omit<Usuario, 'email' | 'rol' | 'notif_email_habilitado'>
 
 export type Publicacion = {
   id: string
