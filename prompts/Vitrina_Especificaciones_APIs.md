@@ -166,12 +166,13 @@ Todos responden con el envelope uniforme: éxito `{ "data": ... }`, error `{ "er
 { "data": {
   "user": { "id": "uuid", "email": "ana@uni.mx" },
   "perfil": { "id": "uuid", "nombre": "Ana Ruiz", "rol": "usuario",
-              "institucion": null, "carrera": null, "ciudad": null, "creado_en": "2026-01-01T00:00:00Z" }
+              "institucion": null, "carrera": null, "ciudad": null,
+              "notif_email_habilitado": true, "creado_en": "2026-01-01T00:00:00Z" }
 } }
 ```
 
 - `user`: objeto de `auth.getUser()` (validado contra el servidor de Auth).
-- `perfil`: fila de `usuario` (`id, nombre, rol, institucion, carrera, ciudad, creado_en`). `ciudad` es texto libre y opcional (ver `Vitrina_BD_Conexion_Backend.md` §3.19).
+- `perfil`: fila de `usuario` (`id, nombre, rol, institucion, carrera, ciudad, notif_email_habilitado, creado_en`). `ciudad` es texto libre y opcional (ver `Vitrina_BD_Conexion_Backend.md` §3.19). `notif_email_habilitado` es la preferencia de notificaciones por correo (booleano, default `true`, campo privado — solo visible en el perfil propio; ver §3.21).
 
 **Errores:** sin sesión → `401 unauthorized`.
 
@@ -221,16 +222,17 @@ Las operaciones disponibles y quién puede ejecutarlas se derivan de las políti
 | `GET` | (SSR) `lib/data/perfil.ts` | Público | Leer un perfil público desde un Server Component; **no hay endpoint REST** |
 | `GET` | `/api/auth/me` | Sesión propia | Perfil propio + datos de auth (ver §3.5) |
 | `GET` | `/api/buscar?tipo=usuario` | Público | Buscar perfiles (ver §9) |
-| `PATCH` | `/api/perfil` | Solo el propio | Editar `nombre`, `institucion`, `carrera`, `ciudad` (cada uno ≤ 50 chars). El `id` sale de la sesión |
+| `PATCH` | `/api/perfil` | Solo el propio | Editar `nombre`, `institucion`, `carrera`, `ciudad` (cada uno ≤ 50 chars) y/o `notif_email_habilitado` (booleano). El `id` sale de la sesión |
 
 **Editar el perfil propio**
 
 ```http
 PATCH /api/perfil
-{ "nombre": "Ana Ruiz", "institucion": "UNAM", "carrera": "Biología", "ciudad": "León" }
+{ "nombre": "Ana Ruiz", "institucion": "UNAM", "carrera": "Biología", "ciudad": "León",
+  "notif_email_habilitado": false }
 ```
 
-Responde `{ data: <fila usuario con id, nombre, rol, institucion, carrera, ciudad, creado_en> }`. Campos opcionales; se actualizan solo los presentes.
+Responde `{ data: <fila usuario con id, nombre, rol, institucion, carrera, ciudad, notif_email_habilitado, creado_en> }`. Campos opcionales; se actualizan solo los presentes (atómico si se envían varios a la vez). `notif_email_habilitado` que no sea booleano (p. ej. el string `"true"`) → `400 validation_error` (`"notif_email_habilitado debe ser verdadero o falso"`).
 
 > La fila se crea automáticamente al registrarse (trigger `handle_new_user`); no hay `POST`. El `id` coincide con `auth.users.id`.
 

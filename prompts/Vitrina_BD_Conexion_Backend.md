@@ -813,13 +813,33 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 ---
 
-### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`)
+### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `revoke_select_notif_email_habilitado_add_self_rpc`)
 
-**PR1 de una cadena de PRs** (base de esquema). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Sección **en construcción**: se extiende en fases siguientes con el Edge Function transaccional + webhooks (`enviar-notificacion-email`), el toggle de perfil, y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`).
+**PR1+PR3 de una cadena de PRs** (base de esquema + toggle de perfil). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá. Sección **en construcción**: se extiende en fases siguientes con el Edge Function transaccional + webhooks (`enviar-notificacion-email`, Fase 2) y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`, Fases 4a/4b).
 
 #### Columna `usuario.notif_email_habilitado`
 
-`boolean NOT NULL DEFAULT true` — preferencia de notificaciones por correo, modelo opt-out (todo usuario empieza suscrito). A diferencia de `institucion`/`carrera`/`ciudad` (campos de perfil público), **no** se otorga a `anon`: `grant select, update (notif_email_habilitado) on usuario to authenticated;` en la misma migración que el `ALTER TABLE` (regla del §3.19 aplicada). Verificado contra `information_schema.column_privileges`: únicamente `authenticated` tiene `SELECT`/`UPDATE` sobre la columna, sin fila para `anon`.
+`boolean NOT NULL DEFAULT true` — preferencia de notificaciones por correo, modelo opt-out (todo usuario empieza suscrito). `UPDATE` sigue otorgado a `authenticated` (`grant update (notif_email_habilitado) on usuario to authenticated;`) — seguro porque la policy `editar_propio` (`USING`/`WITH CHECK auth.uid() = id`) es **row-scoped**, así que un usuario solo puede escribir su propia fila.
+
+> **Corrección (2026-07-10, hallazgo de `review-risk` verificado en vivo) — `GRANT SELECT` sobre esta columna a `authenticated` era una fuga de privacidad, NO estaba protegido por RLS.** El diseño original de PR1 (`grant select, update (notif_email_habilitado) on usuario to authenticated;`) asumía que RLS acotaba la lectura a la fila propia, igual que la protección de escritura. **Falso**: la policy de SELECT de `usuario` es `lectura_publica USING (true)` — pública para **todas** las filas y **todos** los roles (es la policy que permite ver perfiles de otros usuarios en `/usuario/[id]`). RLS filtra **filas**, no columnas; el `GRANT SELECT` de columna es *role-wide*, no *row-scoped*. Resultado real: cualquier usuario `authenticated` podía leer `notif_email_habilitado` de **cualquier otro usuario** vía `.from('usuario').select('notif_email_habilitado').eq('id', '<uuid-ajeno>')` — verificado en vivo contra la BD. Esta es la clase de error inversa al footgun de `ciudad` (§3.19: ahí faltaba el grant y todo el SELECT fallaba; acá el grant estaba de más y exponía datos privados de terceros).
+>
+> **Fix (migración `revoke_select_notif_email_habilitado_add_self_rpc`):** `revoke select (notif_email_habilitado) on usuario from authenticated;` (columna ya no legible por PostgREST directo, ni siquiera de la fila propia) + nueva RPC self-scoped `mi_notif_email_habilitado()` (ver abajo) como único camino de lectura. `UPDATE` no se tocó — sigue siendo seguro por ser row-scoped vía RLS.
+>
+> **Regla para cualquier futura columna "privada" de `usuario` (o de cualquier tabla con policy de SELECT pública/no row-scoped):** un `GRANT SELECT` de columna a un rol NO hereda automáticamente el row-scoping de otras policies de esa tabla. Si la tabla tiene una policy de lectura pública (`USING (true)`) como `usuario.lectura_publica`, la única forma de exponer una columna privada "propia únicamente" es (a) una RPC `SECURITY DEFINER` self-scoped que derive el id de `auth.uid()` internamente (patrón de `mi_notif_email_habilitado()`), nunca (b) un `GRANT SELECT` de columna liso — ese último expone la columna a todas las filas visibles por la policy existente, no solo a la fila del llamante.
+
+Verificado contra `information_schema.column_privileges` tras el fix: `authenticated` conserva `UPDATE`, ya no aparece `SELECT` para esa columna en ningún rol.
+
+#### RPC `mi_notif_email_habilitado()` — lectura self-scoped, sin parámetros
+
+```sql
+create or replace function public.mi_notif_email_habilitado()
+returns boolean
+language sql security definer set search_path = '' as $$
+  select notif_email_habilitado from public.usuario where id = auth.uid();
+$$;
+```
+
+`SECURITY DEFINER`, **sin parámetros** — deriva el `id` de `auth.uid()` dentro del cuerpo, así que estructuralmente **no puede** leer la preferencia de otro usuario (a diferencia de recibir un `p_usuario_id` y confiar en que el llamante no lo falsifique). `revoke all ... from public; grant execute ... to authenticated;` (NO `anon` — requiere sesión). Reemplaza el `.select('notif_email_habilitado')` directo en `lib/data/perfil.ts` (`getPreferenciasNotificacion`), `app/api/auth/me/route.ts` y `app/api/perfil/route.ts` (el `RETURNING` de la fila tras el `PATCH` también requiere `SELECT` sobre la columna devuelta, así que también se movió a esta RPC).
 
 #### RPC `resolver_destinatario_notificacion(p_secret text, p_usuario_id uuid)`
 
@@ -829,9 +849,13 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 Verificado vía MCP `supabase`: secreto correcto → retorna la fila `{email, notif_email_habilitado}` de un usuario real; secreto incorrecto/ausente → `P0001 No autorizado`. Advisors: solo el WARN `security_definer_function_executable` esperado para esta clase de RPC (mismo que `aceptar_solicitud`/`consumir_cuota_rag`), nada nuevo.
 
+#### Toggle en `/perfil/ajustes` (Fase 3, PR3)
+
+`PATCH /api/perfil` acepta `notif_email_habilitado: boolean` y lo persiste con el `UPDATE` normal (row-scoped por `editar_propio`); la respuesta y `GET /api/auth/me` obtienen el valor actual vía `mi_notif_email_habilitado()`, no vía `.select()` directo (ver arriba). UI: `components/ui/Toggle.tsx` (`role="switch"`) + `components/perfil/NotificacionesForm.tsx`.
+
 #### Pendiente (fases siguientes)
 
-Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud_mensaje` INSERT, `solicitud_revista` UPDATE→aceptada) — Fase 2. Toggle en `/perfil/ajustes` (`PATCH /api/perfil`, `GET /api/auth/me`) — Fase 3. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
+Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud_mensaje` INSERT, `solicitud_revista` UPDATE→aceptada) — Fase 2. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
 
 ---
 
@@ -861,6 +885,7 @@ Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud
 | `aceptar_solicitud_mensaje(p_solicitud_id)` | RPC (SECURITY DEFINER) | Valida que el receptor sea el llamante y que la solicitud esté `pendiente`; follow-back receptor→emisor; marca `aceptada`; devuelve `{"emisor_id":...}`. Ver §3.14 |
 | `rechazar_solicitud_mensaje(p_solicitud_id)` | RPC (SECURITY DEFINER) | Mismas validaciones que la anterior; marca `rechazada`; NO toca los follows; retorna void. Ver §3.14 |
 | `resolver_destinatario_notificacion(p_secret, p_usuario_id)` | RPC (SECURITY DEFINER) | **Notificaciones transaccionales.** Resuelve `email` + `notif_email_habilitado` de un usuario para el Edge Function del webhook (sin JWT); gateada por un secreto comparado contra `private.notif_config` (no `current_setting`, ver nota en §3.21). `EXECUTE` a `anon`+`authenticated` (el webhook llama sin sesión). Ver §3.21 |
+| `mi_notif_email_habilitado()` | RPC (SECURITY DEFINER) | **Lectura self-scoped de la preferencia propia.** Sin parámetros — deriva `auth.uid()` internamente, único camino de lectura tras revocarse `SELECT` de columna a `authenticated` (fue una fuga de privacidad entre usuarios, no protegida por RLS — ver §3.21). `EXECUTE` solo a `authenticated`. Ver §3.21 |
 | Bucket `publicaciones` | Storage | Lectura pública; subir/editar/borrar restringido a la carpeta `{user_id}/...` de cada usuario |
 
 ---
@@ -1040,6 +1065,7 @@ Estado real de los `EXECUTE` (de `information_schema.role_routine_grants`):
 | `aceptar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
 | `rechazar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
 | `resolver_destinatario_notificacion(text, uuid)` | `anon, authenticated, postgres, service_role` | Flagueada (WARN); misma clase, pero el control real **no** es `es_admin()` — es un secreto compartido comparado contra `private.notif_config` (el webhook llama sin JWT, solo `anon key`). `EXECUTE` a `anon` es intencional. Ver §3.21 |
+| `mi_notif_email_habilitado()` | `authenticated, postgres, service_role` | Flagueada (WARN); mismo patrón, pero sin parámetros — deriva el `usuario_id` de `auth.uid()` internamente, así que estructuralmente no puede leer la fila de otro usuario (a diferencia de `resolver_destinatario_notificacion`, que recibe `p_usuario_id` explícito pero está gateada por secreto). `EXECUTE` a `anon` deliberadamente NO otorgado — requiere sesión. Ver §3.21 |
 
 El advisor `authenticated_security_definer_function_executable` (WARN) marca las cinco RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
 
