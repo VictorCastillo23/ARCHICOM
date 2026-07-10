@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getPerfil } from '@/lib/data/perfil'
+import { getPerfil, getPreferenciasNotificacion } from '@/lib/data/perfil'
 import { getLinksUsuario } from '@/lib/data/links'
 import PerfilEditForm from '@/components/perfil/PerfilEditForm'
 import ChangePasswordForm from '@/components/perfil/ChangePasswordForm'
 import LinksEditor from '@/components/perfil/LinksEditor'
+import NotificacionesForm from '@/components/perfil/NotificacionesForm'
+import ErrorState from '@/components/ui/ErrorState'
 
 export const metadata = { title: 'Ajustes — Vitrina' }
 
@@ -27,6 +29,15 @@ export default async function AjustesPage() {
   }
 
   const { data: links } = await getLinksUsuario(user.id)
+  const { data: notifEmailHabilitado, error: notifError } = await getPreferenciasNotificacion()
+
+  if (notifError) {
+    // Never default a privacy preference to `true` on a failed read — that
+    // silently re-enables emails the user may have opted out of. Surface the
+    // failure instead of guessing (matches usuario/[id]/page.tsx's
+    // if (error) return <ErrorState/> convention for getPerfil).
+    console.error('[perfil/ajustes] getPreferenciasNotificacion', notifError)
+  }
 
   return (
     <div className="animate-page flex flex-col gap-10">
@@ -64,6 +75,21 @@ export default async function AjustesPage() {
         className="border border-border rounded-lg p-6 bg-surface"
       >
         <LinksEditor initialLinks={links ?? []} />
+      </section>
+
+      {/* Notification preferences */}
+      <section
+        aria-label="Notificaciones"
+        className="border border-border rounded-lg p-6 bg-surface"
+      >
+        {notifError || notifEmailHabilitado === null ? (
+          <ErrorState
+            title="No se pudo cargar tu preferencia de notificaciones"
+            description="Intenta de nuevo más tarde."
+          />
+        ) : (
+          <NotificacionesForm perfil={{ notif_email_habilitado: notifEmailHabilitado }} />
+        )}
       </section>
 
       {/* Security — lowest frequency, last */}

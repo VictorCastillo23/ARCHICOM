@@ -36,6 +36,26 @@ export async function getSesionUsuario(
 }
 
 /**
+ * Own user's email notification preference. NOT protected by row RLS —
+ * `usuario`'s SELECT policy (`lectura_publica USING (true)`) is row-public,
+ * so a plain column GRANT would leak this value across users; SELECT on the
+ * column was revoked from `authenticated` entirely (see BD §3.21). The only
+ * read path is the `mi_notif_email_habilitado()` RPC, which is RPC-owner-scoped:
+ * it derives the row from `auth.uid()` internally, so it can never return
+ * another user's preference — no `id` parameter to (mis)supply.
+ */
+export async function getPreferenciasNotificacion(): Promise<{
+  data: boolean | null
+  error: unknown
+}> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc('mi_notif_email_habilitado')
+
+  return { data, error }
+}
+
+/**
  * Whether a user has the `administrador` role. Used for admin-only UI gating
  * (e.g. a non-author admin moderating a publication). Security is still enforced
  * by RLS — this only decides what to render.
