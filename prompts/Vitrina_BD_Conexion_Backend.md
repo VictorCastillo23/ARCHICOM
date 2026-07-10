@@ -813,6 +813,28 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 ---
 
+### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`)
+
+**PR1 de una cadena de PRs** (base de esquema). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Sección **en construcción**: se extiende en fases siguientes con el Edge Function transaccional + webhooks (`enviar-notificacion-email`), el toggle de perfil, y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`).
+
+#### Columna `usuario.notif_email_habilitado`
+
+`boolean NOT NULL DEFAULT true` — preferencia de notificaciones por correo, modelo opt-out (todo usuario empieza suscrito). A diferencia de `institucion`/`carrera`/`ciudad` (campos de perfil público), **no** se otorga a `anon`: `grant select, update (notif_email_habilitado) on usuario to authenticated;` en la misma migración que el `ALTER TABLE` (regla del §3.19 aplicada). Verificado contra `information_schema.column_privileges`: únicamente `authenticated` tiene `SELECT`/`UPDATE` sobre la columna, sin fila para `anon`.
+
+#### RPC `resolver_destinatario_notificacion(p_secret text, p_usuario_id uuid)`
+
+`SECURITY DEFINER`, `set search_path = ''`. Igual que `consumir_cuota_rag`/`aceptar_solicitud`, usa el bypass de owner para leer `usuario.email` — columna sin `SELECT` para ningún rol vía PostgREST (§7.3). Se invoca desde el Edge Function del webhook transaccional (sin JWT de usuario, solo la `anon key`), así que el control de acceso **no** es `es_admin()` sino un secreto compartido: si `p_secret` no coincide con el valor almacenado, `RAISE EXCEPTION 'No autorizado'` (P0001 → 400 vía `handleError`). Si coincide, retorna `(email text, notif_email_habilitado boolean)` para el `usuario_id` pedido. `revoke all ... from public; grant execute ... to anon, authenticated;` (el webhook llama sin sesión, de ahí el grant a `anon`).
+
+> **Nota (2026-07-10) — `ALTER DATABASE ... SET` / `current_setting('app.settings.*')` NO es viable en Supabase hosted.** El diseño original de esta RPC planeaba guardar el secreto con `alter database postgres set app.settings.notif_webhook_secret = '<valor>'` y leerlo con `current_setting('app.settings.notif_webhook_secret', true)` — patrón estándar en Postgres self-hosted. En Supabase hosted el rol `postgres` **no tiene superusuario real**; ese `ALTER DATABASE` falla con `permission denied to set parameter`. Corregido en la migración `fix_resolver_destinatario_notificacion_secret_store`: se creó un schema `private` (sin grants a `public`/`anon`/`authenticated`) con la tabla `private.notif_config(key text primary key, value text)`, y la RPC compara `p_secret <> (select value from private.notif_config where key = 'webhook_secret')` en vez de `current_setting(...)`. **Regla para cualquier secreto futuro a nivel de base de datos en este proyecto:** guardarlo en una tabla de un schema privado sin grants a roles de PostgREST — **nunca** `ALTER DATABASE SET` / `current_setting('app.settings.*')`, no disponible en este entorno hosted.
+
+Verificado vía MCP `supabase`: secreto correcto → retorna la fila `{email, notif_email_habilitado}` de un usuario real; secreto incorrecto/ausente → `P0001 No autorizado`. Advisors: solo el WARN `security_definer_function_executable` esperado para esta clase de RPC (mismo que `aceptar_solicitud`/`consumir_cuota_rag`), nada nuevo.
+
+#### Pendiente (fases siguientes)
+
+Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud_mensaje` INSERT, `solicitud_revista` UPDATE→aceptada) — Fase 2. Toggle en `/perfil/ajustes` (`PATCH /api/perfil`, `GET /api/auth/me`) — Fase 3. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
+
+---
+
 ## 4. Objetos adicionales (no son tablas)
 
 | Objeto | Tipo | Función |
@@ -838,6 +860,7 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 | `enviar_solicitud_mensaje(p_receptor_id)` | RPC (SECURITY DEFINER) | **Solicitudes de mensaje.** Valida sesión y anti-self; auto-follow emisor→receptor; si quedó follow mutuo → acepta cualquier pendiente y devuelve `{"resultado":"mutuo"}`; si no → INSERT/UPSERT solicitud pendiente y devuelve `{"resultado":"solicitud","solicitud_id":...}`. Ver §3.14 |
 | `aceptar_solicitud_mensaje(p_solicitud_id)` | RPC (SECURITY DEFINER) | Valida que el receptor sea el llamante y que la solicitud esté `pendiente`; follow-back receptor→emisor; marca `aceptada`; devuelve `{"emisor_id":...}`. Ver §3.14 |
 | `rechazar_solicitud_mensaje(p_solicitud_id)` | RPC (SECURITY DEFINER) | Mismas validaciones que la anterior; marca `rechazada`; NO toca los follows; retorna void. Ver §3.14 |
+| `resolver_destinatario_notificacion(p_secret, p_usuario_id)` | RPC (SECURITY DEFINER) | **Notificaciones transaccionales.** Resuelve `email` + `notif_email_habilitado` de un usuario para el Edge Function del webhook (sin JWT); gateada por un secreto comparado contra `private.notif_config` (no `current_setting`, ver nota en §3.21). `EXECUTE` a `anon`+`authenticated` (el webhook llama sin sesión). Ver §3.21 |
 | Bucket `publicaciones` | Storage | Lectura pública; subir/editar/borrar restringido a la carpeta `{user_id}/...` de cada usuario |
 
 ---
@@ -1016,6 +1039,7 @@ Estado real de los `EXECUTE` (de `information_schema.role_routine_grants`):
 | `enviar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); excepción documentada e intencional — el control real es la validación interna (sesión + anti-self). `EXECUTE` revocado de `public` y `anon` (misma postura §7.1). Ver §3.14 |
 | `aceptar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
 | `rechazar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
+| `resolver_destinatario_notificacion(text, uuid)` | `anon, authenticated, postgres, service_role` | Flagueada (WARN); misma clase, pero el control real **no** es `es_admin()` — es un secreto compartido comparado contra `private.notif_config` (el webhook llama sin JWT, solo `anon key`). `EXECUTE` a `anon` es intencional. Ver §3.21 |
 
 El advisor `authenticated_security_definer_function_executable` (WARN) marca las cinco RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
 
