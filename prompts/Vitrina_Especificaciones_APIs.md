@@ -184,7 +184,7 @@ Endpoint de la capa Next (no es REST crudo de Supabase). Permite al usuario aute
 **Cuerpo de la solicitud:**
 
 ```json
-{ "currentPassword": "Vitrina123!", "newPassword": "NuevaClave123!" }
+{ "currentPassword": "ClaveActual123!", "newPassword": "NuevaClave123!" }
 ```
 
 - `currentPassword`: string, requerido. Se re-valida con `signInWithPassword` antes de actualizar — `updateUser({ password })` por sí solo NO verifica la clave anterior.

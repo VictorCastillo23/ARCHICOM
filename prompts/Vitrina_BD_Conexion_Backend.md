@@ -954,13 +954,9 @@ await supabase.rpc('rechazar_solicitud', {
 
 ## 6. Datos de prueba cargados
 
-### Usuarios seed (contraseña para los tres: `Vitrina123!`)
+### Usuarios seed
 
-| Nombre | Correo | Rol | Institución |
-|---|---|---|---|
-| María García | m.garcia@uaq.mx | usuario | UAQ · Biología |
-| Carlos Romo | c.romo@unam.mx | usuario | UNAM · Ingeniería Civil |
-| Dra. Laura Vega | l.vega@tec.mx | administrador | ITESM · Ciencias Sociales |
+3 cuentas sembradas (2 `usuario`, 1 `administrador`), con institución/carrera representativas de cada tipo. **Baneadas en Auth** (`banned_until`) — correo/contraseña no se documentan aquí; pedir acceso al dueño del proyecto para reactivarlas si hacen falta para pruebas.
 
 > Además de los tres usuarios seed, pueden existir usuarios adicionales creados durante pruebas manuales. El seed solo cubre los tres anteriores.
 
