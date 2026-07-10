@@ -815,7 +815,7 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 ### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`)
 
-**PR1 de una cadena de PRs** (base de esquema). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Sección **en construcción**: se extiende en fases siguientes con el Edge Function transaccional + webhooks (`enviar-notificacion-email`), el toggle de perfil, y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`).
+**PR1+PR2 de una cadena de PRs** (base de esquema + Edge Function transaccional). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Sección **en construcción**: se extiende en fases siguientes con el toggle de perfil y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`).
 
 #### Columna `usuario.notif_email_habilitado`
 
@@ -829,9 +829,36 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 Verificado vía MCP `supabase`: secreto correcto → retorna la fila `{email, notif_email_habilitado}` de un usuario real; secreto incorrecto/ausente → `P0001 No autorizado`. Advisors: solo el WARN `security_definer_function_executable` esperado para esta clase de RPC (mismo que `aceptar_solicitud`/`consumir_cuota_rag`), nada nuevo.
 
+#### Edge Function `enviar-notificacion-email` (Fase 2, PR2)
+
+`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, desviación deliberada D9 respecto al precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})`, wrapper HTML compartido con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija).
+
+Variables de entorno: `NOTIF_WEBHOOK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NOTIF_FROM_EMAIL`.
+
+Flujo:
+1. Header `x-webhook-secret` ≠ `NOTIF_WEBHOOK_SECRET` (o ausente) → **401**, antes de parsear el body.
+2. Parsea el payload nativo del webhook `{type, table, record, old_record?, schema}`.
+3. Enruta vía `resolveRecipient`: `solicitud_mensaje` INSERT → destinatario `record.receptor_id`, plantilla "nueva solicitud de mensaje"; `solicitud_revista` UPDATE con `record.estado==='aceptada'` **y** `old_record?.estado !== 'aceptada'` → destinatario `record.solicitante_id`, plantilla "tu obra fue aceptada en la revista" (el guard de `old_record` evita reenvíos si se vuelve a guardar una fila ya aceptada); cualquier otro caso → **204** (ignorado, no es error).
+4. Cliente Supabase **anon** (`createClient(SUPABASE_URL, SUPABASE_ANON_KEY)`) — no `service_role` — llama `rpc('resolver_destinatario_notificacion', {p_secret: NOTIF_WEBHOOK_SECRET, p_usuario_id})`.
+5. Sin fila, o `notif_email_habilitado=false`, o sin `email` → **204** (omitido: usuario no encontrado / opt-out / sin correo, no es un error). Error real de la RPC → **500**.
+6. Arma el HTML vía `renderEmail(...)` y envía con Resend (`npm:resend`, import Deno) `emails.send({from: NOTIF_FROM_EMAIL, to: email, subject, html})`. Error de Resend → **500** con su mensaje; éxito → **200**.
+
+**Footgun de build:** el entrypoint Deno (`index.ts`) usa globals (`Deno.serve`, `Deno.env`) y specifiers `npm:`/imports con extensión `.ts` que `tsc` (targeted a Node) no puede resolver. Se excluyó explícitamente en `tsconfig.json` (`exclude: ["supabase/functions/**/index.ts"]`) — los siblings planos (`route-predicate.ts`, `email-template.ts`) **no** están excluidos y sí se type-checan/lintean normalmente. ESLint (`eslint-config-next/typescript`) no requirió una exclusión equivalente: no lanza error de "parserOptions.project" sobre `index.ts` aun estando fuera del programa de `tsc` — verificado explícitamente antes de decidir no tocar `eslint.config.mjs`.
+
+#### Webhooks del dashboard (runbook operativo, Fase 2 — NO es DDL de migración, decisión D7)
+
+Se configuran manualmente en el dashboard de Supabase (Database → Webhooks), no vía `apply_migration` — evita incrustar el valor del secreto en una definición de trigger versionada y usa la UI soportada con reintentos/observabilidad. Dos webhooks:
+
+| Webhook | Tabla | Evento | Header | Destino |
+|---|---|---|---|---|
+| Nueva solicitud de mensaje | `solicitud_mensaje` | INSERT | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+| Solicitud de revista aceptada | `solicitud_revista` | UPDATE | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+
+El mismo secreto compartido vive en tres lugares (ver nota de §3.21 arriba sobre `private.notif_config`): (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC). **Pendiente de ejecución** — creación de los 2 webhooks y despliegue de la función (`mcp__supabase__deploy_edge_function` + secretos) quedan fuera del alcance de este `sdd-apply` (sin acceso a herramientas MCP de Supabase en esta sesión); código listo y commiteado, runbook documentado para quien despliegue.
+
 #### Pendiente (fases siguientes)
 
-Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud_mensaje` INSERT, `solicitud_revista` UPDATE→aceptada) — Fase 2. Toggle en `/perfil/ajustes` (`PATCH /api/perfil`, `GET /api/auth/me`) — Fase 3. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
+Toggle en `/perfil/ajustes` (`PATCH /api/perfil`, `GET /api/auth/me`) — Fase 3. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
 
 ---
 
