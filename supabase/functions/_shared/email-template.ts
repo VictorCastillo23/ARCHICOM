@@ -10,7 +10,13 @@ export type RenderEmailParams = {
   nombre?: string
 }
 
-/** Escapes the 5 HTML-significant characters. Not a sanitizer — only safe for plain-text values. */
+/**
+ * Escapes the 5 HTML-significant characters. Not a sanitizer — only safe for
+ * plain-text values. NOT exported/shared with
+ * `enviar-correo-masivo/plain-text-to-html.ts` (duplicated there instead) —
+ * that file is tsc-checked and can't use a `.ts`-extension relative import
+ * (tsc rejects it) that Deno's runtime also requires; see that file's header.
+ */
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')

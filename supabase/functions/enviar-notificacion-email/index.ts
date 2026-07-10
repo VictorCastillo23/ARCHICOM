@@ -5,9 +5,11 @@
 //
 // This file is intentionally thin: all pure/branching logic lives in the
 // Vitest-covered siblings `./route-predicate.ts` and `../_shared/email-template.ts`.
-// It is excluded from `tsc --noEmit` / ESLint (tsconfig.json, eslint.config.mjs)
-// because it targets the Deno runtime (Deno.serve, Deno.env, npm: specifiers),
-// not Node — those tools cannot type-check/lint it meaningfully.
+// Excluded from `tsc --noEmit` via the `supabase/functions/**/index.ts`
+// tsconfig exclude (it targets the Deno runtime — Deno.serve, Deno.env,
+// npm: specifiers — not Node, so `tsc` cannot resolve it). This file is NOT
+// excluded from ESLint — `eslint-config-next/typescript` lints it normally
+// and it passes clean; no `eslint.config.mjs` exclusion exists or is needed.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@4'
 import { resolveRecipient, type WebhookPayload } from './route-predicate.ts'

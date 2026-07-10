@@ -813,9 +813,11 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 ---
 
-### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`)
+### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado`, RPC resolutora transaccional y backend del panel admin de envío masivo (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `create_correo_admin_table`, `create_resolver_destinatarios_correo_rpc`)
 
-**PR1+PR2 de una cadena de PRs** (base de esquema + Edge Function transaccional). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Sección **en construcción**: se extiende en fases siguientes con el toggle de perfil y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`).
+**PR1+PR2+PR4a de una cadena de PRs** (base de esquema + Edge Function transaccional + esquema/RLS/RPC/Edge Function del panel admin). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Con esta fase (4a) el esquema y las RPC quedan **completos**; solo falta la fase 4b (rutas Next.js + UI del panel admin, sin cambios de esquema).
+
+> **Nota de rama (2026-07-10):** esta sección se extendió en `feat/notif-email-admin-backend` (base `feat/notif-email-edge-fn`, que trae PR1+PR2), que **no** incluye el fix de privacidad R1 aplicado en la rama independiente `feat/notif-email-perfil-ui` (PR3: revocación de `SELECT (notif_email_habilitado)` para `authenticated` + RPC `mi_notif_email_habilitado()`) — ver el historial de commits/PR de esa rama para el detalle completo. Al integrar la pila de PRs (`stacked-to-main`), esta sección tendrá un conflicto de merge con la versión de PR3 sobre el mismo §3.21; se debe reconciliar a mano conservando **ambas** correcciones (la de PR3 sobre la columna + las subsecciones nuevas de PR4a abajo).
 
 #### Columna `usuario.notif_email_habilitado`
 
@@ -856,9 +858,130 @@ Se configuran manualmente en el dashboard de Supabase (Database → Webhooks), n
 
 El mismo secreto compartido vive en tres lugares (ver nota de §3.21 arriba sobre `private.notif_config`): (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC). **Pendiente de ejecución** — creación de los 2 webhooks y despliegue de la función (`mcp__supabase__deploy_edge_function` + secretos) quedan fuera del alcance de este `sdd-apply` (sin acceso a herramientas MCP de Supabase en esta sesión); código listo y commiteado, runbook documentado para quien despliegue.
 
-#### Pendiente (fases siguientes)
+#### Tabla `correo_admin` (Fase 4a, PR4a)
 
-Toggle en `/perfil/ajustes` (`PATCH /api/perfil`, `GET /api/auth/me`) — Fase 3. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
+Historial de envíos masivos de correo hechos por administradores. RLS gateada por `es_admin()`, mismo patrón que `chunk_admin_write`/`rag_admin_write` (§3.18):
+
+| Columna | Tipo | Restricciones | Notas |
+|---|---|---|---|
+| `id` | `uuid` | `primary key default gen_random_uuid()` | — |
+| `admin_id` | `uuid` | `references usuario(id) on delete set null` | Quien envió; nullable (se conserva el historial si se borra la cuenta admin) |
+| `asunto` | `text not null` | `check (char_length(asunto) between 1 and 200)` | — |
+| `cuerpo` | `text not null` | `check (char_length(cuerpo) between 10 and 5000)` | Texto plano tal cual lo escribió el admin; la conversión a HTML seguro ocurre DENTRO de `enviar-correo-masivo` (`plain-text-to-html.ts`), no en el Route Handler — ver esa subsección |
+| `destinatarios_criterio` | `jsonb not null` | — | `{tipo:'todos'}` \| `{tipo:'ciudad',valor}` \| `{tipo:'ids',valor}` — snapshot del criterio usado, no de los ids resueltos |
+| `cantidad_destinatarios` | `int not null default 0` | — | Cuántos resolvió la RPC |
+| `cantidad_enviados` | `int not null default 0` | — | Cuántos confirmó Resend |
+| `cantidad_fallidos` | `int not null default 0` | — | Cuántos fallaron en Resend |
+| `estado` | `text not null default 'pendiente'` | `check (estado in ('pendiente','completado','fallido'))` | Lo actualiza el Route Handler tras invocar `enviar-correo-masivo` (Fase 4b) |
+| `enviado_en` | `timestamptz not null default now()` | — | Orden del historial (`ORDER BY enviado_en DESC`) |
+
+**RLS habilitado**, tres policies `es_admin()`-gateadas:
+
+| Policy | FOR | TO | Condición |
+|---|---|---|---|
+| `correo_admin_select` | `SELECT` | `authenticated` | `USING (es_admin())` |
+| `correo_admin_insert` | `INSERT` | `authenticated` | `WITH CHECK (es_admin() and admin_id = auth.uid())` — `admin_id` desde sesión, nunca del body |
+| `correo_admin_update` | `UPDATE` | `authenticated` | `USING/WITH CHECK (es_admin() and admin_id = auth.uid())` — el Route Handler actualiza `cantidad_enviados/cantidad_fallidos/estado` tras invocar la Edge Function, corriendo bajo el JWT del MISMO admin que hizo el INSERT |
+
+> **Corrección (2026-07-10, hallazgo de risk sobre el diff staged de PR4a):** la primera versión de `correo_admin_update` solo exigía `es_admin()`, sin `admin_id = auth.uid()`. Cualquier admin podía reescribir el historial de envío de OTRO admin (asunto, cuerpo, `destinatarios_criterio`, incluso reasignar `admin_id`) — rompía la integridad del audit trail (a diferencia de `correo_admin_insert`, que sí exigía ownership desde el inicio). Corregido antes de aplicar la migración — el SQL de abajo ya incluye el fix, no hizo falta una migración separada porque **ninguna de las migraciones de esta sección se ha aplicado todavía**.
+
+Grant de tabla separado de RLS (RLS filtra filas; el GRANT habilita visibilidad en PostgREST — mismo principio del footgun de §3.19): `grant select, insert, update on correo_admin to authenticated;`.
+
+**SQL completo (migración `create_correo_admin_table`, pendiente de aplicar):**
+
+```sql
+create table public.correo_admin (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid references public.usuario(id) on delete set null,
+  asunto text not null check (char_length(asunto) between 1 and 200),
+  cuerpo text not null check (char_length(cuerpo) between 10 and 5000),
+  destinatarios_criterio jsonb not null,
+  cantidad_destinatarios int not null default 0,
+  cantidad_enviados int not null default 0,
+  cantidad_fallidos int not null default 0,
+  estado text not null default 'pendiente' check (estado in ('pendiente','completado','fallido')),
+  enviado_en timestamptz not null default now()
+);
+
+alter table public.correo_admin enable row level security;
+
+create policy correo_admin_select on public.correo_admin
+  for select to authenticated using (public.es_admin());
+
+create policy correo_admin_insert on public.correo_admin
+  for insert to authenticated with check (public.es_admin() and admin_id = auth.uid());
+
+create policy correo_admin_update on public.correo_admin
+  for update to authenticated
+  using (public.es_admin() and admin_id = auth.uid())
+  with check (public.es_admin() and admin_id = auth.uid());
+
+grant select, insert, update on public.correo_admin to authenticated;
+```
+
+#### RPC `resolver_destinatarios_correo(p_tipo text, p_ciudad text default null, p_ids uuid[] default null)` (Fase 4a)
+
+`SECURITY DEFINER`, `set search_path = ''`. Mismo bypass de owner que `resolver_destinatario_notificacion` para leer `usuario.email` (columna sin `SELECT` para ningún rol vía PostgREST, §7.3), pero gateada por **rol**, no por secreto: `if not es_admin() then raise exception 'No autorizado'`. Retorna `(id uuid, email text, nombre text)` filtrando SIEMPRE `notif_email_habilitado = true` y `email is not null` — el filtro de opt-out se evalúa **fuera** de la rama de `p_tipo` (`case p_tipo when 'todos' then true when 'ciudad' then u.ciudad = p_ciudad when 'ids' then u.id = any(p_ids) else false end`), así que un admin no puede saltarse el opt-out de un usuario ni eligiéndolo a mano vía `p_ids`.
+
+`revoke all on function ... from public; revoke execute on function ... from anon; grant execute on function ... to authenticated;` — a diferencia de `resolver_destinatario_notificacion` (que sí necesita `anon` porque el webhook llama sin sesión), esta RPC es de uso exclusivo de administradores autenticados: `anon` se revoca **explícitamente**, además del `revoke all from public` (Supabase auto-otorga `EXECUTE` a `anon`/`authenticated`/`service_role` en funciones nuevas; `revoke all from public` por sí solo no retira el grant directo a `anon` — mismo aprendizaje ya aplicado en `rag_rate_limit_revoke_anon`/`mensajeria_directa_revoke_anon`, §7.1).
+
+**SQL completo (migración `create_resolver_destinatarios_correo_rpc`, pendiente de aplicar):**
+
+```sql
+create or replace function public.resolver_destinatarios_correo(
+  p_tipo text, p_ciudad text default null, p_ids uuid[] default null
+) returns table(id uuid, email text, nombre text)
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.es_admin() then raise exception 'No autorizado'; end if;
+  return query
+    select u.id, u.email, u.nombre
+    from public.usuario u
+    where u.notif_email_habilitado = true      -- opt-out enforced in ALL branches
+      and u.email is not null
+      and case p_tipo
+            when 'todos'  then true
+            when 'ciudad' then u.ciudad = p_ciudad
+            when 'ids'    then u.id = any(p_ids)
+            else false
+          end;
+end $$;
+
+revoke all on function public.resolver_destinatarios_correo(text, text, uuid[]) from public;
+revoke execute on function public.resolver_destinatarios_correo(text, text, uuid[]) from anon;
+grant execute on function public.resolver_destinatarios_correo(text, text, uuid[]) to authenticated;
+```
+
+Es también la puerta de entrada exclusiva de `enviar-correo-masivo` (ver esa subsección abajo) — la Edge Function llama a esta RPC directamente en vez de recibir destinatarios pre-resueltos, así que un solo `if not es_admin()` sirve como autorización y resolución a la vez.
+
+**Nota de diseño (no confundir con el bug de PR3):** esta RPC lee `usuario.email`/`notif_email_habilitado` para MÚLTIPLES filas dentro de un cuerpo `SECURITY DEFINER` gateado por `es_admin()` — patrón seguro (admin-gateado, no un `GRANT SELECT` de columna plano expuesto a PostgREST). El bug corregido en PR3 (R1) era un `grant select (columna) ... to authenticated` sobre `usuario` — tabla con RLS de SELECT pública (`lectura_publica USING (true)`) — que dejaba la columna legible por CUALQUIER usuario autenticado vía PostgREST directo. Esta RPC no agrega ningún grant de columna nuevo: el owner bypassea los grants de columna solo *dentro* del cuerpo de la función, y el único camino de entrada está gateado por `es_admin()`.
+
+#### Edge Function `enviar-correo-masivo` (Fase 4a, PR4a)
+
+`verify_jwt:true` — a diferencia del webhook transaccional, el llamante es el Route Handler de admin (`app/api/admin/correos/route.ts`, Fase 4b) vía `admin.functions.invoke('enviar-correo-masivo', {...})`, que reenvía el JWT del admin automáticamente (mismo patrón que `lib/rag/embed.ts`). `verify_jwt:true` solo prueba "hay un usuario autenticado", no "es admin".
+
+> **Corrección de contrato (2026-07-10, BLOCKER de risk sobre el diff staged de PR4a):** el diseño original recibía `{asunto, cuerpo, destinatarios: [{id,email,nombre}]}` — una lista **pre-resuelta por el caller** — asumiendo que solo el futuro Route Handler la invocaría. Pero esta función es standalone, alcanzable por `functions.invoke` desde CUALQUIER cuenta admin: nada en ese contrato forzaba que la lista viniera realmente de `resolver_destinatarios_correo`, así que un admin podía construir `destinatarios` a mano para saltarse el opt-out o enviar a direcciones arbitrarias usando el dominio verificado del proyecto como relay abierto. **Fix**: la función ya NO recibe `destinatarios`; recibe `{asunto, cuerpo, destinatarios_criterio}` (shape de `DestinatariosCriterio`) y ELLA MISMA llama a `resolver_destinatarios_correo` con el JWT admin reenviado — no existe camino donde la lista venga de fuera de esa RPC, así que el opt-out se aplica siempre. Consecuencia: ya no hace falta un `rpc('es_admin')` separado, la RPC ya gatea internamente.
+
+Fuente en `supabase/functions/enviar-correo-masivo/index.ts` (misma desviación D9 que `enviar-notificacion-email`). Lógica pura en tres siblings Vitest: `validate-payload.ts`, `chunk.ts`, `plain-text-to-html.ts` (ver nota de `cuerpo` abajo).
+
+> **`cuerpo` es texto plano, nunca HTML de confianza (CRITICAL de risk, corregido).** El prompt del producto especifica `cuerpo` como `<textarea>` sin editor de formato. `renderEmail` no escapa `cuerpoHtml` por diseño (correcto para plantillas hardcoded, equivocado para input de admin sin sanitizar — habilitaría XSS en el correo enviado). Fix: `plain-text-to-html.ts` escapa los 5 caracteres HTML-significativos y convierte saltos de línea a `<br>` antes de llegar a `renderEmail`, dentro de esta misma función — no depende de que un futuro Route Handler lo haga bien. Su lógica de escape está duplicada (no importada) desde `_shared/email-template.ts` por un conflicto real entre `tsc` (rechaza imports relativos con extensión `.ts` explícita) y Deno (la exige en runtime) — ver el header de ese archivo.
+
+Variables de entorno: `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NOTIF_FROM_EMAIL` (compartidas con `enviar-notificacion-email`; no hace falta `NOTIF_WEBHOOK_SECRET` aquí).
+
+Flujo (revisado):
+1. Cliente Supabase con el header `Authorization` reenviado. Sin header → **401**.
+2. Body `{asunto, cuerpo, destinatarios_criterio}` validado por `validate-payload.ts`; inválido → **400**.
+3. `rpc('resolver_destinatarios_correo', {p_tipo, p_ciudad, p_ids})`. `P0001` (no-admin) → **403**; otro error → **500** (log server-side, sin detalle en la respuesta).
+4. Cero destinatarios resueltos → **200** `{enviados:0, fallidos:0, detalles:[]}` — no es error.
+5. Más de `LIMITE_DESTINATARIOS = 500` resueltos → **400**, sin enviar nada (mitigación MVP de resilience — un `tipo:'todos'` sin cota podría dejar `correo_admin.estado` atascado en `'pendiente'` si el runtime mata la función a mitad de un envío; no resuelve el problema de fondo, solo acota el peor caso sin construir colas/checkpointing).
+6. Convierte `cuerpo` a HTML seguro UNA vez (`plain-text-to-html.ts`), divide en lotes de ≤50 (`chunk.ts`) y envía con Resend en paralelo por lote vía `renderEmail({titulo: asunto, cuerpoHtml: cuerpoHtmlSeguro, nombre})`.
+7. Responde **200** `{enviados, fallidos, detalles: {email, error?}[]}`. El Route Handler (Fase 4b) escribe el UPDATE de `correo_admin` con los conteos/`estado` final — `cantidad_destinatarios = enviados + fallidos`, ya no necesita resolver destinatarios por separado antes de invocar (puede seguir llamando a `resolver_destinatarios_correo` aparte solo para el conteo de preview/dry-run, sin enviar nada).
+
+**Nota de superficie de error:** gateada por `verify_jwt:true` + el `es_admin()` interno de la RPC — solo un admin autenticado ve la respuesta, por eso `detalles[].error` incluye el mensaje de Resend por destinatario (diagnóstico); excepciones no estructuradas devuelven un mensaje genérico, detalle real solo en `console.error`. Válido tras el fix de contrato: con la lista de destinatarios ahora imposible de manipular desde fuera de la RPC, este passthrough ya no habilita saltarse el opt-out.
+
+#### Pendiente (fase siguiente)
+
+Rutas Next.js y UI del panel admin (`/api/admin/correos`, `/api/admin/correos/[id]`, `/api/admin/correos/contar`, `/admin/correos`) — Fase 4b, base de esta rama (`feat/notif-email-admin-backend`), sin cambios de esquema adicionales. El toggle de `/perfil/ajustes` (Fase 3) se implementó en la rama independiente `feat/notif-email-perfil-ui` — ver esa rama para el detalle, incluido el fix de privacidad R1 que esta sección **todavía no refleja** por no formar parte del árbol de commits de PR4a (ver nota de rama al inicio de §3.21).
 
 ---
 
@@ -888,6 +1011,7 @@ Toggle en `/perfil/ajustes` (`PATCH /api/perfil`, `GET /api/auth/me`) — Fase 3
 | `aceptar_solicitud_mensaje(p_solicitud_id)` | RPC (SECURITY DEFINER) | Valida que el receptor sea el llamante y que la solicitud esté `pendiente`; follow-back receptor→emisor; marca `aceptada`; devuelve `{"emisor_id":...}`. Ver §3.14 |
 | `rechazar_solicitud_mensaje(p_solicitud_id)` | RPC (SECURITY DEFINER) | Mismas validaciones que la anterior; marca `rechazada`; NO toca los follows; retorna void. Ver §3.14 |
 | `resolver_destinatario_notificacion(p_secret, p_usuario_id)` | RPC (SECURITY DEFINER) | **Notificaciones transaccionales.** Resuelve `email` + `notif_email_habilitado` de un usuario para el Edge Function del webhook (sin JWT); gateada por un secreto comparado contra `private.notif_config` (no `current_setting`, ver nota en §3.21). `EXECUTE` a `anon`+`authenticated` (el webhook llama sin sesión). Ver §3.21 |
+| `resolver_destinatarios_correo(p_tipo, p_ciudad?, p_ids?)` | RPC (SECURITY DEFINER) | **Panel admin de envío masivo.** Resuelve `id`+`email`+`nombre` de múltiples usuarios según `p_tipo` (`todos`/`ciudad`/`ids`), filtrando SIEMPRE `notif_email_habilitado=true` (incluso en `ids`, hand-picked). Gateada por `es_admin()` (P0001 `No autorizado` si no). `EXECUTE` solo `authenticated` (`anon` revocado explícitamente). Ver §3.21 |
 | Bucket `publicaciones` | Storage | Lectura pública; subir/editar/borrar restringido a la carpeta `{user_id}/...` de cada usuario |
 
 ---
@@ -1067,6 +1191,7 @@ Estado real de los `EXECUTE` (de `information_schema.role_routine_grants`):
 | `aceptar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
 | `rechazar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
 | `resolver_destinatario_notificacion(text, uuid)` | `anon, authenticated, postgres, service_role` | Flagueada (WARN); misma clase, pero el control real **no** es `es_admin()` — es un secreto compartido comparado contra `private.notif_config` (el webhook llama sin JWT, solo `anon key`). `EXECUTE` a `anon` es intencional. Ver §3.21 |
+| `resolver_destinatarios_correo(text, text, uuid[])` | `authenticated, postgres, service_role` | Flagueada (WARN); misma clase que las RPC de negocio — el control real es `es_admin()` internamente. `EXECUTE` revocado de `public` **y** `anon` explícitamente (funciones nuevas auto-otorgan a `anon` además de `public`; el `revoke all from public` solo no basta). Ver §3.21 |
 
 El advisor `authenticated_security_definer_function_executable` (WARN) marca las cinco RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
 
