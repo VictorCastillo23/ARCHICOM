@@ -352,3 +352,31 @@ export type ConversacionResumen = {
   actualizado_en: string
   no_leidos: number
 }
+
+// Admin bulk-email DTOs (notificaciones-email-resend, Phase 4a)
+
+export type DestinatariosCriterio =
+  | { tipo: 'todos' }
+  | { tipo: 'ciudad'; valor: string }
+  | { tipo: 'ids'; valor: string[] }
+
+/** Reconciled against design's DDL (M3) — supersedes an earlier spec draft's 'enviado'|'error'. */
+export type EstadoCorreoAdmin = 'pendiente' | 'completado' | 'fallido'
+
+export type CorreoAdmin = {
+  id: string
+  admin_id: string | null
+  asunto: string
+  cuerpo: string
+  destinatarios_criterio: DestinatariosCriterio
+  cantidad_destinatarios: number
+  cantidad_enviados: number
+  cantidad_fallidos: number
+  estado: EstadoCorreoAdmin
+  enviado_en: string
+}
+
+export type CorreoAdminDetalle = CorreoAdmin & {
+  /** null if the sending admin's account was later deleted (admin_id ON DELETE SET NULL). */
+  admin: Pick<Usuario, 'id' | 'nombre'> | null
+}

@@ -30,5 +30,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // Deno Edge Function entrypoints (supabase/functions/**/index.ts) run on
+    // Supabase's Deno runtime, not Node — they use Deno globals and `npm:`
+    // specifiers that `tsc`'s Node-targeted program cannot resolve. The pure
+    // logic they import (route-predicate.ts, email-template.ts) stays
+    // in-project and IS type-checked/linted normally.
+    "supabase/functions/**/index.ts"
+  ]
 }
