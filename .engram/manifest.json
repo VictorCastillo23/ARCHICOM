@@ -8,6 +8,14 @@
       "sessions": 1,
       "memories": 20,
       "prompts": 0
+    },
+    {
+      "id": "2fcde1ec",
+      "created_by": "vcastillo",
+      "created_at": "2026-07-10T21:02:10Z",
+      "sessions": 0,
+      "memories": 33,
+      "prompts": 0
     }
   ]
 }
