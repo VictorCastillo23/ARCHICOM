@@ -66,17 +66,11 @@ proxy.ts                          # refresh de sesión + protección de rutas
 
 ## Cuentas y datos sembrados (para verificar)
 
-Pass de los tres: `Archicom123!`
+3 cuentas sembradas (2 `usuario`, 1 `administrador`). **Baneadas en Auth** (`banned_until`) — credenciales no se documentan aquí; pedir acceso al dueño del proyecto si hace falta reactivarlas para pruebas.
 
-| Nombre | Email | Rol |
-|---|---|---|
-| María García | `m.garcia@uaq.mx` | `usuario` |
-| Carlos Romo | `c.romo@unam.mx` | `usuario` |
-| Dra. Laura Vega | `l.vega@tec.mx` | `administrador` |
+Sembrado: 5 publicaciones (cubren los tipos), 1 revista borrador ("Ciencia y Territorio", vol. 1, editor una de las cuentas admin, 2 artículos curados), 3 solicitudes (una `pendiente`, una `aceptada`, una `rechazada`).
 
-Sembrado: 5 publicaciones (cubren los tipos), 1 revista borrador ("Ciencia y Territorio", vol. 1, editor Laura, 2 artículos curados), 3 solicitudes (una `pendiente`, una `aceptada`, una `rechazada`).
-
-Smoke tests útiles: `GET /api/publicaciones` → 5 pubs · `GET /api/publicaciones?area=Biología` → **subconjunto** (prueba el `!inner`) · `login` (María) → `GET /api/auth/me` → su perfil (prueba cookies).
+Smoke tests útiles: `GET /api/publicaciones` → 5 pubs · `GET /api/publicaciones?area=Biología` → **subconjunto** (prueba el `!inner`) · `login` con una cuenta sembrada → `GET /api/auth/me` → su perfil (prueba cookies).
 
 ## Fuente de verdad
 
