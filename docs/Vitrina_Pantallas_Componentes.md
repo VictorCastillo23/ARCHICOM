@@ -8,13 +8,22 @@
   ├── (main)          → con Nav + Footer
   │   ├── /                    Feed principal
   │   ├── /publicacion/[id]    Detalle de publicación
+  │   ├── /publicacion/[id]/editar  Editar publicación (autor) ← requiere sesión
   │   ├── /publicar            Nueva publicación  ← requiere sesión
   │   ├── /perfil              Mi perfil (vitrina) ← requiere sesión
   │   ├── /perfil/ajustes      Ajustes de cuenta   ← requiere sesión
+  │   ├── /perfil/guardados    Mis guardados (privado) ← requiere sesión
+  │   ├── /perfil/colecciones  Mis colecciones (privado) ← requiere sesión
+  │   ├── /coleccion/[id]      Detalle de colección (pública o del dueño; RLS filtra visibilidad)
   │   ├── /usuario/[id]        Perfil público
+  │   ├── /usuario/[id]/seguidores  Listado de seguidores/seguidos
   │   ├── /buscar              Resultados de búsqueda global (?q=)
   │   ├── /revistas            Catálogo de revistas
   │   ├── /revistas/[id]       Detalle de revista
+  │   ├── /areas               Catálogo de áreas de conocimiento
+  │   ├── /area/[slug]         Publicaciones por área
+  │   ├── /sobre-nosotros      Página institucional (misión, visión, contacto)
+  │   ├── /terminos            Términos de Servicio
   │   ├── /mensajes            Bandeja de conversaciones ← requiere sesión
   │   ├── /mensajes/[conversacionId]  Hilo de mensajes  ← requiere sesión
   │   └── /mensajes/nuevo      Nueva conversación        ← requiere sesión (?u=)
@@ -24,9 +33,8 @@
       ├── /admin/revistas      Listado + gestión de revistas
       ├── /admin/revistas/[id] Editor de una revista
       ├── /admin/tags          Catálogo de tags
-      └── /admin/reportes      Moderación de publicaciones reportadas
-
-  > Nota: este árbol es el esqueleto inicial. Rutas añadidas después (cada una documentada en su sección): `/sobre-nosotros`, `/terminos`, `/areas`, `/area/[slug]`, `/publicacion/[id]/editar`, `/perfil/guardados`, `/usuario/[id]/seguidores`.
+      ├── /admin/reportes      Moderación de publicaciones reportadas
+      └── /admin/correos       Envío de correos masivos a usuarios
 
   ---
 
@@ -274,10 +282,11 @@
   - **Con PDF (nuevo o ya adjunto)** → en **cada guardado** (crear o editar título/resumen/PDF) se
     (re)indexa **automáticamente** (llamada a `POST /api/publicaciones/[id]/index`) para mantener el
     chat RAG **y** la búsqueda semántica al día. La ruta es idempotente por sha256, así que una
-    edición de solo metadatos es un no-op barato; un PDF reemplazado se reindexa. Ya **no hay checkbox
-    opt-in ni botón manual**. Es **best-effort y silencioso**: si falla, **reintenta hasta 3 veces**
-    (1,5 s entre intentos) y si igual no lo logra, **no muestra ningún error** (re-editar reintenta;
-    el backfill admin es el fallback). Muestra "Preparando el documento…" durante el proceso.
+    edición de solo metadatos es un no-op barato; un PDF reemplazado se reindexa. El auto-indexado
+    es **automático** (sin checkbox opt-in ni botón manual) y **best-effort y silencioso**: si falla,
+    **reintenta hasta 3 veces** (1,5 s entre intentos) y si igual no lo logra, **no muestra ningún
+    error** (re-editar reintenta; el backfill admin es el fallback). Muestra "Preparando el
+    documento…" durante el proceso.
 
   Flujo:
   1. El usuario elige primero el tipo en el TipoPicker; recién entonces se muestra el resto del form.
@@ -450,7 +459,7 @@
   - **Link a /revistas/[id]** en el título — `revista.titulo`.
   - **EmptyState** "Sin revistas publicadas" si no hay ninguna.
 
-  > ⚠️ **No existe "Nombre del editor" ni "Descripción":** `revista.editor_id` se eliminó en v1.1 (cualquier admin cura cualquier edición) y `revista.descripcion` **no existe en el esquema** (verificado en la BD viva). El campo `descripcion?` del DTO y el `{revista.descripcion && …}` de ambos pages eran código muerto y **fueron removidos** (2026-06-24). Agregar descripción de revista requeriría una migración aditiva aprobada.
+  > ⚠️ **No existe "Nombre del editor" ni "Descripción":** `revista.editor_id` no existe en el esquema (cualquier admin cura cualquier edición) y `revista.descripcion` tampoco existe (verificado en la BD viva). Ni el catálogo ni el detalle de revista muestran editor ni descripción. Agregar descripción de revista requeriría una migración aditiva aprobada.
 
   ---
   3.8 Detalle de Revista — /revistas/[id]
@@ -610,7 +619,7 @@
 
   > **UI presentes en `components/ui/` no listados arriba:** `Modal` (overlay accesible que reusan `ReportarButton` y `ConfirmDeleteModal`), `Spinner` y `PageLoading` (estados de carga).
   >
-  > **Componentes de feature presentes y aún sin documentar en este archivo:** `HeroBanner` (home), `PublicacionesRelacionadas` (detalle), `SolicitudRevistaForm` (`components/revistas/`), `EliminarPublicacionButton` + `ConfirmDeleteModal` (acciones del autor en el detalle), `EliminarRevistaButton` (admin), y los sub-componentes de links `LinkAddForm`/`LinkRow`.
+  > **Componentes de feature presentes y aún sin documentar en este archivo:** `PublicacionesRelacionadas` (detalle), `SolicitudRevistaForm` (`components/revistas/`), `EliminarPublicacionButton` + `ConfirmDeleteModal` (acciones del autor en el detalle), `EliminarRevistaButton` (admin), y los sub-componentes de links `LinkAddForm`/`LinkRow`.
 
   Componentes de búsqueda (components/buscar/, components/usuario/):
 
@@ -649,7 +658,7 @@
     └─ SolicitarRevistaButton ← POST /api/solicitudes (solo el autor; obra → edición activa)
 
   PerfilPage
-    └─ PerfilView           ← read-only display (now renders LinksStrip)
+    └─ PerfilView           ← read-only display (renderiza LinksStrip)
     └─ PerfilEditForm       ← PATCH /api/perfil (client component)
     └─ LinksEditor          ← POST/PATCH/DELETE /api/perfil/links* (client island)
     └─ FeedList             ← publicaciones propias
@@ -675,7 +684,7 @@
 
   ---
 
-  ## Feature 1 — Links de Perfil (nuevos componentes)
+  ## 8. Enlaces de Perfil
 
   ### LinksStrip  (`components/perfil/LinksStrip.tsx`)
 
@@ -699,7 +708,7 @@
   - **Después de mutaciones:** llama `router.refresh()` para resincronizar el estado SSR.
   - **Usa:** `Button` (variants: secondary para agregar, primary para guardar, ghost para cancelar/editar, danger para eliminar) y `Field` (etiqueta, url inputs).
 
-  ### PerfilView — cambios (Feature 1)
+  ### PerfilView — soporte de enlaces
 
   - Nueva prop opcional: `links?: UsuarioLink[]` (default `[]`).
   - Importa y renderiza `<LinksStrip links={links} />` debajo de los datos de perfil (institución, carrera, email, enlace público).
@@ -707,7 +716,7 @@
 
   ---
 
-  ## Feature 3 — Seguidores (nuevos componentes y páginas)
+  ## 9. Seguidores
 
   ### SeguirButton  (`components/usuario/SeguirButton.tsx`)
 
@@ -720,7 +729,7 @@
   - **Accesibilidad:** `aria-pressed={following}`, `aria-label` dinámico ("Seguir" / "Dejar de seguir").
   - **Visibilidad (decidida en la página, no en el botón):** Solo se renderiza desde `/usuario/[id]/page.tsx` cuando `viewer && viewer.id !== perfil.id`. No aparece en `/perfil` (perfil propio) ni para visitantes anónimos.
 
-  ### PerfilStats — cambios (Feature 3)
+  ### PerfilStats — soporte de seguidores
 
   Nuevas props opcionales: `usuarioId?: string`, `seguidores?: number`, `seguidos?: number`.
 
@@ -743,23 +752,9 @@
   - **generateMetadata:** título "Seguidores de {nombre} — Vitrina".
   - **No pagina en MVP:** carga hasta 50 con `getSeguidores/getSeguidos` directo. El endpoint `GET /api/seguidores` queda disponible para "carga más" futuro.
 
-  ### Navegación actualizada
-
-  ```
-  /usuario/[id]                 Perfil público
-      └── /seguidores           Seguidores / Siguiendo (?tipo=seguidores|seguidos)
-  ```
-
-  El árbol de navegación de §1 se extiende:
-
-  ```
-  ├── /usuario/[id]            Perfil público
-  │   └── /usuario/[id]/seguidores   Listado de seguidores/seguidos
-  ```
-
   ---
 
-  ## Feature — Moderación de Reportes
+  ## 10. Moderación de Reportes
 
   ### ReportarButton (`components/publicacion/ReportarButton.tsx`)
 
@@ -807,7 +802,7 @@
 
   ---
 
-  ## Feature 4 — Guardados (marcadores privados)
+  ## 11. Guardados
 
   ### GuardarButton  (`components/publicacion/GuardarButton.tsx`)
 
@@ -828,15 +823,9 @@
   - **metadata:** título "Mis guardados — Vitrina".
   - **Acceso desde UI:** link "Guardados" en la cabecera de `/perfil` (junto a "Ajustes").
 
-  El árbol de navegación de §1 se extiende:
-
-  ```
-  ├── /perfil/guardados        Mis guardados (privado) ← requiere sesión
-  ```
-
   ---
 
-## Pantallas y componentes aditivos — tendencias-areas-ctas (Junio 2026)
+## 12. Trending, Áreas y CTAs
 
 ### TrendingSection (`components/feed/TrendingSection.tsx`)
 
@@ -897,7 +886,7 @@
 
 ---
 
-## Feature — Mensajería Directa
+## 13. Mensajería Directa
 
 Mensajería 1-a-1 privada entre usuarios que se siguen mutuamente. Todas las rutas bajo `/mensajes` están protegidas por `proxy.ts` (`pathname.startsWith('/mensajes')` → redirect a `/login` sin sesión). Para el esquema de BD y los endpoints ver `Vitrina_BD_Conexion_Backend.md` §3.13 y `Vitrina_Especificaciones_APIs.md` §14.
 
@@ -913,13 +902,6 @@ Mensajería 1-a-1 privada entre usuarios que se siguen mutuamente. Todas las rut
   - `EmptyState` cuando no hay conversaciones ("No tenés conversaciones", descripción, acción "Explorar perfiles" → `/`). La sección de solicitudes se muestra independientemente de si hay conversaciones.
 - **Metadata:** `{ title: 'Mensajes — Vitrina' }`.
 - **Redirección defensiva:** redirige a `/login` si no hay sesión (la protección real es `proxy.ts`).
-
-El árbol de navegación de §1 se extiende:
-```
-├── /mensajes              Bandeja de conversaciones ← requiere sesión
-├── /mensajes/[conversacionId]  Hilo de mensajes    ← requiere sesión
-└── /mensajes/nuevo        Nueva conversación        ← requiere sesión (?u=<otroId>)
-```
 
 ---
 
@@ -996,7 +978,7 @@ El árbol de navegación de §1 se extiende:
    return () => { supabase.removeChannel(channel) }  // cleanup
    ```
    - **Deduplicación por id (INSERT):** el emisor recibe su propio INSERT (Realtime echo); si ya está appended optimistamente, se descarta.
-   - **Recibo de lectura en tiempo real (UPDATE):** cuando el receptor marca `leido = true`, el emisor recibe el UPDATE y el tick ✓ pasa a ✓✓ sin recargar. Requiere `REPLICA IDENTITY FULL` en la tabla `mensaje` (migración `mensaje_replica_identity_full`).
+   - **Recibo de lectura en tiempo real (UPDATE):** cuando el receptor marca `leido = true`, el emisor recibe el UPDATE y el tick ✓ pasa a ✓✓ sin recargar. Requiere `REPLICA IDENTITY FULL` en la tabla `mensaje`.
    - **Cleanup:** `supabase.removeChannel(channel)` en el retorno del `useEffect`.
 
 **Envío (optimistic):**
@@ -1060,7 +1042,7 @@ El árbol de navegación de §1 se extiende:
 
 ### Data layer — funciones nuevas en `lib/data/mensajes.ts`
 
-Añadidas en la misma extensión aditiva; el archivo existente ya contenía `getConversaciones`, `getMensajes`, `getConversacionConUsuario`, `getSeSiguenMutuamente` y `getTotalNoLeidos`.
+El archivo ya contiene `getConversaciones`, `getMensajes`, `getConversacionConUsuario`, `getSeSiguenMutuamente` y `getTotalNoLeidos`; las siguientes son adicionales.
 
 | Función | Firma | Descripción |
 |---|---|---|
@@ -1089,7 +1071,7 @@ Añadidas en la misma extensión aditiva; el archivo existente ya contenía `get
 
 ---
 
-## Feature — Compartir enlace
+## 14. Compartir Enlace
 
 ### CompartirButton (`components/ui/CompartirButton.tsx`)
 
@@ -1106,9 +1088,9 @@ Añadidas en la misma extensión aditiva; el archivo existente ya contenía `get
 
 ---
 
-## Feature — Chat RAG sobre el documento (`rag-publicacion`)
+## 15. Chat RAG sobre el Documento
 
-Permite preguntarle al PDF de una publicación: el autor lo "indexa" (extrae texto, lo trocea y genera embeddings) y cualquier usuario logueado puede preguntarle y recibir una respuesta acotada al contenido del documento (grounding estricto — sin invención). Ver `Vitrina_BD_Conexion_Backend.md` §3.15 (esquema) y `Vitrina_Especificaciones_APIs.md` §17-18 (endpoints/DTOs).
+Permite preguntarle al PDF de una publicación: el autor lo "indexa" (extrae texto, lo trocea y genera embeddings) y cualquier usuario logueado puede preguntarle y recibir una respuesta acotada al contenido del documento (grounding estricto — sin invención). Ver excepción documentada `rag-publicacion` en `CLAUDE.md` / `Vitrina_BD_Conexion_Backend.md` §3.15 (esquema) y `Vitrina_Especificaciones_APIs.md` §17-18 (endpoints/DTOs).
 
 ### getEstadoRag (`lib/data/rag.ts`)
 
@@ -1118,7 +1100,7 @@ Permite preguntarle al PDF de una publicación: el autor lo "indexa" (extrae tex
 
 ### Indexado automático (sin botón manual)
 
-El indexado ya **no tiene botón de UI**. Se dispara solo desde `PublicarForm` cuando se sube un **PDF nuevo** (al crear, o al reemplazar el archivo en una edición) — ver §3.1. Las publicaciones existentes se cubren con el backfill admin (`POST /api/admin/rag/backfill`). Se eliminó el componente `IndexarButton`.
+El indexado se dispara automáticamente desde `PublicarForm` cuando se sube un **PDF nuevo** (al crear, o al reemplazar el archivo en una edición) — ver §3.1. No hay botón manual ni componente `IndexarButton`. Las publicaciones existentes se cubren con el backfill admin (`POST /api/admin/rag/backfill`).
 
 ### ChatRAGWidget (`components/publicacion/ChatRAGWidget.tsx`)
 
@@ -1129,7 +1111,7 @@ El indexado ya **no tiene botón de UI**. Se dispara solo desde `PublicarForm` c
   - Lista de burbujas `aria-live="polite"`: pregunta del usuario alineada a la derecha (`bg-primary text-primary-fg rounded-br-sm`), respuesta del asistente a la izquierda (`bg-surface border border-border text-text rounded-bl-sm`) — idéntica paleta a `HiloMensajes`.
   - Estado vacío: **"Preguntá sobre este documento."**
   - Composer: `textarea` + botón enviar (ícono avión/spinner), límite `MAX_PREGUNTA` (500, de `lib/rag/config.ts`) con contador visible cerca del límite, Ctrl+Enter/Cmd+Enter para enviar, deshabilitado mientras `sending` o vacío o sobre el límite.
-  - `handleSend`: agrega la pregunta de forma optimista → `POST /api/publicaciones/{id}/chat` (`{ pregunta }`) → agrega la respuesta (`{ respuesta }`) como burbuja del asistente. **No streaming** (Fase 1). En error (`ApiError`): quita la burbuja optimista, restaura el texto en el composer y muestra banner de error dismissable.
+  - `handleSend`: agrega la pregunta de forma optimista → `POST /api/publicaciones/{id}/chat` (`{ pregunta }`) → agrega la respuesta (`{ respuesta }`) como burbuja del asistente. **No streaming**. En error (`ApiError`): quita la burbuja optimista, restaura el texto en el composer y muestra banner de error dismissable.
 - **Accesibilidad:** lista con `aria-live="polite"`, botón enviar con `aria-label`, spinner `aria-hidden`.
 
 ### Integración en `/publicacion/[id]` (`app/(main)/publicacion/[id]/page.tsx`, modificado)
@@ -1145,9 +1127,9 @@ El indexado ya **no tiene botón de UI**. Se dispara solo desde `PublicarForm` c
 
 ---
 
-## Feature — Panel admin de correos masivos (Fase 4b, `notificaciones-email-resend`)
+## 16. Panel Admin de Correos Masivos
 
-Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 y los endpoints de `Vitrina_Especificaciones_APIs.md` §21. El toggle de preferencia (`NotificacionesForm`, §3.4.1) es una feature distinta (Fase 3) ya documentada arriba.
+Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 y los endpoints de `Vitrina_Especificaciones_APIs.md` §21. El toggle de preferencia (`NotificacionesForm`, §3.4.1) es una feature distinta ya documentada arriba.
 
 ### getCorreosAdmin (`lib/data/correos.ts`)
 
@@ -1193,6 +1175,60 @@ Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Ba
 ### AdminNav — entrada Correos
 
 - **Archivo:** `components/admin/AdminNav.tsx` (editado). Entrada `{ href: '/admin/correos', label: 'Correos' }` añadida al array `links`, después de "Reportes".
+
+---
+
+## 17. Colecciones
+
+Listas curadas de publicaciones, propias o ajenas, con visibilidad `publica`/`privada` (más rico que Guardados §11, que es un toggle plano sin agrupar). Ownership vía `usuario_id` de sesión; la seguridad real es la RLS de `coleccion`/`coleccion_publicacion`, sin RPC `SECURITY DEFINER`. Endpoints en `Vitrina_Especificaciones_APIs.md` §19, DTOs en §20, esquema en `Vitrina_BD_Conexion_Backend.md` §3.20.
+
+### AgregarAColeccionButton (`components/publicacion/AgregarAColeccionButton.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `publicacionId: string`, `isAuthenticated?: boolean` (default `false`).
+- **Sin sesión:** a diferencia de `GuardarButton`/`SeguirButton` (que se renderizan y redirigen a `/login` al click), este componente hace `if (!isAuthenticated) return null` — no se monta nada. El `router.push('/login')` dentro de `handleOpen` queda como guardia defensiva inalcanzable desde la UI, ya que el botón que lo dispara nunca se renderiza sin sesión.
+- **Al abrir el modal:** `GET /api/colecciones?publicacion_id=${publicacionId}` trae `ColeccionConMembership[]` (todas las colecciones del usuario + `agregada: boolean` por colección) — evita mostrar "Agregar" en colecciones que ya contienen la publicación al reabrir el modal. Se re-fetchea cada vez que `isOpen` pasa a `true` (no cachea entre aperturas).
+- **Estados de carga:** `idle | loading | error`, con `Spinner` mientras carga y botón "Reintentar" en error.
+- **Lista de colecciones existentes:** cada fila muestra título + `Badge` de visibilidad (`info`=pública, `neutral`=privada) + botón "Agregar"/"Agregada" (`disabled` si ya agregada o si esa fila está en `pendingId`, con `loading` mientras la request está en vuelo).
+- **Agregar:** `POST /api/colecciones/{id}/publicaciones` body `{ publicacion_id }`. Un `409` (la publicación ya estaba en la colección) se trata como éxito silencioso — marca la colección como agregada sin mostrar error, no dispara `listErrorMsg`.
+- **Crear colección al vuelo (mismo modal, sin componente aparte):** botón "+ Nueva colección" despliega un form inline con `Field` de título (`maxLength={100}`, requerido) y un `<select>` de visibilidad (`privada` default, `publica`). Submit: `POST /api/colecciones` → inserta la colección nueva al principio de la lista local (`ColeccionConMembership` con `agregada: false`) → inmediatamente `POST /api/colecciones/{nueva.id}/publicaciones` para agregar la publicación actual. Si este segundo POST falla con algo distinto de `409`, el mensaje aclara que "La colección se creó, pero no se pudo agregar la publicación. Intenta desde la lista." (la colección ya quedó creada, no hay rollback).
+- **No hay componente `ColeccionForm` independiente** en el proyecto: la creación vive inline en este modal; la edición vive inline en `ColeccionCard` (ver abajo). Ambos formularios inline comparten los mismos campos (título/descripción/visibilidad) pero están duplicados, no extraídos a un componente compartido.
+- **Sin acción de quitar en este modal** — solo agrega; no hay botón para remover la publicación de una colección desde aquí (ver nota de gap más abajo).
+- **Ubicación:** junto a `GuardarButton` en `/publicacion/[id]`.
+
+### ColeccionCard (`components/perfil/ColeccionCard.tsx`)
+
+- **Tipo:** Client Component, self-contained — mantiene su propio estado local (título/descripción/visibilidad en edición, `isDeleted`) para que la página padre (`/perfil/colecciones`) siga siendo un Server Component puro.
+- **Props:** `{ coleccion: Coleccion }`.
+- **Vista normal:** `Link` a `/coleccion/{id}` con el título, `Badge` de visibilidad, descripción truncada (`line-clamp-2`) si existe, y botones "Editar"/"Eliminar".
+- **Edición inline:** al hacer click en "Editar" cambia a un `<form>` con `Field` de título (`maxLength={100}`, requerido) y descripción (`maxLength={500}`, `multiline`, opcional) + `<select>` de visibilidad. Guardar → `PATCH /api/colecciones/{id}` con los tres campos → actualiza el estado local con la fila devuelta → `router.refresh()`. Validación cliente: título vacío (tras `trim()`) bloquea el submit con mensaje inline.
+- **Eliminar:** botón abre un `Modal` de confirmación (mismo patrón visual que `ConfirmDeleteModal`) con el aviso "Esta acción no se puede deshacer. Las publicaciones que agregaste no se eliminan, solo se quitan de esta colección." Confirmar → `DELETE /api/colecciones/{id}` → ocultamiento optimista inmediato (`setIsDeleted(true)`, la card retorna `null`) + `router.refresh()` para resincronizar la lista SSR.
+
+### /perfil/colecciones (`app/(main)/perfil/colecciones/page.tsx`)
+
+- **Tipo:** Server Component async (SSR). Redirect defensivo a `/login` si no hay `user` (`proxy.ts` ya protege todo `/perfil/*` vía `startsWith`).
+- **Datos:** `getMisColecciones(user.id)` (`lib/data/colecciones.ts`) → **todas** las colecciones del usuario de sesión, cualquier `visibilidad`, ordenadas `creado_en desc`.
+- **Estructura:** breadcrumb "← Mi perfil" (`Link` a `/perfil`), título "Mis colecciones".
+- **Lista vacía:** `EmptyState` — "No creaste ninguna colección" / "Usa el botón Agregar a colección en cualquier publicación para crear la primera." / acción "Explorar publicaciones" → `/`.
+- **Lista con datos:** `<ul aria-label="Tus colecciones">` de `ColeccionCard`, una por colección.
+- **metadata:** `{ title: 'Mis colecciones — Vitrina' }`.
+- **Acceso desde UI:** link "Colecciones" en la cabecera de `/perfil` (`app/(main)/perfil/page.tsx`), entre "Guardados" y "Ajustes" — mismo bloque de botones descrito en §11.
+
+### /coleccion/[id] (`app/(main)/coleccion/[id]/page.tsx`)
+
+- **Tipo:** Server Component async (SSR).
+- **Datos:** `getColeccion(id)` (`lib/data/colecciones.ts`) — trae la colección con sus `coleccion_publicacion` anidados (join a `publicacion` y `publicacion.usuario`), ordenados por `orden asc` en la propia query (`.order('orden', { referencedTable: 'coleccion_publicacion' })`). Usa `.maybeSingle()`: la RLS `coleccion_select` ya filtra a pública-o-dueño, así que una colección privada ajena o inexistente resuelve `null` en vez de tirar un `PGRST116` — la página responde con `notFound()`.
+- **Dueño:** `getPerfil(coleccion.usuario_id)` para mostrar nombre + link a `/usuario/{id}`; si el perfil no resuelve, cae a texto plano "Autor desconocido" (no rompe la página).
+- **Render:** título (`h1`) + `Badge` de visibilidad (`info`=pública, `neutral`=privada) junto al título; descripción opcional debajo; línea "Por {nombre}" (o "Autor desconocido"); sección "Publicaciones (N)" con `FeedList` mapeando cada `coleccion_publicacion.publicacion` a `PublicacionCardData`.
+- **Orden de publicaciones:** ya vienen ordenadas por `orden` desde `getColeccion` — la página las renderiza tal cual, **sin UI de reordenar** en esta versión (comentario explícito en el código: "no reorder UI in this slice").
+- **Detalle de `FeedList`:** la página le pasa solo `publicaciones`, sin `isAuthenticated`/`areaActivo`/`tipoActivo`. Si la colección está vacía, `FeedList` cae en su rama de empty-state "anónimo" genérica (CTA "Crea tu cuenta" → `/signup`) independientemente de si el visitante está logueado, porque el prop no se propaga desde esta pantalla.
+- **`generateMetadata`:** si `getColeccion` devuelve `null` (privada ajena o inexistente), título fijo "Colección no encontrada — Vitrina" — evita filtrar el `titulo` real de una colección privada en la metadata de una request que no pudo leer la fila. Si existe: título `"{titulo} — Vitrina"`, `description` = `descripcion` de la colección o fallback genérico, `alternates.canonical` = `{siteUrl}/coleccion/{id}`. **No hay `opengraph-image.tsx`/`twitter-image.tsx` para colecciones** (a diferencia de `/publicacion/[id]`, que sí genera una imagen OG dinámica con Satori) — el directorio `app/(main)/coleccion/[id]/` solo contiene `page.tsx`; el "OG" de esta pantalla se limita a los meta tags estándar de `generateMetadata`.
+
+### Gaps conocidos (verificados contra el código, sin UI todavía)
+
+- **Quitar una publicación de una colección:** el endpoint `DELETE /api/colecciones/[id]/publicaciones/[pubId]` existe y funciona, pero ningún componente lo invoca — ni en `/coleccion/[id]`, ni en `AgregarAColeccionButton`, ni en ningún otro lugar del árbol de `components/`. Solo es alcanzable llamando la API directo.
+- **Reordenar publicaciones dentro de una colección:** la columna `orden` existe y `getColeccion` ordena por ella, pero no hay ningún control de UI (drag-and-drop, flechas, etc.) que la modifique.
+- **`ColeccionCardData`** (DTO declarado en `lib/types/database.ts`, ver `Vitrina_Especificaciones_APIs.md` §20) **no tiene consumidor**: `ColeccionCard` usa el tipo `Coleccion` directo, no `ColeccionCardData` (que además traería `total_publicaciones`, un dato que ninguna pantalla actual muestra).
 
 ---
 
