@@ -1651,4 +1651,68 @@ Añadidos a `lib/types/database.ts` (extensión aditiva):
 
 ---
 
-*Vitrina · Especificaciones de la API v1.2 · Junio 2026*
+## 21. Endpoints de Correos Admin — envío masivo (`/api/admin/correos`)
+
+Fase 4b de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 (tabla `correo_admin`, RPC `resolver_destinatarios_correo`, Edge Function `enviar-correo-masivo`). Ninguno de estos 3 endpoints toca esquema.
+
+### GET /api/admin/correos — Historial de envíos (solo admin)
+
+**Autenticación:** sesión válida + `es_admin()` (`requireAdmin()`). Sin sesión → 401; no admin → 403.
+
+**Query params:** `limit` (default 10, máx 50) · `offset` (default 0) — mismo clamp que `GET /api/publicaciones`.
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "correos": [ <CorreoAdminDetalle>, ... ], "hasMore": false } }
+```
+`hasMore` es `correos.length === limit` (mismo patrón que `/area/[slug]`), no un `count(*)` separado.
+
+### POST /api/admin/correos — Enviar un correo masivo (solo admin)
+
+**Autenticación:** sesión válida + `es_admin()`. Sin sesión → 401; no admin → 403.
+
+**Body:**
+```json
+{ "asunto": "string, 1-200 chars", "cuerpo": "string, 10-5000 chars",
+  "destinatarios_criterio": { "tipo": "todos" } }
+```
+`destinatarios_criterio` es `{tipo:'todos'}` \| `{tipo:'ciudad', valor}` \| `{tipo:'ids', valor: string[]}` (tipo `DestinatariosCriterio`, ver BD §3.21). La UI de `/admin/correos` solo expone `todos` e `ids` — `ciudad` sigue siendo válido a nivel de contrato/RPC pero no tiene selector en el form (no existe una lista de municipios en el proyecto; decisión explícita).
+
+**Flujo (síncrono, sin job async ni `tracking_id`):** valida el body (`lib/validation/correoAdmin.ts`, misma forma que `validate-payload.ts` de la Edge Function) → **inserta** en `correo_admin` (`admin_id` de sesión, `estado:'pendiente'`) → `functions.invoke('enviar-correo-masivo', {...})` (JWT del admin reenviado implícito) → la Edge Function resuelve destinatarios ELLA MISMA vía `resolver_destinatarios_correo` (aplica el opt-out `notif_email_habilitado`, cap `LIMITE_DESTINATARIOS = 500`) y envía por Resend en lotes de 50 → el Route Handler **actualiza** la fila con `cantidad_destinatarios/cantidad_enviados/cantidad_fallidos` y `estado` final (`'completado'`, o `'fallido'` si todos los envíos fallaron).
+
+**Respuesta 201 Created:**
+```json
+{ "data": { "correo": <CorreoAdminDetalle>, "detalles": [ { "email": "...", "error": "opcional" } ] } }
+```
+
+**Errores:**
+
+| Condición | Status | `code` / `message` |
+|---|---|---|
+| Sin sesión | 401 | `unauthorized` |
+| No admin | 403 | `forbidden` |
+| `asunto`/`cuerpo`/`destinatarios_criterio` inválidos | 400 | `validation_error` |
+| Falla el `insert` en `correo_admin` | según `handleError` | — |
+| Falla la invocación de la Edge Function (red) | 500 | `internal_error` — la fila queda en `estado:'fallido'` |
+
+### GET /api/admin/correos/[id] — Detalle de un envío (solo admin)
+
+**Autenticación:** igual que arriba. **Parámetros de ruta:** `id` — UUID de `correo_admin`.
+
+**Respuesta 200 OK:** `{ "data": { "correo": <CorreoAdminDetalle> } }` · No encontrado → 404 `not_found`.
+
+> No lo usa la UI del historial (la lista ya trae todas las columnas necesarias y expande la fila in-place sin segundo fetch) — queda disponible para uso directo de la API o un futuro deep-link.
+
+### POST /api/admin/correos/contar — Preview del conteo de destinatarios (solo admin)
+
+**Autenticación:** igual que arriba.
+
+**Body:** `{ "destinatarios_criterio": <DestinatariosCriterio> }`
+
+**Flujo:** llama a `resolver_destinatarios_correo` (misma RPC que la Edge Function) y solo cuenta filas — **no envía nada ni escribe en `correo_admin`**. Respalda el botón "Ver vista previa" del form.
+
+**Respuesta 200 OK:** `{ "data": { "cantidad": 42 } }`
+
+---
+
+*Vitrina · Especificaciones de la API v1.3 · Julio 2026*

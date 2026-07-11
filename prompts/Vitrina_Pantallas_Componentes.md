@@ -1124,4 +1124,53 @@ El indexado ya **no tiene botón de UI**. Se dispara solo desde `PublicarForm` c
 
 ---
 
+## Feature — Panel admin de correos masivos (Fase 4b, `notificaciones-email-resend`)
+
+Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 y los endpoints de `Vitrina_Especificaciones_APIs.md` §21. El toggle de preferencia (`NotificacionesForm`, §3.4.1) es una feature distinta (Fase 3) ya documentada arriba.
+
+### getCorreosAdmin (`lib/data/correos.ts`)
+
+- **Tipo:** data-layer SERVER-ONLY, llamado directo desde `app/(admin)/admin/correos/page.tsx` (Server Component). Guard: RLS (`correo_admin_select using es_admin()`) + la protección de `/admin/*` en `proxy.ts` — mismo modelo de confianza que `lib/data/revistas.ts`/`lib/data/tags.ts`, sin `requireAdmin()` explícito (ese helper es de Route Handlers).
+- **Firma:** `getCorreosAdmin({ limit?, offset? }): Promise<{ correos: CorreoAdminDetalle[], hasMore: boolean, error: unknown }>`.
+- **Paginación:** `hasMore = correos.length === limit` (mismo patrón que `getPublicacionPorArea`/`/area/[slug]`), sin `count(*)` separado.
+
+### AdminCorreoForm (`components/admin/AdminCorreoForm.tsx`)
+
+- **Tipo:** Client Component. Campos: `Field` para asunto (≤200) y cuerpo (10-5000, `multiline`), ambos con contador de caracteres vía `helper`. Selector de destinatarios como `role="radiogroup"` de 2 chips (mismo patrón visual que `TipoPicker`): **"Todos los usuarios"** / **"Usuarios específicos"** — **sin** opción "por ciudad" (decisión explícita: `usuario.ciudad` es texto libre, no hay lista de municipios en el proyecto; el tipo `DestinatariosCriterio` y la RPC sí soportan `{tipo:'ciudad'}` para uso futuro/API directa).
+- **"Usuarios específicos":** monta `AdminUsuarioMultiSelect`.
+- **"Ver vista previa":** valida en cliente (mismos límites que `lib/validation/correoAdmin.ts`) → `POST /api/admin/correos/contar` con el criterio construido → abre `AdminCorreoPreview` con el conteo real.
+- **Confirmar (dentro del modal):** `POST /api/admin/correos` → mensaje inline de éxito con el resumen enviados/fallidos (mismo patrón `role="status"`/`role="alert"` que `NotificacionesForm`, sin toasts — el proyecto no usa una librería de toasts) → resetea el form → `router.refresh()` para que el historial SSR se actualice sin recarga completa.
+
+### AdminUsuarioMultiSelect (`components/admin/AdminUsuarioMultiSelect.tsx`)
+
+- **Tipo:** Client Component, fork del esqueleto de debounce/abort/combobox de `components/buscar/SearchBox.tsx` (300 ms, `AbortController`), pero acumulando selección en vez de navegar.
+- **Fetch:** `GET /api/buscar?q=...` (modo autocomplete, sin `tipo`) — toma solo `usuarios` de la respuesta, ya typo-tolerant/accent-insensitive (`buscar_usuarios` RPC).
+- **Props:** `{ selected: UsuarioCardData[], onChange }`. Selección como chips (`Avatar` + nombre + botón `×`); filtra de las sugerencias los usuarios ya elegidos.
+
+### AdminCorreoPreview (`components/admin/AdminCorreoPreview.tsx`)
+
+- **Tipo:** Client Component, wrapper delgado sobre `components/ui/Modal.tsx`. Muestra asunto/cuerpo tal cual se enviarán y "¿Enviar a N usuario(s)? No se puede deshacer.". Si el conteo supera `LIMITE_DESTINATARIOS` (500, espejo del cap de la Edge Function), deshabilita "Confirmar" y muestra el aviso.
+
+### AdminCorreoHistorial (`components/admin/AdminCorreoHistorial.tsx`)
+
+- **Tipo:** Client Component. Recibe `correos: CorreoAdminDetalle[]` como prop (ya vienen con el join a `admin` desde `getCorreosAdmin`) — **no** hace un segundo fetch a `GET /api/admin/correos/[id]` para expandir una fila; esa ruta queda disponible para uso directo de la API.
+- **Fila:** asunto, `Badge` de `estado` (`pendiente`=warning, `completado`=success, `fallido`=danger), descripción corta de destinatarios (`"Todos los usuarios"` / `"Ciudad: X"` / `"N usuarios específicos"`), fecha. Click expande in-place (estado local `expandedId`) mostrando cuerpo completo, admin que envió, y los 3 contadores (`cantidad_destinatarios/enviados/fallidos`).
+- Sin resultados → `EmptyState` "Sin envíos todavía".
+
+### `/admin/correos` — Pantalla (`app/(admin)/admin/correos/page.tsx`)
+
+- **Tipo:** Server Component async. `dynamic = 'force-dynamic'` (lee `searchParams.offset`, mismo motivo que `/area/[slug]`). **Metadata:** `{ title: 'Correos' }`.
+- **Estructura:** heading block ("Comunicación" / "Correos") → `AdminCorreoForm` → sección "Historial reciente" (`AdminCorreoHistorial` + `Pagination`, `limit=10`).
+- **Acceso:** protegido por `proxy.ts` (`/admin/*` → `/` si `rol ≠ administrador`), igual que el resto de `/admin/*`.
+
+### Panel de admin (`/admin`) — tile Correos
+
+- **Archivo:** `app/(admin)/admin/page.tsx` (editado). Cuarto tile en la grilla: **"Correos"** → `/admin/correos`, descripción "Envía correos personalizados a los usuarios de la plataforma."
+
+### AdminNav — entrada Correos
+
+- **Archivo:** `components/admin/AdminNav.tsx` (editado). Entrada `{ href: '/admin/correos', label: 'Correos' }` añadida al array `links`, después de "Reportes".
+
+---
+
   Con esta estructura tenés todo lo necesario para atacar la implementación del frontend sin adivinar nada. Cada pantalla  tiene su fuente de datos mapeada, los componentes definidos y las rutas de API que tocan.
