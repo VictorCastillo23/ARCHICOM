@@ -3,14 +3,12 @@
 
 | Campo | Detalle |
 |---|---|
-| Versión | 1.1 — Junio 2026 |
-| Fecha | 04/06/2026 |
 | Base de datos | Supabase (proyecto `archicom`, ref `fdfbyhjwnbteccagulxb`) |
 | Documentos relacionados | `Vitrina_BD_Conexion_Backend.md` (esquema + conexión), `Vitrina_Pantallas_Componentes.md` (pantallas/UI) |
 
 > Este documento es el **contrato de la API**: rutas, métodos, parámetros, cuerpos, respuestas, permisos y errores de cada endpoint. La API es la que Supabase (PostgREST) expone automáticamente a partir del esquema, más las funciones RPC y la API de Storage. La autorización la aplican las políticas RLS ya desplegadas.
 >
-> **Cambio v1.1 (revista semanal):** las revistas ya no se crean ni publican por la API (lo hace el job `pg_cron`, ver `Vitrina_BD_Conexion_Backend.md` §9). Las solicitudes se postulan siempre a la edición activa (la única en `borrador`). Las RPC de curación las puede llamar **cualquier administrador**. La tabla `revista` ya no tiene `editor_id`.
+> Las revistas se crean y publican únicamente vía el job `pg_cron` (ver `Vitrina_BD_Conexion_Backend.md` §9); no hay endpoint de API para eso. Las solicitudes se postulan siempre a la edición activa (la única en `borrador`). Las RPC de curación las puede llamar **cualquier administrador**. La tabla `revista` no tiene `editor_id`.
 
 ---
 
@@ -98,7 +96,7 @@ Todos responden con el envelope uniforme: éxito `{ "data": ... }`, error `{ "er
 | Usuario actual + perfil | `GET` | `/api/auth/me` | — |
 | Cambiar contraseña | `POST` | `/api/auth/change-password` | `{ "currentPassword", "newPassword" }` |
 
-> El refresco de sesión se hace de forma transparente en `proxy.ts` (patrón `updateSession` de `@supabase/ssr`), no por un endpoint. No hay endpoint de "recuperar contraseña" expuesto en esta capa todavía.
+> El refresco de sesión se hace de forma transparente en `proxy.ts` (patrón `updateSession` de `@supabase/ssr`), no por un endpoint. No hay endpoint de "recuperar contraseña" expuesto en esta capa.
 
 ### 3.1 `POST /api/auth/signup` — registro
 
@@ -270,7 +268,7 @@ POST /api/publicaciones
 
 Validación de la capa Next (`400 validation_error` si falla):
 
-- `tipo` debe pertenecer al enum; un `tipo` inválido devuelve **400** (antes era 500).
+- `tipo` debe pertenecer al enum; un `tipo` inválido devuelve **400**.
 - Para `recomendacion`: `obra_autor_externo` es **requerido** (no vacío) y `url_externa` debe ser una **URL http(s) válida**.
 - Para cualquier **otro** tipo: `url_externa` es **opcional**, pero si se envía debe ser una **URL http(s) válida**; y se requiere **al menos uno** de `archivo_url` o `url_externa` (si faltan ambos → 400 `Agrega un archivo o un enlace`).
 - `obra_autor_externo` solo se persiste para `recomendacion`. `url_externa` se persiste para cualquier tipo cuando se envía.
@@ -584,7 +582,7 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 
 | Entidad | Campos |
 |---|---|
-| `usuario` | `id` uuid · `nombre` text · `email` text · `institucion` text? · `carrera` text? · `rol` `usuario\|administrador` · `creado_en` timestamptz |
+| `usuario` | `id` uuid · `nombre` text · `email` text · `institucion` text? · `carrera` text? · `ciudad` text? · `notif_email_habilitado` boolean · `rol` `usuario\|administrador` · `creado_en` timestamptz |
 | `publicacion` | `id` uuid · `autor_id` uuid · `titulo` text · `resumen` text? · `archivo_url` text? · `tipo` `libro\|articulo\|investigacion\|ensayo\|cuento\|poema\|resena\|tesis\|ponencia\|proyecto\|dibujo\|ilustracion\|pintura\|diseno_grafico\|diseno_modas\|fotografia\|infografia\|recomendacion\|otro` · `obra_autor_externo` text? (solo `recomendacion`) · `url_externa` text? (recomendación: requerido; otros tipos: opcional) · `bloqueada` boolean (default false) · `creado_en` timestamptz |
 | `comentario` | `id` uuid · `publicacion_id` uuid · `autor_id` uuid · `contenido` text · `creado_en` timestamptz · `responde_a` uuid? (FK self → `comentario.id`, null = raíz) |
 | `ComentarioConUsuario` (DTO join) | `Comentario` + `usuario: { id, nombre } \| null` |
@@ -866,7 +864,7 @@ Elimina un enlace. Solo el propietario puede borrarlo (RLS).
 
 ---
 
-## 11. API de Seguidores (Feature 3)
+## 11. API de Seguidores
 
 ### POST /api/seguidores — Seguir a un usuario
 
@@ -1014,7 +1012,7 @@ Marcadores **privados** del usuario (contraste con `like`, que es público). `us
 
 ---
 
-## 12. DTOs adicionales (Feature 3)
+## 12. DTOs adicionales
 
 Añadidos a `lib/types/database.ts`:
 
@@ -1030,7 +1028,7 @@ Añadidos a `lib/types/database.ts`:
 
 ---
 
-## 13. Endpoints aditivos — tendencias-areas-ctas (Junio 2026)
+## 13. Trending, contador de vistas y CTAs
 
 ### 13.1 Trending (`feed_trending`)
 
@@ -1301,7 +1299,7 @@ El caller redirige a `/mensajes/nuevo?u=<receptor_id>` cuando `resultado === 'mu
 | RPC P0001 (otros) | 400 | mensaje original de la RPC |
 | Error interno | 500 | `internal_error` |
 
-> Los dos casos nuevos (cooldown y rate limit) son guards añadidos dentro de `enviar_solicitud_mensaje` (migraciones `solicitud_mensaje_anti_spam` y `solicitud_mensaje_cooldown_2_dias`, 2026-06-28). El `handleError` los mapea a 400 preservando el `message` exacto de la RPC, igual que el resto de P0001 — ver `Vitrina_BD_Conexion_Backend.md` §3.14.
+> Ver `Vitrina_BD_Conexion_Backend.md` §3.14 para el detalle de los guards de cooldown y rate limit.
 
 ---
 
@@ -1541,7 +1539,7 @@ Listas curadas de publicaciones, propias o ajenas, con visibilidad `publica`/`pr
 { "data": [ { "id": "...", "usuario_id": "...", "titulo": "...", "descripcion": null, "visibilidad": "privada", "creado_en": "...", "agregada": true } ] }
 ```
 
-Ordenadas por `creado_en desc`. Con `publicacion_id`, hace una segunda consulta a `coleccion_publicacion` (`eq('publicacion_id', ...)`, `in('coleccion_id', <ids del usuario>)`) y arma un `Set` de coincidencias — no un join anidado. Usado por `AgregarAColeccionButton` (`components/publicacion/AgregarAColeccionButton.tsx`) para precargar qué colecciones ya tienen la publicación **al abrir el modal**; antes de esto, cada apertura reseteaba el estado a "ninguna agregada" sin importar el estado real (bug corregido 2026-07-09).
+Ordenadas por `creado_en desc`. Con `publicacion_id`, hace una segunda consulta a `coleccion_publicacion` (`eq('publicacion_id', ...)`, `in('coleccion_id', <ids del usuario>)`) y arma un `Set` de coincidencias — no un join anidado. Usado por `AgregarAColeccionButton` (`components/publicacion/AgregarAColeccionButton.tsx`) para precargar qué colecciones ya tienen la publicación **al abrir el modal**.
 
 ---
 
@@ -1647,13 +1645,13 @@ Añadidos a `lib/types/database.ts` (extensión aditiva):
 | `ColeccionPublicacion` | `coleccion_id` string · `publicacion_id` string · `orden` number · `agregado_en` string · `publicacion?` `Pick<Publicacion,'id'\|'titulo'\|'resumen'\|'tipo'> & { usuario?: Pick<Usuario,'id'\|'nombre'> }` |
 | `ColeccionDetalle` | `Coleccion & { coleccion_publicacion?: ColeccionPublicacion[] }` |
 | `ColeccionConMembership` | `Coleccion & { agregada: boolean }` — respuesta de `GET /api/colecciones?publicacion_id=` (§19) |
-| `ColeccionCardData` | `id` string · `titulo` string · `visibilidad` VisibilidadColeccion · `total_publicaciones` number — **declarado, sin consumidor actual** (`ColeccionCard` usa `Coleccion` directo); dejar o limpiar en la próxima pasada |
+| `ColeccionCardData` | `id` string · `titulo` string · `visibilidad` VisibilidadColeccion · `total_publicaciones` number — declarado, sin consumidor actual (`ColeccionCard` usa `Coleccion` directo) |
 
 ---
 
 ## 21. Endpoints de Correos Admin — envío masivo (`/api/admin/correos`)
 
-Fase 4b de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 (tabla `correo_admin`, RPC `resolver_destinatarios_correo`, Edge Function `enviar-correo-masivo`). Ninguno de estos 3 endpoints toca esquema.
+Endpoints de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 (tabla `correo_admin`, RPC `resolver_destinatarios_correo`, Edge Function `enviar-correo-masivo`). Ninguno de estos 3 endpoints toca esquema.
 
 ### GET /api/admin/correos — Historial de envíos (solo admin)
 
@@ -1721,4 +1719,4 @@ Fase 4b de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge F
 
 ---
 
-*Vitrina · Especificaciones de la API v1.3 · Julio 2026*
+*Vitrina · Especificaciones de la API*
