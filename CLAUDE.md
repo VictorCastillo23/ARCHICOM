@@ -103,7 +103,7 @@ pnpm exec next typegen   # Generate PageProps/LayoutProps/RouteContext helpers
 
 ## Testing
 
-**Vitest** (`pnpm test`) covers only pure, side-effect-free logic — currently `lib/supabase/handleError.ts` (error → status/code mapping) and `lib/storage/validateFile.ts` (magic-byte validation). It does **not** cover components, pages, or anything that calls Supabase directly (`lib/data/*.ts`).
+**Vitest** (`pnpm test`, config `vitest.config.ts`, `include: ['**/*.test.ts']`) covers only pure, side-effect-free logic — `lib/supabase/handleError.ts` (error → status/code mapping), `lib/storage/validateFile.ts` (magic-byte validation), `lib/validation/correoAdmin.ts` (admin bulk-email payload validation), and the plain-TypeScript siblings of the notif-email Edge Functions under `supabase/functions/**` (`_shared/email-template.ts`, `enviar-correo-masivo/{chunk,plain-text-to-html,validate-payload}.ts`, `enviar-notificacion-email/route-predicate.ts` — each documents in its own header why it avoids Deno-only APIs so it can run here). It does **not** cover components, pages, anything that calls Supabase directly (`lib/data/*.ts`), or the Deno `index.ts` entrypoints themselves (excluded from `tsc`, run only on Supabase's Deno runtime).
 
 For everything else — API contracts, RLS/invariant checks, and E2E flows — use the **`testsprite` MCP** to generate/run tests. It is the primary tool for backend and frontend coverage; Vitest is a narrow addition on top, not a replacement.
 
