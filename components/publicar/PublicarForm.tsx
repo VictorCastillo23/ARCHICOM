@@ -11,6 +11,7 @@ import { apiClient, ApiError } from '@/lib/api/client'
 import type { TipoPublicacion, Publicacion, Tag } from '@/lib/types/database'
 import { TIPO_META } from '@/lib/constants/publicaciones'
 import { isHttpUrl } from '@/lib/validation/url'
+import { generatePdfThumbnail } from '@/lib/pdf/generateThumbnail'
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_SIZE = 10 * 1024 * 1024
@@ -26,6 +27,7 @@ export type PublicarFormInitialValues = {
   obraAutorExterno: string
   urlExterna: string
   archivoUrl?: string
+  archivoThumbnailUrl?: string | null
 }
 
 type PublicarFormProps = {
@@ -58,6 +60,14 @@ export default function PublicarForm({
   // file is chosen; satisfies the "at least one" rule without re-uploading.
   const existingArchivoUrl = initialValues?.archivoUrl
   const hasExistingArchivo = Boolean(existingArchivoUrl)
+  const existingArchivoThumbnailUrl = initialValues?.archivoThumbnailUrl ?? undefined
+
+  // PDF page-1 thumbnail, generated client-side as soon as a PDF is picked
+  // (see lib/pdf/generateThumbnail.ts) so it's ready by the time of submit.
+  // A ref (not state) holds the in-flight promise so handleSubmit can just
+  // `await` it — avoids racing a submit click against generation still running.
+  const thumbnailPromiseRef = useRef<Promise<Blob | null> | null>(null)
+  const [generandoMiniatura, setGenerandoMiniatura] = useState(false)
 
   const categoria = tipo ? TIPO_META[tipo].categoria : null
   const esRecomendacion = categoria === 'recomendacion'
@@ -98,22 +108,40 @@ export default function PublicarForm({
     const file = e.target.files?.[0] ?? null
     if (!file) {
       setArchivo(null)
+      thumbnailPromiseRef.current = null
       return
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('Solo se permiten archivos PDF, JPG o PNG.')
       e.target.value = ''
       setArchivo(null)
+      thumbnailPromiseRef.current = null
       return
     }
     if (file.size > MAX_SIZE) {
       setError('El archivo no puede superar 10 MB.')
       e.target.value = ''
       setArchivo(null)
+      thumbnailPromiseRef.current = null
       return
     }
     setError(null)
     setArchivo(file)
+
+    if (file.type === 'application/pdf') {
+      setGenerandoMiniatura(true)
+      thumbnailPromiseRef.current = generatePdfThumbnail(file).finally(() =>
+        setGenerandoMiniatura(false),
+      )
+    } else {
+      thumbnailPromiseRef.current = null
+    }
+  }
+
+  function handleClearArchivo() {
+    setArchivo(null)
+    thumbnailPromiseRef.current = null
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -143,8 +171,9 @@ export default function PublicarForm({
     }
 
     setLoading(true)
-    // Track the file uploaded in THIS submit so we can roll it back if the save fails.
+    // Track what was uploaded in THIS submit so we can roll it back if the save fails.
     let uploadedUrl: string | undefined
+    let uploadedThumbnailUrl: string | undefined
 
     try {
       // Upload only when a new file was chosen; otherwise keep the existing one.
@@ -158,17 +187,43 @@ export default function PublicarForm({
           return
         }
         uploadedUrl = json.data.url
+
+        if (archivo.type === 'application/pdf') {
+          // Wait for the thumbnail generation kicked off in handleFileChange —
+          // it normally finishes well before the user submits.
+          const thumbnailBlob = thumbnailPromiseRef.current
+            ? await thumbnailPromiseRef.current
+            : null
+
+          if (thumbnailBlob) {
+            const thumbForm = new FormData()
+            thumbForm.append('file', thumbnailBlob, 'thumbnail.jpg')
+            const thumbRes = await fetch('/api/storage/upload', {
+              method: 'POST',
+              body: thumbForm,
+            })
+            const thumbJson = await thumbRes.json()
+            if (thumbRes.ok && !thumbJson?.error) {
+              uploadedThumbnailUrl = thumbJson.data.url
+            }
+            // A failed thumbnail upload is non-critical — publish still proceeds
+            // without a preview image (falls back to the generic PDF icon).
+          }
+        }
+        // else: replaced with a non-PDF file — no thumbnail applies, and
+        // editarPublicacion clears any stale one since archivoUrl is set.
       }
 
       if (isEdit && publicacionId) {
-        await editarPublicacion(publicacionId, urlTrim, uploadedUrl)
+        await editarPublicacion(publicacionId, urlTrim, uploadedUrl, uploadedThumbnailUrl)
         return
       }
 
-      await crearPublicacion(urlTrim, uploadedUrl)
+      await crearPublicacion(urlTrim, uploadedUrl, uploadedThumbnailUrl)
     } catch (err) {
-      // The save failed after the file was uploaded → don't leave it orphaned.
+      // The save failed after the file(s) were uploaded → don't leave them orphaned.
       if (uploadedUrl) await removeUploadedFile(uploadedUrl)
+      if (uploadedThumbnailUrl) await removeUploadedFile(uploadedThumbnailUrl)
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
@@ -201,7 +256,11 @@ export default function PublicarForm({
   }
 
   // --- Create ---------------------------------------------------------------
-  async function crearPublicacion(urlTrim: string, archivoUrl: string | undefined) {
+  async function crearPublicacion(
+    urlTrim: string,
+    archivoUrl: string | undefined,
+    archivoThumbnailUrl: string | undefined,
+  ) {
     const { publicacion } = await apiClient<{ publicacion: Publicacion }>('/api/publicaciones', {
       method: 'POST',
       body: JSON.stringify({
@@ -209,6 +268,7 @@ export default function PublicarForm({
         resumen,
         tipo,
         archivo_url: archivoUrl,
+        ...(archivoThumbnailUrl ? { archivo_thumbnail_url: archivoThumbnailUrl } : {}),
         ...(esRecomendacion
           ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
           : urlTrim
@@ -249,6 +309,7 @@ export default function PublicarForm({
     id: string,
     urlTrim: string,
     archivoUrl: string | undefined,
+    archivoThumbnailUrl: string | undefined,
   ) {
     // tipo is locked on edit → not sent (the PATCH leaves it untouched).
     await apiClient(`/api/publicaciones/${id}`, {
@@ -257,6 +318,11 @@ export default function PublicarForm({
         titulo,
         resumen,
         ...(archivoUrl ? { archivo_url: archivoUrl } : {}),
+        // Only touch archivo_thumbnail_url when a new main file was uploaded
+        // this submit — otherwise leave the existing thumbnail untouched.
+        ...(archivoUrl
+          ? { archivo_thumbnail_url: archivoThumbnailUrl ?? null }
+          : {}),
         ...(esRecomendacion
           ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
           : { url_externa: urlTrim ? urlTrim : null }),
@@ -266,6 +332,13 @@ export default function PublicarForm({
     // A new file replaced the old one → remove the now-unreferenced old file.
     if (archivoUrl && existingArchivoUrl && existingArchivoUrl !== archivoUrl) {
       await removeUploadedFile(existingArchivoUrl)
+    }
+
+    // The old thumbnail (if any) no longer corresponds to the new file —
+    // clean it up whenever the main file was replaced this submit, whether or
+    // not a fresh thumbnail replaces it.
+    if (archivoUrl && existingArchivoThumbnailUrl) {
+      await removeUploadedFile(existingArchivoThumbnailUrl)
     }
 
     // Tag diff: add the newly-selected, remove the deselected.
@@ -425,13 +498,10 @@ export default function PublicarForm({
                   Ya hay un archivo cargado. Elige uno nuevo para reemplazarlo.
                 </p>
               )}
-              <ArchivoPreview
-                file={archivo}
-                onClear={() => {
-                  setArchivo(null)
-                  if (fileInputRef.current) fileInputRef.current.value = ''
-                }}
-              />
+              {generandoMiniatura && (
+                <p className="text-xs text-text-muted">Generando miniatura del PDF…</p>
+              )}
+              <ArchivoPreview file={archivo} onClear={handleClearArchivo} />
             </div>
           )}
 

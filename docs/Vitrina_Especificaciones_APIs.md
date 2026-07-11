@@ -251,10 +251,13 @@ Endpoints: [/api/publicaciones](app/api/publicaciones/route.ts) y `/api/publicac
 ```http
 POST /api/publicaciones
 { "titulo": "Mi investigación", "resumen": "Resumen...", "tipo": "investigacion",
-  "archivo_url": "https://.../archivo.pdf" }
+  "archivo_url": "https://.../archivo.pdf",
+  "archivo_thumbnail_url": "https://.../archivo-thumb.jpg" }
 ```
 
 > **`autor_id` siempre sale de la sesión** (`auth.getUser()`), nunca del body. La capa Next lo ignora si viene en el payload.
+
+> **`archivo_thumbnail_url` (string, opcional)** — URL pública (Storage) de una miniatura JPEG generada **client-side** (`pdfjs-dist`, página 1 del PDF) antes del submit. Solo aplica cuando `archivo_url` es un PDF; se omite para imágenes (JPG/PNG, donde `archivo_url` ya es la miniatura) y para publicaciones sin archivo. Sin validación de formato en el servidor (mismo trato que `archivo_url`: se confía en la respuesta de `POST /api/storage/upload`, no es input arbitrario del cliente). En `PATCH /api/publicaciones/{id}` se acepta el mismo campo (string o `null` para limpiarlo) — el formulario de edición lo envía explícitamente a `null` cuando el archivo se reemplaza por uno sin miniatura (imagen, o PDF cuyo render client-side falló), para no dejar una miniatura obsoleta.
 
 **Recomendar una obra de terceros** (`tipo: "recomendacion"`)
 
@@ -299,7 +302,7 @@ Respuesta (cada elemento):
 
 ```json
 { "id": "uuid", "autor_id": "uuid", "autor_nombre": "María García",
-  "titulo": "...", "resumen": "...", "archivo_url": "...", "tipo": "investigacion",
+  "titulo": "...", "resumen": "...", "archivo_url": "...", "archivo_thumbnail_url": null, "tipo": "investigacion",
   "creado_en": "2026-06-03T...", "likes": 2, "comentarios": 2 }
 ```
 
@@ -541,6 +544,7 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 1. Subir el archivo a `{user_id}/{uuid}-{nombre}`.
 2. Obtener su URL pública.
 3. Guardar esa URL en `publicacion.archivo_url`.
+4. **Si el archivo es un PDF:** generar client-side una miniatura JPEG de su página 1 (`pdfjs-dist`, ver `lib/pdf/generateThumbnail.ts`), subirla igual que el archivo principal (mismo endpoint, segunda llamada) y guardar su URL en `publicacion.archivo_thumbnail_url`. Falla de generación/subida → no bloquea el paso 3, la publicación queda sin miniatura (fallback: ícono genérico en el feed).
 
 > Validar en cliente y servidor: solo PDF e imágenes (JPG, PNG), máximo 10 MB. El nombre de carpeta debe ser el `id` del usuario para cumplir la política de Storage.
 
@@ -582,8 +586,8 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 
 | Entidad | Campos |
 |---|---|
-| `usuario` | `id` uuid · `nombre` text · `email` text · `institucion` text? · `carrera` text? · `ciudad` text? · `notif_email_habilitado` boolean · `rol` `usuario\|administrador` · `creado_en` timestamptz |
-| `publicacion` | `id` uuid · `autor_id` uuid · `titulo` text · `resumen` text? · `archivo_url` text? · `tipo` `libro\|articulo\|investigacion\|ensayo\|cuento\|poema\|resena\|tesis\|ponencia\|proyecto\|dibujo\|ilustracion\|pintura\|diseno_grafico\|diseno_modas\|fotografia\|infografia\|recomendacion\|otro` · `obra_autor_externo` text? (solo `recomendacion`) · `url_externa` text? (recomendación: requerido; otros tipos: opcional) · `bloqueada` boolean (default false) · `creado_en` timestamptz |
+| `usuario` | `id` uuid · `nombre` text · `email` text · `institucion` text? · `carrera` text? · `rol` `usuario\|administrador` · `creado_en` timestamptz |
+| `publicacion` | `id` uuid · `autor_id` uuid · `titulo` text · `resumen` text? · `archivo_url` text? · `archivo_thumbnail_url` text? (miniatura JPEG de PDF, client-side; null para imágenes o PDFs sin re-guardar) · `tipo` `libro\|articulo\|investigacion\|ensayo\|cuento\|poema\|resena\|tesis\|ponencia\|proyecto\|dibujo\|ilustracion\|pintura\|diseno_grafico\|diseno_modas\|fotografia\|infografia\|recomendacion\|otro` · `obra_autor_externo` text? (solo `recomendacion`) · `url_externa` text? (recomendación: requerido; otros tipos: opcional) · `bloqueada` boolean (default false) · `creado_en` timestamptz |
 | `comentario` | `id` uuid · `publicacion_id` uuid · `autor_id` uuid · `contenido` text · `creado_en` timestamptz · `responde_a` uuid? (FK self → `comentario.id`, null = raíz) |
 | `ComentarioConUsuario` (DTO join) | `Comentario` + `usuario: { id, nombre } \| null` |
 | `ComentarioArbol` (DTO árbol) | `ComentarioConUsuario` + `respuestas: ComentarioConUsuario[]` (respuestas directas, siempre presente, puede estar vacío) |
@@ -593,8 +597,8 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 | `revista` | `id` uuid · `titulo` text · `volumen` int · `estado` `borrador\|publicada` · `publicada_en` timestamptz? |
 | `revista_articulo` | `revista_id` uuid · `publicacion_id` uuid · `orden` int |
 | `solicitud_revista` | `id` uuid · `publicacion_id` uuid · `revista_id` uuid · `solicitante_id` uuid · `revisor_id` uuid? · `estado` `pendiente\|aceptada\|rechazada\|retirada` · `mensaje` text? · `respuesta` text? · `solicitado_en` timestamptz · `resuelto_en` timestamptz? |
-| `feed_publicaciones` (vista) | `id` · `autor_id` · `autor_nombre` · `titulo` · `resumen` · `archivo_url` · `tipo` · `creado_en` · `likes` int · `comentarios` int |
-| `PublicacionCardData` (DTO) | `id` · `titulo` · `resumen` · `tipo` · `nombre_autor` · `autor_id`? · `creado_en`? |
+| `feed_publicaciones` (vista) | `id` · `autor_id` · `autor_nombre` · `titulo` · `resumen` · `archivo_url` · `archivo_thumbnail_url` · `tipo` · `creado_en` · `likes` int · `comentarios` int |
+| `PublicacionCardData` (DTO) | `id` · `titulo` · `resumen` · `tipo` · `nombre_autor` · `autor_id`? · `creado_en`? · `archivo_url`? · `archivo_thumbnail_url`? |
 | `UsuarioCardData` (DTO) | `id` · `nombre` · `institucion`? · `carrera`? — never includes `rol`, `email`, `avatar_url` |
 | `seguidor` | `seguidor_id` uuid · `seguido_id` uuid · `creado_en` timestamptz |
 | `perfil_contadores` (vista) | `usuario_id` uuid · `n_seguidores` int · `n_seguidos` int · `n_publicaciones` int |

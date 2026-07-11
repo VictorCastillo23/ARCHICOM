@@ -65,7 +65,7 @@ En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. 
 | Tabla | Propósito | Notas |
 |---|---|---|
 | `usuario` | Perfil de usuario | Extiende `auth.users` por `id`; `rol` por defecto `usuario` |
-| `publicacion` | Creaciones (libro, artículo, etc.) | `tipo` por defecto `investigacion`; `archivo_url` apunta a Storage; `obra_autor_externo`/`url_externa` nullable, solo poblados cuando `tipo = 'recomendacion'`; `bloqueada boolean not null default false` — oculta la publicación a usuarios no-admin cuando es `true` |
+| `publicacion` | Creaciones (libro, artículo, etc.) | `tipo` por defecto `investigacion`; `archivo_url` apunta a Storage; `archivo_thumbnail_url text` nullable — miniatura JPEG (página 1) de un PDF, generada client-side, ver §3.20b; `obra_autor_externo`/`url_externa` nullable, solo poblados cuando `tipo = 'recomendacion'`; `bloqueada boolean not null default false` — oculta la publicación a usuarios no-admin cuando es `true` |
 | `comentario` | Comentarios sobre publicaciones | Columna `responde_a uuid? FK→comentario(id) ON DELETE CASCADE` (auto-referencial). `NULL` = comentario raíz; no-null = respuesta (siempre apunta al raíz — profundidad máxima 2, garantizada por el POST handler). Ver §3.12 |
 | `"like"` | Likes (único por usuario/publicación) | **Nombre entre comillas** (palabra reservada) |
 | `tag` | Catálogo de etiquetas | Solo administradores las gestionan |
@@ -873,7 +873,13 @@ Endpoints en `Vitrina_Especificaciones_APIs.md` §19. UI: `/perfil/colecciones` 
 
 ---
 
-### 3.21 Notificaciones por correo (Resend)
+### 3.20b Columna `archivo_thumbnail_url` en `publicacion` — miniatura de PDF en el feed
+
+`archivo_thumbnail_url text NULL`, aditiva. `publicacion` usa GRANT de tabla completo (no grants por columna como `usuario` — ver footgun §3.19), así que no hizo falta un `GRANT` adicional. Guarda la URL pública (Storage, bucket `publicaciones`) de una miniatura JPEG de la página 1 de un PDF, generada **client-side** (`pdfjs-dist`, ver `lib/pdf/generateThumbnail.ts`) en el momento de publicar/editar y subida junto al archivo principal. `NULL` para publicaciones cuyo archivo es una imagen (JPG/PNG — la propia imagen es la miniatura, no hace falta esta columna) o para PDFs publicados antes de este cambio y aún no re-guardados (limitación aceptada, sin backfill server-side). Las vistas `feed_publicaciones` y `feed_trending` se recrearon (`security_invoker=true` preservado) agregando esta columna al final de su lista de columnas (restricción de Postgres: no se puede reordenar columnas con `CREATE OR REPLACE VIEW`). Ver `Vitrina_Especificaciones_APIs.md` (payloads de `POST/PATCH /api/publicaciones`) y `Vitrina_Pantallas_Componentes.md` (miniatura en `PublicacionCard`).
+
+---
+
+### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado`, RPC resolutora transaccional y backend del panel admin de envío masivo (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `create_correo_admin_table`, `create_resolver_destinatarios_correo_rpc`)
 
 Sistema completo de notificaciones por correo: notificaciones transaccionales (webhooks) y panel admin de envío masivo. Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá.
 
@@ -1129,7 +1135,7 @@ grant execute on function public.get_area_counts() to anon, authenticated;
 | `rechazar_solicitud(p_solicitud_id, p_respuesta)` | RPC (SECURITY DEFINER) | Marca la solicitud como rechazada con respuesta opcional. Verifica internamente `rol = 'administrador'` |
 | `publicar_revista_mensual()` | Función (SECURITY DEFINER) | **Rotación mensual.** Publica la revista en `borrador`, descarta sus solicitudes pendientes (las marca `rechazada`) y crea el borrador del mes siguiente. La invoca `pg_cron` el día 1 de cada mes a las 13:00 UTC-6 (ver §9). Idempotente: si no hay borrador, no hace nada |
 | `es_admin()` | Función (SECURITY DEFINER) | Auxiliar booleana: indica si `auth.uid()` tiene `rol = 'administrador'`. Usada por las políticas de `solicitud_revista` y por las RPC |
-| `feed_publicaciones` | Vista (`security_invoker`) | Feed con conteos de likes y comentarios resueltos en una sola consulta; respeta las RLS de las tablas base. Recreada para exponer `obra_autor_externo`/`url_externa` (atribución de recomendaciones), preservando `security_invoker=true`. Recreada nuevamente con `WHERE bloqueada=false` para excluir publicaciones bloqueadas (sin cambiar columnas) |
+| `feed_publicaciones` | Vista (`security_invoker`) | Feed con conteos de likes y comentarios resueltos en una sola consulta; respeta las RLS de las tablas base. Recreada para exponer `obra_autor_externo`/`url_externa` (atribución de recomendaciones), preservando `security_invoker=true`. Recreada nuevamente con `WHERE bloqueada=false` para excluir publicaciones bloqueadas (sin cambiar columnas). Recreada de nuevo (junto con `feed_trending`) para exponer `archivo_thumbnail_url` — ver §3.20b |
 | `bloquear_publicacion(p_reporte_id, p_respuesta?)` | RPC (SECURITY DEFINER) | Marca reporte `revisado` + `publicacion.bloqueada=true` atómicamente. Verifica `es_admin()`. Ver §3.10 |
 | `descartar_reporte(p_reporte_id)` | RPC (SECURITY DEFINER) | Marca reporte `descartado`; no toca `publicacion.bloqueada`. Verifica `es_admin()`. Ver §3.10 |
 | `retirar_articulo(p_revista_id, p_publicacion_id, p_motivo?)` | RPC (SECURITY DEFINER) | **Atómico:** borra el `revista_articulo` **y** marca su `solicitud_revista` como `retirada` (solo si estaba `aceptada`), con `respuesta` derivada del `p_motivo`. Verifica `es_admin()`. La invoca `DELETE /api/revistas/[id]/articulos` |

@@ -56,6 +56,8 @@ export default async function PerfilPage() {
     nombre_autor: perfil.nombre,
     autor_id: perfil.id,
     creado_en: p.creado_en,
+    archivo_url: p.archivo_url,
+    archivo_thumbnail_url: p.archivo_thumbnail_url,
   }))
 
   return (

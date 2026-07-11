@@ -57,6 +57,8 @@ export default async function ColeccionPage({ params }: ColeccionPageProps) {
       tipo: item.publicacion?.tipo ?? 'otro',
       nombre_autor: item.publicacion?.usuario?.nombre ?? 'Autor desconocido',
       autor_id: item.publicacion?.usuario?.id,
+      archivo_url: item.publicacion?.archivo_url,
+      archivo_thumbnail_url: item.publicacion?.archivo_thumbnail_url,
     })
   )
 

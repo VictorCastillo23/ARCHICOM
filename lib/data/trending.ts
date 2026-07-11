@@ -6,7 +6,7 @@ import type { FeedPublicacion } from '@/lib/types/database'
 // At high volume, consider a cron-refreshed materialized view (pg_cron) to
 // avoid per-query decay computation — not implemented at MVP.
 const TRENDING_COLUMNS =
-  'id,titulo,resumen,tipo,archivo_url,autor_id,autor_nombre,obra_autor_externo,url_externa,creado_en'
+  'id,titulo,resumen,tipo,archivo_url,archivo_thumbnail_url,autor_id,autor_nombre,obra_autor_externo,url_externa,creado_en'
 
 export async function getTrendingFeed({
   limit = 3,

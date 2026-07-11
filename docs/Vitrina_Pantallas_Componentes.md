@@ -152,6 +152,16 @@
     por request). La selección y la paginación siguen siendo por creado_en + range;
     solo se baraja el orden visual dentro de la página.
   - **Límite por página: 24 publicaciones** (`const LIMIT = 24` en `app/(main)/page.tsx`)
+  - **Miniatura de archivo en PublicacionCard** (`components/feed/PublicacionCard.tsx`): si la
+    publicación tiene `archivo_url`, la card muestra una miniatura arriba del título (bleed hasta el
+    borde de la Card, `aspect-[4/3]`, `object-cover`). Imagen (JPG/PNG) → la propia `archivo_url` es
+    la miniatura. PDF con `archivo_thumbnail_url` (generada client-side al publicar/editar, ver
+    Vitrina_Especificaciones_APIs.md §4.2) → se usa esa URL. PDF sin `archivo_thumbnail_url`
+    (publicado antes de este cambio, o el render client-side falló) → ícono genérico de documento
+    (SVG inline). Sin `archivo_url` (recomendación o publicación solo-enlace) → sin miniatura, card
+    igual que antes. `<img>` crudo (no `next/image`): mismo patrón que
+    `components/publicacion/ArchivoVistaPrevia.tsx` para URLs de Storage — `next/image` requeriría
+    `images.remotePatterns` para el host de Supabase, no configurado en `next.config.ts`.
 
   ---
   3.2 Detalle de Publicación — /publicacion/[id]
@@ -282,7 +292,14 @@
   1. El usuario elige primero el tipo en el TipoPicker; recién entonces se muestra el resto del form.
   2. Se completan los campos (adaptados a la categoría del tipo).
   3. Si hay archivo, se sube a Supabase Storage → se obtiene archivo_url.
-  4. POST /api/publicaciones con los datos + URL (incluida la atribución externa cuando aplica).
+  3.5. Si el archivo es PDF: apenas se elige (no en el submit) arranca en paralelo la generación
+     client-side de una miniatura JPEG de la página 1 (`pdfjs-dist`, `lib/pdf/generateThumbnail.ts`,
+     ver ArchivoPreview abajo). Al hacer submit se espera esa generación, se sube la miniatura al
+     mismo bucket (segunda llamada a `POST /api/storage/upload`) y su URL se incluye como
+     `archivo_thumbnail_url`. Si falla el render (PDF corrupto, etc.) o el archivo no es PDF, no se
+     bloquea el publish: sigue sin miniatura (la card muestra el ícono genérico, ver §3.1).
+  4. POST /api/publicaciones con los datos + URL (incluida la atribución externa cuando aplica) +
+     archivo_thumbnail_url cuando se generó.
   5. Se asocian las áreas seleccionadas (POST /api/publicaciones/[id]/tags por cada una);
      cada respuesta se verifica — si alguna falla, la publicación NO se pierde y se muestra un aviso
      con enlace a la publicación creada (en vez de redirigir y arriesgar un duplicado).
@@ -306,6 +323,10 @@
   - Siembra los campos con los valores actuales; el **tipo queda bloqueado** (TipoPicker disabled).
   - El archivo actual se conserva; solo se re-sube si el usuario elige uno nuevo. Se mantiene la regla
     "al menos uno de archivo/enlace" (un archivo ya cargado la satisface).
+  - Al elegir un archivo nuevo, `archivo_thumbnail_url` se recalcula: PDF nuevo → se regenera la
+    miniatura (o se limpia a `null` si el render falla); imagen nueva → se limpia a `null` (la miniatura
+    del PDF anterior ya no aplica). Sin archivo nuevo elegido, la miniatura existente no se toca. La
+    miniatura vieja (si la había) se borra de Storage best-effort cuando se reemplaza.
   - Submit → PATCH /api/publicaciones/[id] (sin enviar `tipo`). Las áreas se actualizan por **diff**:
     POST las nuevas, DELETE (?tag_id=) las quitadas. En éxito redirige al detalle.
   - El botón dice "Guardar cambios" (en creación dice "Publicar").
