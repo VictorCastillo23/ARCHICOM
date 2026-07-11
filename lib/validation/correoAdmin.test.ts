@@ -82,6 +82,12 @@ describe('validateDestinatariosCriterio', () => {
     expect(validateDestinatariosCriterio({ tipo: 'ids', valor: [1, 2] })).toBeNull()
   })
 
+  it('accepts tipo: sin_publicacion', () => {
+    expect(validateDestinatariosCriterio({ tipo: 'sin_publicacion' })).toEqual({
+      tipo: 'sin_publicacion',
+    })
+  })
+
   it('rejects an unknown tipo', () => {
     expect(validateDestinatariosCriterio({ tipo: 'todos_menos_uno' })).toBeNull()
   })

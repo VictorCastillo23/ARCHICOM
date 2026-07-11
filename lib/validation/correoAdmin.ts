@@ -43,5 +43,6 @@ export function validateDestinatariosCriterio(value: unknown): DestinatariosCrit
       ? { tipo: 'ids', valor: c.valor }
       : null
   }
+  if (c.tipo === 'sin_publicacion') return { tipo: 'sin_publicacion' }
   return null
 }

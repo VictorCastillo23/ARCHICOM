@@ -25,6 +25,7 @@ function describirDestinatarios(correo: CorreoAdminDetalle): string {
   const c = correo.destinatarios_criterio
   if (c.tipo === 'todos') return 'Todos los usuarios'
   if (c.tipo === 'ciudad') return `Ciudad: ${c.valor}`
+  if (c.tipo === 'sin_publicacion') return 'Usuarios sin publicaciones'
   return `${c.valor.length} usuario${c.valor.length === 1 ? '' : 's'} específico${c.valor.length === 1 ? '' : 's'}`
 }
 

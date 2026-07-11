@@ -359,6 +359,13 @@ export type DestinatariosCriterio =
   | { tipo: 'todos' }
   | { tipo: 'ciudad'; valor: string }
   | { tipo: 'ids'; valor: string[] }
+  // Resolved server-side (Route Handler) into { tipo: 'ids', valor } before it
+  // ever reaches resolver_destinatarios_correo / enviar-correo-masivo — the
+  // RPC has no concept of "no publications", so it never sees this variant.
+  | { tipo: 'sin_publicacion' }
+
+/** Shape of a resolved recipient row — matches resolver_destinatarios_correo's RETURNS TABLE. */
+export type DestinatarioResuelto = { id: string; email: string; nombre: string }
 
 /** Reconciled against design's DDL (M3) — supersedes an earlier spec draft's 'enviado'|'error'. */
 export type EstadoCorreoAdmin = 'pendiente' | 'completado' | 'fallido'

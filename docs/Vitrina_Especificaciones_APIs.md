@@ -1676,9 +1676,11 @@ Fase 4b de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge F
 { "asunto": "string, 1-200 chars", "cuerpo": "string, 10-5000 chars",
   "destinatarios_criterio": { "tipo": "todos" } }
 ```
-`destinatarios_criterio` es `{tipo:'todos'}` \| `{tipo:'ciudad', valor}` \| `{tipo:'ids', valor: string[]}` (tipo `DestinatariosCriterio`, ver BD §3.21). La UI de `/admin/correos` solo expone `todos` e `ids` — `ciudad` sigue siendo válido a nivel de contrato/RPC pero no tiene selector en el form (no existe una lista de municipios en el proyecto; decisión explícita).
+`destinatarios_criterio` es `{tipo:'todos'}` \| `{tipo:'ciudad', valor}` \| `{tipo:'ids', valor: string[]}` \| `{tipo:'sin_publicacion'}` (tipo `DestinatariosCriterio`, ver BD §3.21). La UI de `/admin/correos` expone `todos`, `ids` y `sin_publicacion` — **no** `ciudad` (sigue siendo válido a nivel de contrato/RPC pero sin selector en el form; no existe una lista de municipios en el proyecto, decisión explícita).
 
-**Flujo (síncrono, sin job async ni `tracking_id`):** valida el body (`lib/validation/correoAdmin.ts`, misma forma que `validate-payload.ts` de la Edge Function) → **inserta** en `correo_admin` (`admin_id` de sesión, `estado:'pendiente'`) → `functions.invoke('enviar-correo-masivo', {...})` (JWT del admin reenviado implícito) → la Edge Function resuelve destinatarios ELLA MISMA vía `resolver_destinatarios_correo` (aplica el opt-out `notif_email_habilitado`, cap `LIMITE_DESTINATARIOS = 500`) y envía por Resend en lotes de 50 → el Route Handler **actualiza** la fila con `cantidad_destinatarios/cantidad_enviados/cantidad_fallidos` y `estado` final (`'completado'`, o `'fallido'` si todos los envíos fallaron).
+`sin_publicacion` ("Usuarios sin publicaciones") es **resuelto por el Route Handler antes de tocar la RPC/Edge Function**, no por ellas: `resolverIdsSinPublicacion` (`lib/data/correos.ts`) consulta `usuario.id` y `publicacion.autor_id` (ambas columnas públicas vía RLS, sin RPC ni `service_role`) y arma la lista de ids que nunca publicaron; esa lista se convierte en un `{tipo:'ids', valor}` **solo para la llamada a `resolver_destinatarios_correo`/`enviar-correo-masivo`** — el opt-out `notif_email_habilitado` lo sigue aplicando la RPC sobre esos ids, igual que con cualquier `ids` armado a mano. `correo_admin.destinatarios_criterio` guarda el criterio **original** (`sin_publicacion`), no el resuelto, para que el historial refleje la intención real del envío. Si la lista resuelta queda vacía (todos publicaron algo), el Route Handler no invoca la Edge Function — la validación de payload de `enviar-correo-masivo` rechaza un `ids` vacío — y cierra la fila directo como `estado:'completado'` con los 3 contadores en 0 (mismo criterio de "no es error" que ya usa la Edge Function para destinatarios resueltos en cero).
+
+**Flujo (síncrono, sin job async ni `tracking_id`):** valida el body (`lib/validation/correoAdmin.ts`, misma forma que `validate-payload.ts` de la Edge Function) → **inserta** en `correo_admin` (`admin_id` de sesión, `estado:'pendiente'`, criterio **original**) → resuelve `sin_publicacion` si aplica → `functions.invoke('enviar-correo-masivo', {...})` con el criterio **resuelto** (JWT del admin reenviado implícito) → la Edge Function resuelve destinatarios ELLA MISMA vía `resolver_destinatarios_correo` (aplica el opt-out `notif_email_habilitado`, cap `LIMITE_DESTINATARIOS = 500`) y envía por Resend en lotes de 50 → el Route Handler **actualiza** la fila con `cantidad_destinatarios/cantidad_enviados/cantidad_fallidos` y `estado` final (`'completado'`, o `'fallido'` si todos los envíos fallaron).
 
 **Respuesta 201 Created:**
 ```json
@@ -1703,15 +1705,19 @@ Fase 4b de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge F
 
 > No lo usa la UI del historial (la lista ya trae todas las columnas necesarias y expande la fila in-place sin segundo fetch) — queda disponible para uso directo de la API o un futuro deep-link.
 
-### POST /api/admin/correos/contar — Preview del conteo de destinatarios (solo admin)
+### POST /api/admin/correos/contar — Preview del conteo y la lista de destinatarios (solo admin)
 
 **Autenticación:** igual que arriba.
 
-**Body:** `{ "destinatarios_criterio": <DestinatariosCriterio> }`
+**Body:** `{ "destinatarios_criterio": <DestinatariosCriterio> }` — incluye `{tipo:'sin_publicacion'}` (ver DTO abajo).
 
-**Flujo:** llama a `resolver_destinatarios_correo` (misma RPC que la Edge Function) y solo cuenta filas — **no envía nada ni escribe en `correo_admin`**. Respalda el botón "Ver vista previa" del form.
+**Flujo:** llama a `resolver_destinatarios_correo` (misma RPC que la Edge Function) y devuelve las filas resueltas — **no envía nada ni escribe en `correo_admin`**. Respalda el botón "Ver vista previa" del form, incluida la lista desplegable de destinatarios de `AdminCorreoPreview`.
 
-**Respuesta 200 OK:** `{ "data": { "cantidad": 42 } }`
+**Respuesta 200 OK:**
+```json
+{ "data": { "cantidad": 42, "destinatarios": [ { "id": "...", "email": "...", "nombre": "..." } ] } }
+```
+`destinatarios` es `DestinatarioResuelto[]` (mismo shape que retorna `resolver_destinatarios_correo`: `id/email/nombre`) — el admin ya ve estos mismos pares email/nombre en `detalles` tras un envío completado (arriba, `POST /api/admin/correos`), así que mostrarlos acá no es una exposición nueva.
 
 ---
 

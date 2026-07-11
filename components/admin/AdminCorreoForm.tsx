@@ -8,13 +8,19 @@ import AdminUsuarioMultiSelect from '@/components/admin/AdminUsuarioMultiSelect'
 import AdminCorreoPreview from '@/components/admin/AdminCorreoPreview'
 import { ApiError, apiClient } from '@/lib/api/client'
 import { ASUNTO_MAX, CUERPO_MAX, CUERPO_MIN } from '@/lib/validation/correoAdmin'
-import type { CorreoAdmin, DestinatariosCriterio, UsuarioCardData } from '@/lib/types/database'
+import type {
+  CorreoAdmin,
+  DestinatarioResuelto,
+  DestinatariosCriterio,
+  UsuarioCardData,
+} from '@/lib/types/database'
 
-type Modo = 'todos' | 'ids'
+type Modo = 'todos' | 'ids' | 'sin_publicacion'
 
 const MODOS: { value: Modo; label: string }[] = [
   { value: 'todos', label: 'Todos los usuarios' },
   { value: 'ids', label: 'Usuarios específicos' },
+  { value: 'sin_publicacion', label: 'Usuarios sin publicaciones' },
 ]
 
 export default function AdminCorreoForm() {
@@ -27,6 +33,7 @@ export default function AdminCorreoForm() {
 
   const [previewOpen, setPreviewOpen] = useState(false)
   const [cantidadPreview, setCantidadPreview] = useState(0)
+  const [destinatariosPreview, setDestinatariosPreview] = useState<DestinatarioResuelto[]>([])
   const [counting, setCounting] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -34,6 +41,7 @@ export default function AdminCorreoForm() {
 
   function buildCriterio(): DestinatariosCriterio | null {
     if (modo === 'todos') return { tipo: 'todos' }
+    if (modo === 'sin_publicacion') return { tipo: 'sin_publicacion' }
     if (seleccionados.length === 0) return null
     return { tipo: 'ids', valor: seleccionados.map((u) => u.id) }
   }
@@ -64,11 +72,15 @@ export default function AdminCorreoForm() {
 
     setCounting(true)
     try {
-      const data = await apiClient<{ cantidad: number }>('/api/admin/correos/contar', {
-        method: 'POST',
-        body: JSON.stringify({ destinatarios_criterio: criterio }),
-      })
+      const data = await apiClient<{ cantidad: number; destinatarios: DestinatarioResuelto[] }>(
+        '/api/admin/correos/contar',
+        {
+          method: 'POST',
+          body: JSON.stringify({ destinatarios_criterio: criterio }),
+        },
+      )
       setCantidadPreview(data.cantidad)
+      setDestinatariosPreview(data.destinatarios)
       setPreviewOpen(true)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error al calcular destinatarios.')
@@ -184,6 +196,7 @@ export default function AdminCorreoForm() {
         asunto={asunto}
         cuerpo={cuerpo}
         cantidad={cantidadPreview}
+        destinatarios={destinatariosPreview}
         sending={sending}
         onConfirm={handleConfirm}
         onClose={() => setPreviewOpen(false)}

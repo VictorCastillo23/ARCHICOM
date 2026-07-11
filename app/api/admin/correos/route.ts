@@ -6,6 +6,7 @@ import {
   validateCuerpo,
   validateDestinatariosCriterio,
 } from '@/lib/validation/correoAdmin'
+import { getCorreosAdmin, resolverCriterioEnvio } from '@/lib/data/correos'
 import type { CorreoAdminDetalle, EstadoCorreoAdmin } from '@/lib/types/database'
 
 // The bulk send (`enviar-correo-masivo`) can take a while for up to 500
@@ -39,16 +40,10 @@ export async function GET(request: NextRequest) {
   const offset =
     offsetParam === null ? 0 : Math.max(Math.trunc(Number(offsetParam)) || 0, 0)
 
-  const { data, error } = await admin.supabase
-    .from('correo_admin')
-    .select(SELECT_CORREO_DETALLE)
-    .order('enviado_en', { ascending: false })
-    .range(offset, offset + limit - 1)
-
+  const { correos, hasMore, error } = await getCorreosAdmin({ limit, offset })
   if (error) return handleError(error)
 
-  const correos = data as unknown as CorreoAdminDetalle[]
-  return jsonOk({ correos, hasMore: correos.length === limit })
+  return jsonOk({ correos, hasMore })
 }
 
 export async function POST(request: Request) {
@@ -88,17 +83,42 @@ export async function POST(request: Request) {
 
   const correo = inserted as unknown as CorreoAdminDetalle
 
-  const { data: invokeData, error: invokeError } = await admin.supabase.functions.invoke(
-    'enviar-correo-masivo',
-    { body: { asunto, cuerpo, destinatarios_criterio: destinatariosCriterio } },
+  // `correo_admin.destinatarios_criterio` keeps the ORIGINAL criterio (e.g.
+  // `sin_publicacion`) for the audit trail — only the Edge Function payload
+  // uses the resolved shape, since the RPC has no concept of "no publications".
+  const { criterio: resuelto, error: resolveError } = await resolverCriterioEnvio(
+    admin.supabase,
+    destinatariosCriterio,
   )
-
-  if (invokeError) {
+  if (resolveError) {
     await admin.supabase.from('correo_admin').update({ estado: 'fallido' }).eq('id', correo.id)
-    return handleError(invokeError)
+    return handleError(resolveError)
   }
 
-  const { enviados, fallidos, detalles } = invokeData as EnviarCorreoMasivoResponse
+  // `resolverIdsSinPublicacion` can legitimately resolve to zero ids (every
+  // usuario has published) — the Edge Function's own payload validation
+  // rejects an empty `ids` array, so that "nobody to send to" case is
+  // short-circuited here instead of invoking it, same "not an error" outcome
+  // the Edge Function documents for zero-recipients-after-RPC-resolution.
+  const sinDestinatarios = resuelto.tipo === 'ids' && resuelto.valor.length === 0
+
+  let resultadoEnvio: EnviarCorreoMasivoResponse = { enviados: 0, fallidos: 0, detalles: [] }
+
+  if (!sinDestinatarios) {
+    const { data: invokeData, error: invokeError } = await admin.supabase.functions.invoke(
+      'enviar-correo-masivo',
+      { body: { asunto, cuerpo, destinatarios_criterio: resuelto } },
+    )
+
+    if (invokeError) {
+      await admin.supabase.from('correo_admin').update({ estado: 'fallido' }).eq('id', correo.id)
+      return handleError(invokeError)
+    }
+
+    resultadoEnvio = invokeData as EnviarCorreoMasivoResponse
+  }
+
+  const { enviados, fallidos, detalles } = resultadoEnvio
   const cantidadDestinatarios = detalles.length
   const estado: EstadoCorreoAdmin =
     fallidos > 0 && enviados === 0 && cantidadDestinatarios > 0 ? 'fallido' : 'completado'

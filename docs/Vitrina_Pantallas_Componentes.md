@@ -1136,9 +1136,10 @@ Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Ba
 
 ### AdminCorreoForm (`components/admin/AdminCorreoForm.tsx`)
 
-- **Tipo:** Client Component. Campos: `Field` para asunto (≤200) y cuerpo (10-5000, `multiline`), ambos con contador de caracteres vía `helper`. Selector de destinatarios como `role="radiogroup"` de 2 chips (mismo patrón visual que `TipoPicker`): **"Todos los usuarios"** / **"Usuarios específicos"** — **sin** opción "por ciudad" (decisión explícita: `usuario.ciudad` es texto libre, no hay lista de municipios en el proyecto; el tipo `DestinatariosCriterio` y la RPC sí soportan `{tipo:'ciudad'}` para uso futuro/API directa).
+- **Tipo:** Client Component. Campos: `Field` para asunto (≤200) y cuerpo (10-5000, `multiline`), ambos con contador de caracteres vía `helper`. Selector de destinatarios como `role="radiogroup"` de 3 chips (mismo patrón visual que `TipoPicker`): **"Todos los usuarios"** / **"Usuarios específicos"** / **"Usuarios sin publicaciones"** — **sin** opción "por ciudad" (decisión explícita: `usuario.ciudad` es texto libre, no hay lista de municipios en el proyecto; el tipo `DestinatariosCriterio` y la RPC sí soportan `{tipo:'ciudad'}` para uso futuro/API directa).
 - **"Usuarios específicos":** monta `AdminUsuarioMultiSelect`.
-- **"Ver vista previa":** valida en cliente (mismos límites que `lib/validation/correoAdmin.ts`) → `POST /api/admin/correos/contar` con el criterio construido → abre `AdminCorreoPreview` con el conteo real.
+- **"Usuarios sin publicaciones":** arma `{tipo:'sin_publicacion'}` — el conteo real y la resolución a ids concretos los hace el servidor (`resolverIdsSinPublicacion`, `lib/data/correos.ts`), sin lógica de resolución en el cliente. Ver `Vitrina_Especificaciones_APIs.md` §21.
+- **"Ver vista previa":** valida en cliente (mismos límites que `lib/validation/correoAdmin.ts`) → `POST /api/admin/correos/contar` con el criterio construido → abre `AdminCorreoPreview` con el conteo real y la lista de destinatarios resueltos (mismo request, sin fetch extra).
 - **Confirmar (dentro del modal):** `POST /api/admin/correos` → mensaje inline de éxito con el resumen enviados/fallidos (mismo patrón `role="status"`/`role="alert"` que `NotificacionesForm`, sin toasts — el proyecto no usa una librería de toasts) → resetea el form → `router.refresh()` para que el historial SSR se actualice sin recarga completa.
 
 ### AdminUsuarioMultiSelect (`components/admin/AdminUsuarioMultiSelect.tsx`)
@@ -1150,6 +1151,7 @@ Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Ba
 ### AdminCorreoPreview (`components/admin/AdminCorreoPreview.tsx`)
 
 - **Tipo:** Client Component, wrapper delgado sobre `components/ui/Modal.tsx`. Muestra asunto/cuerpo tal cual se enviarán y "¿Enviar a N usuario(s)? No se puede deshacer.". Si el conteo supera `LIMITE_DESTINATARIOS` (500, espejo del cap de la Edge Function), deshabilita "Confirmar" y muestra el aviso.
+- **Prop `destinatarios: DestinatarioResuelto[]`** (viene de `/contar`, ver `Vitrina_Especificaciones_APIs.md` §21): botón disclosure "Ver lista de destinatarios (N)" (`aria-expanded` + estado local, mismo patrón que `AdminCorreoHistorial`) que despliega una lista con scroll (`nombre` + `email` de cada uno) — no dispara un fetch adicional, usa los datos ya traídos por el conteo.
 
 ### AdminCorreoHistorial (`components/admin/AdminCorreoHistorial.tsx`)
 
