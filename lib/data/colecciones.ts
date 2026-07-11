@@ -35,7 +35,7 @@ export async function getColeccion(
     .select(
       'id, usuario_id, titulo, descripcion, visibilidad, creado_en, ' +
         'coleccion_publicacion(coleccion_id, publicacion_id, orden, agregado_en, ' +
-        'publicacion(id, titulo, resumen, tipo, usuario(id, nombre)))'
+        'publicacion(id, titulo, resumen, tipo, archivo_url, archivo_thumbnail_url, usuario(id, nombre)))'
     )
     .eq('id', id)
     .order('orden', { referencedTable: 'coleccion_publicacion', ascending: true })

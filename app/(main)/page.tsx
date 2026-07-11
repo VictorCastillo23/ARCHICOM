@@ -45,6 +45,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         nombre_autor: pub.usuario?.nombre ?? 'Autor desconocido',
         autor_id: pub.autor_id,
         creado_en: pub.creado_en,
+        archivo_url: pub.archivo_url,
+        archivo_thumbnail_url: pub.archivo_thumbnail_url,
       }))
     }
   } else {
@@ -64,6 +66,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         nombre_autor: pub.autor_nombre,
         autor_id: pub.autor_id,
         creado_en: pub.creado_en,
+        archivo_url: pub.archivo_url,
+        archivo_thumbnail_url: pub.archivo_thumbnail_url,
       }))
     }
 
@@ -76,6 +80,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         nombre_autor: pub.autor_nombre,
         autor_id: pub.autor_id,
         creado_en: pub.creado_en,
+        archivo_url: pub.archivo_url,
+        archivo_thumbnail_url: pub.archivo_thumbnail_url,
       }))
     }
   }

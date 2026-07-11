@@ -11,6 +11,8 @@ type RelacionadaRow = {
   tipo: TipoPublicacion
   autor_id: string
   creado_en: string
+  archivo_url: string | null
+  archivo_thumbnail_url: string | null
   usuario: { id: string; nombre: string } | { id: string; nombre: string }[] | null
 }
 
@@ -118,7 +120,7 @@ export async function getPublicacionesRelacionadas(
   if (tagIds.length > 0) {
     const { data } = await supabase
       .from('publicacion')
-      .select('id, titulo, resumen, tipo, autor_id, creado_en, usuario(id, nombre)')
+      .select('id, titulo, resumen, tipo, autor_id, creado_en, archivo_url, archivo_thumbnail_url, usuario(id, nombre)')
       .in('id',
         (await supabase
           .from('publicacion_tag')
@@ -139,6 +141,8 @@ export async function getPublicacionesRelacionadas(
       nombre_autor: (Array.isArray(p.usuario) ? p.usuario[0]?.nombre : p.usuario?.nombre) ?? 'Autor desconocido',
       autor_id: p.autor_id,
       creado_en: p.creado_en,
+      archivo_url: p.archivo_url ?? undefined,
+      archivo_thumbnail_url: p.archivo_thumbnail_url,
     }))
   }
 
@@ -147,7 +151,7 @@ export async function getPublicacionesRelacionadas(
     const faltantes = 4 - paso1.length
     const { data } = await supabase
       .from('publicacion')
-      .select('id, titulo, resumen, tipo, autor_id, creado_en, usuario(id, nombre)')
+      .select('id, titulo, resumen, tipo, autor_id, creado_en, archivo_url, archivo_thumbnail_url, usuario(id, nombre)')
       .eq('tipo', tipo)
       .not('id', 'in', `(${excluir.join(',')})`)
       .order('creado_en', { ascending: false })
@@ -161,6 +165,8 @@ export async function getPublicacionesRelacionadas(
       nombre_autor: (Array.isArray(p.usuario) ? p.usuario[0]?.nombre : p.usuario?.nombre) ?? 'Autor desconocido',
       autor_id: p.autor_id,
       creado_en: p.creado_en,
+      archivo_url: p.archivo_url ?? undefined,
+      archivo_thumbnail_url: p.archivo_thumbnail_url,
     }))
 
     return [...paso1, ...paso2]

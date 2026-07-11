@@ -69,6 +69,8 @@ export type Publicacion = {
   resumen: string
   tipo: TipoPublicacion
   archivo_url?: string
+  /** Client-generated JPEG thumbnail of a PDF's page 1, uploaded to Storage. Null for images (the image itself is the thumbnail) or PDFs not yet re-saved since this feature shipped. */
+  archivo_thumbnail_url?: string | null
   autor_id: string
   obra_autor_externo?: string | null
   url_externa?: string | null
@@ -144,7 +146,7 @@ export type ColeccionPublicacion = {
   publicacion_id: string
   orden: number
   agregado_en: string
-  publicacion?: Pick<Publicacion, 'id' | 'titulo' | 'resumen' | 'tipo'> & {
+  publicacion?: Pick<Publicacion, 'id' | 'titulo' | 'resumen' | 'tipo' | 'archivo_url' | 'archivo_thumbnail_url'> & {
     usuario?: Pick<Usuario, 'id' | 'nombre'>
   }
 }
@@ -220,6 +222,8 @@ export type PublicacionCardData = {
   nombre_autor: string
   autor_id?: string
   creado_en?: string
+  archivo_url?: string
+  archivo_thumbnail_url?: string | null
 }
 
 export type UsuarioCardData = {
@@ -235,6 +239,7 @@ export type FeedPublicacion = {
   resumen: string
   tipo: TipoPublicacion
   archivo_url?: string
+  archivo_thumbnail_url?: string | null
   autor_id: string
   autor_nombre: string
   obra_autor_externo?: string | null

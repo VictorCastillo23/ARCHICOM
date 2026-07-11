@@ -52,3 +52,4 @@ yarn-error.log*
 .vscode/
 auditorias/
 testsprite_tests/
+scripts/

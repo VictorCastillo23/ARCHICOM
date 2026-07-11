@@ -47,11 +47,12 @@ export async function POST(request: NextRequest) {
   if (!user) return unauthorized()
 
   const body = await request.json().catch(() => ({}))
-  const { titulo, resumen, tipo, archivo_url, obra_autor_externo, url_externa } = body as {
+  const { titulo, resumen, tipo, archivo_url, archivo_thumbnail_url, obra_autor_externo, url_externa } = body as {
     titulo?: string
     resumen?: string
     tipo?: string
     archivo_url?: string
+    archivo_thumbnail_url?: string
     obra_autor_externo?: string
     url_externa?: string
   }
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       resumen,
       tipo,
       archivo_url,
+      ...(archivo_thumbnail_url ? { archivo_thumbnail_url } : {}),
       autor_id: user.id,
       ...(urlExterna ? { url_externa: urlExterna } : {}),
       ...(tipo === 'recomendacion' ? { obra_autor_externo } : {}),

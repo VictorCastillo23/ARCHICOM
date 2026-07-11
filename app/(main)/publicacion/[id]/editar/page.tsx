@@ -57,6 +57,7 @@ export default async function EditarPublicacionPage({ params }: EditarPublicacio
             obraAutorExterno: data.obra_autor_externo ?? '',
             urlExterna: data.url_externa ?? '',
             archivoUrl: data.archivo_url ?? undefined,
+            archivoThumbnailUrl: data.archivo_thumbnail_url ?? undefined,
           }}
         />
       </section>

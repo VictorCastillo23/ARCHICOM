@@ -60,6 +60,8 @@ export default async function AreaPage({ params, searchParams }: AreaPageProps) 
     nombre_autor: pub.usuario?.nombre ?? 'Autor desconocido',
     autor_id: pub.autor_id,
     creado_en: pub.creado_en,
+    archivo_url: pub.archivo_url,
+    archivo_thumbnail_url: pub.archivo_thumbnail_url,
   }))
 
   const hasMore = publicaciones.length === LIMIT
