@@ -45,6 +45,15 @@ export default function AdminPage() {
             </p>
           </Card>
         </Link>
+
+        <Link href="/admin/correos" className="block group">
+          <Card className="group-hover:shadow-md transition-shadow h-full border-l-4 border-l-primary">
+            <h2 className="font-display font-normal text-(length:--size-heading-sm) mb-1">Correos</h2>
+            <p className="text-sm text-text-muted">
+              Envía correos personalizados a los usuarios de la plataforma.
+            </p>
+          </Card>
+        </Link>
       </div>
     </div>
   )

@@ -815,7 +815,7 @@ Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desp
 
 ### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado`, RPC resolutora transaccional y backend del panel admin de envío masivo (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `create_correo_admin_table`, `create_resolver_destinatarios_correo_rpc`)
 
-**PR1+PR2+PR4a de una cadena de PRs** (base de esquema + Edge Function transaccional + esquema/RLS/RPC/Edge Function del panel admin). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Con esta fase (4a) el esquema y las RPC quedan **completos**; solo falta la fase 4b (rutas Next.js + UI del panel admin, sin cambios de esquema).
+**PR1+PR2+PR4a+PR4b de una cadena de PRs** (base de esquema + Edge Function transaccional + esquema/RLS/RPC/Edge Function del panel admin + rutas Next.js/UI del panel admin). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Con la fase 4a el esquema y las RPC quedaron **completos**; la fase 4b (rutas Next.js + UI, sin cambios de esquema adicionales) también está **completa** — ver la subsección "Fase 4b" al final de esta sección y `Vitrina_Especificaciones_APIs.md` §21 / `Vitrina_Pantallas_Componentes.md` (feature "Panel admin de correos masivos").
 
 > **Nota de rama (2026-07-10):** esta sección se extendió en `feat/notif-email-admin-backend` (base `feat/notif-email-edge-fn`, que trae PR1+PR2), que **no** incluye el fix de privacidad R1 aplicado en la rama independiente `feat/notif-email-perfil-ui` (PR3: revocación de `SELECT (notif_email_habilitado)` para `authenticated` + RPC `mi_notif_email_habilitado()`) — ver el historial de commits/PR de esa rama para el detalle completo. Al integrar la pila de PRs (`stacked-to-main`), esta sección tendrá un conflicto de merge con la versión de PR3 sobre el mismo §3.21; se debe reconciliar a mano conservando **ambas** correcciones (la de PR3 sobre la columna + las subsecciones nuevas de PR4a abajo).
 ### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `revoke_select_notif_email_habilitado_add_self_rpc`)
@@ -856,7 +856,7 @@ Verificado vía MCP `supabase`: secreto correcto → retorna la fila `{email, no
 
 #### Edge Function `enviar-notificacion-email` (Fase 2, PR2)
 
-`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, desviación deliberada D9 respecto al precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})`, wrapper HTML compartido con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija).
+`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, desviación deliberada D9 respecto al precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})`, wrapper HTML compartido con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija). El wrapper incluye un botón fijo "Visitar Vitrina" → `https://esvitrina.com` (hardcodeado en `email-template.ts`, no viene de `NEXT_PUBLIC_SITE_URL` — las Edge Functions corren en Deno, fuera de la app Next.js, así que esa env var no es alcanzable ahí).
 
 Variables de entorno: `NOTIF_WEBHOOK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NOTIF_FROM_EMAIL`.
 
@@ -879,7 +879,7 @@ Se configuran manualmente en el dashboard de Supabase (Database → Webhooks), n
 | Nueva solicitud de mensaje | `solicitud_mensaje` | INSERT | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
 | Solicitud de revista aceptada | `solicitud_revista` | UPDATE | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
 
-El mismo secreto compartido vive en tres lugares (ver nota de §3.21 arriba sobre `private.notif_config`): (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC). **Pendiente de ejecución** — creación de los 2 webhooks y despliegue de la función (`mcp__supabase__deploy_edge_function` + secretos) quedan fuera del alcance de este `sdd-apply` (sin acceso a herramientas MCP de Supabase en esta sesión); código listo y commiteado, runbook documentado para quien despliegue.
+El mismo secreto compartido vive en tres lugares (ver nota de §3.21 arriba sobre `private.notif_config`): (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC). **Ejecutado** (verificado 2026-07-10 vía MCP `supabase`: los 2 triggers `solicitud_mensaje`/`solicitud_revista` existen en `information_schema.triggers`, y la Edge Function `enviar-notificacion-email` está `ACTIVE`) — la nota anterior de "pendiente de ejecución" quedó obsoleta apenas se corrió el runbook en la máquina que hizo el deploy.
 
 #### Tabla `correo_admin` (Fase 4a, PR4a)
 
@@ -910,7 +910,7 @@ Historial de envíos masivos de correo hechos por administradores. RLS gateada p
 
 Grant de tabla separado de RLS (RLS filtra filas; el GRANT habilita visibilidad en PostgREST — mismo principio del footgun de §3.19): `grant select, insert, update on correo_admin to authenticated;`.
 
-**SQL completo (migración `create_correo_admin_table`, pendiente de aplicar):**
+**SQL completo (migración `create_correo_admin_table`, aplicada 2026-07-10, verificada vía `list_migrations`):**
 
 ```sql
 create table public.correo_admin (
@@ -948,7 +948,7 @@ grant select, insert, update on public.correo_admin to authenticated;
 
 `revoke all on function ... from public; revoke execute on function ... from anon; grant execute on function ... to authenticated;` — a diferencia de `resolver_destinatario_notificacion` (que sí necesita `anon` porque el webhook llama sin sesión), esta RPC es de uso exclusivo de administradores autenticados: `anon` se revoca **explícitamente**, además del `revoke all from public` (Supabase auto-otorga `EXECUTE` a `anon`/`authenticated`/`service_role` en funciones nuevas; `revoke all from public` por sí solo no retira el grant directo a `anon` — mismo aprendizaje ya aplicado en `rag_rate_limit_revoke_anon`/`mensajeria_directa_revoke_anon`, §7.1).
 
-**SQL completo (migración `create_resolver_destinatarios_correo_rpc`, pendiente de aplicar):**
+**SQL completo (migración `create_resolver_destinatarios_correo_rpc`, aplicada 2026-07-10, verificada vía `list_migrations`):**
 
 ```sql
 create or replace function public.resolver_destinatarios_correo(
@@ -1002,9 +1002,15 @@ Flujo (revisado):
 
 **Nota de superficie de error:** gateada por `verify_jwt:true` + el `es_admin()` interno de la RPC — solo un admin autenticado ve la respuesta, por eso `detalles[].error` incluye el mensaje de Resend por destinatario (diagnóstico); excepciones no estructuradas devuelven un mensaje genérico, detalle real solo en `console.error`. Válido tras el fix de contrato: con la lista de destinatarios ahora imposible de manipular desde fuera de la RPC, este passthrough ya no habilita saltarse el opt-out.
 
-#### Pendiente (fase siguiente)
+#### Fase 4b — rutas Next.js y UI del panel admin (completa, rama `feat/notif-email-admin-ui`)
 
-Rutas Next.js y UI del panel admin (`/api/admin/correos`, `/api/admin/correos/[id]`, `/api/admin/correos/contar`, `/admin/correos`) — Fase 4b, base de esta rama (`feat/notif-email-admin-backend`), sin cambios de esquema adicionales. El toggle de `/perfil/ajustes` (Fase 3) se implementó en la rama independiente `feat/notif-email-perfil-ui` — ver esa rama para el detalle, incluido el fix de privacidad R1 que esta sección **todavía no refleja** por no formar parte del árbol de commits de PR4a (ver nota de rama al inicio de §3.21).
+`GET/POST /api/admin/correos`, `GET /api/admin/correos/[id]`, `POST /api/admin/correos/contar`, pantalla `/admin/correos` — sin cambios de esquema adicionales, puro consumo de lo documentado arriba (tabla `correo_admin`, RPC `resolver_destinatarios_correo`, Edge Function `enviar-correo-masivo`). Detalle de endpoints en `Vitrina_Especificaciones_APIs.md` §21; detalle de pantalla/componentes en `Vitrina_Pantallas_Componentes.md` (feature "Panel admin de correos masivos"). El envío es **síncrono** dentro del propio Route Handler (la Edge Function ya responde con el resultado final) — no hay job async ni `tracking_id`, a diferencia de lo que sugería el prompt original del producto.
+
+La UI del form expone destinatarios `todos` / `ids` / `sin_publicacion` (no `ciudad` — decisión explícita, ver los docs de arriba); el tipo `DestinatariosCriterio` y la RPC siguen soportando `ciudad` a nivel de contrato para uso directo de la API.
+
+**`{tipo:'sin_publicacion'}` — extensión sin cambio de esquema.** Es una variante de `DestinatariosCriterio` que la RPC `resolver_destinatarios_correo` **no conoce**: el Route Handler (`app/api/admin/correos/route.ts` y `.../contar/route.ts`) la resuelve ANTES de tocar la RPC/Edge Function, vía `resolverIdsSinPublicacion` (`lib/data/correos.ts`) — un `SELECT usuario.id` + `SELECT publicacion.autor_id` bajo el JWT del admin (ambas columnas públicas por RLS, sin RPC nueva ni `service_role`) y una diferencia en JS. La lista resultante se envía como `{tipo:'ids', valor}` solo a la RPC/Edge Function; `correo_admin.destinatarios_criterio` guarda el criterio original `sin_publicacion` (columna `jsonb`, esquema sin cambios — acepta cualquier forma). El opt-out `notif_email_habilitado` lo sigue aplicando `resolver_destinatarios_correo` sobre esos ids, igual que con un `ids` armado a mano.
+
+El toggle de `/perfil/ajustes` (Fase 3) se implementó en la rama independiente `feat/notif-email-perfil-ui` — ver esa rama para el detalle, incluido el fix de privacidad R1 que esta sección **todavía no refleja** por no formar parte del árbol de commits de PR4a (ver nota de rama al inicio de §3.21).
 #### Toggle en `/perfil/ajustes` (Fase 3, PR3)
 
 `PATCH /api/perfil` acepta `notif_email_habilitado: boolean` y lo persiste con el `UPDATE` normal (row-scoped por `editar_propio`); la respuesta y `GET /api/auth/me` obtienen el valor actual vía `mi_notif_email_habilitado()`, no vía `.select()` directo (ver arriba). UI: `components/ui/Toggle.tsx` (`role="switch"`) + `components/perfil/NotificacionesForm.tsx`.

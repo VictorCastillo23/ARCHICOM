@@ -7,6 +7,7 @@ const links = [
   { href: '/admin/revistas', label: 'Revistas' },
   { href: '/admin/tags', label: 'Tags' },
   { href: '/admin/reportes', label: 'Reportes' },
+  { href: '/admin/correos', label: 'Correos' },
 ]
 
 export default function AdminNav() {

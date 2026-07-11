@@ -74,16 +74,16 @@ Smoke tests útiles: `GET /api/publicaciones` → 5 pubs · `GET /api/publicacio
 
 ## Fuente de verdad
 
-`prompts/Vitrina_BD_Conexion_Backend.md`, `prompts/Vitrina_Especificaciones_APIs.md`, `prompts/Vitrina_Pantallas_Componentes.md` y `prompts/Vitrina_Estado_Proyecto.md` (estado vivo del proyecto). **Donde un doc y estas invariantes difieran, mandan las invariantes** (recogen decisiones posteriores: una sola app, cero `service_role`, Next 16).
+`docs/Vitrina_BD_Conexion_Backend.md`, `docs/Vitrina_Especificaciones_APIs.md`, `docs/Vitrina_Pantallas_Componentes.md` y `docs/Vitrina_Estado_Proyecto.md` (estado vivo del proyecto). **Donde un doc y estas invariantes difieran, mandan las invariantes** (recogen decisiones posteriores: una sola app, cero `service_role`, Next 16).
 
-**Mantener los docs sincronizados (obligatorio).** Al introducir un cambio relevante —esquema de BD (enum/columna/vista/RPC/policy), contrato de API (ruta, payload, validación, código de estado, DTO) o flujo/pantalla de UI— **debes actualizar en el mismo cambio** el/los doc(s) de `prompts/` que lo describan, para que sigan reflejando el estado real:
+**Mantener los docs sincronizados (obligatorio).** Al introducir un cambio relevante —esquema de BD (enum/columna/vista/RPC/policy), contrato de API (ruta, payload, validación, código de estado, DTO) o flujo/pantalla de UI— **debes actualizar en el mismo cambio** el/los doc(s) de `docs/` que lo describan, para que sigan reflejando el estado real:
 - BD (tablas, enums, vistas, RPC, RLS, Storage) → `Vitrina_BD_Conexion_Backend.md`
 - Endpoints, payloads, validaciones, códigos de estado, DTOs → `Vitrina_Especificaciones_APIs.md`
 - Pantallas, componentes, formularios, flujos de UI → `Vitrina_Pantallas_Componentes.md`
 
 Cambios triviales (refactors internos sin efecto observable, renombres privados, fixes de typo) no requieren tocar los docs. Verifica contra el código real antes de redactar; no documentes lo que no exista.
 
-**Auditorías (fotos de un momento, no specs vivos).** Reportes de assessment puntual; NO arrastran la obligación de "mantener sincronizado" que sí tienen los docs de `prompts/` de arriba:
+**Auditorías (fotos de un momento, no specs vivos).** Reportes de assessment puntual; NO arrastran la obligación de "mantener sincronizado" que sí tienen los docs de `docs/` de arriba:
 - Seguridad → `auditorias/SECURITY_AUDIT.md` (complementa el §7 de endurecimiento del `Vitrina_BD_Conexion_Backend.md`)
 - UX/UI → `auditorias/Auditoria_UX_UI.md` (complementa `Vitrina_Pantallas_Componentes.md`)
 
@@ -103,7 +103,7 @@ pnpm exec next typegen   # Generate PageProps/LayoutProps/RouteContext helpers
 
 ## Testing
 
-**Vitest** (`pnpm test`) covers only pure, side-effect-free logic — currently `lib/supabase/handleError.ts` (error → status/code mapping) and `lib/storage/validateFile.ts` (magic-byte validation). It does **not** cover components, pages, or anything that calls Supabase directly (`lib/data/*.ts`).
+**Vitest** (`pnpm test`, config `vitest.config.ts`, `include: ['**/*.test.ts']`) covers only pure, side-effect-free logic — `lib/supabase/handleError.ts` (error → status/code mapping), `lib/storage/validateFile.ts` (magic-byte validation), `lib/validation/correoAdmin.ts` (admin bulk-email payload validation), and the plain-TypeScript siblings of the notif-email Edge Functions under `supabase/functions/**` (`_shared/email-template.ts`, `enviar-correo-masivo/{chunk,plain-text-to-html,validate-payload}.ts`, `enviar-notificacion-email/route-predicate.ts` — each documents in its own header why it avoids Deno-only APIs so it can run here). It does **not** cover components, pages, anything that calls Supabase directly (`lib/data/*.ts`), or the Deno `index.ts` entrypoints themselves (excluded from `tsc`, run only on Supabase's Deno runtime).
 
 For everything else — API contracts, RLS/invariant checks, and E2E flows — use the **`testsprite` MCP** to generate/run tests. It is the primary tool for backend and frontend coverage; Vitest is a narrow addition on top, not a replacement.
 
@@ -169,6 +169,7 @@ Módulos de conocimiento que el agente usa automáticamente según el contexto. 
 | `supabase` | [.agents/skills/supabase/SKILL.md](.agents/skills/supabase/SKILL.md) | Automático en cualquier tarea de Supabase: Database, Auth, Storage, Edge Functions, Realtime, `@supabase/ssr`, sesiones/JWT/cookies, RLS, CLI/MCP, migraciones, auditorías de seguridad y extensiones de Postgres. Oficial de Supabase. |
 | `supabase-postgres-best-practices` | [.agents/skills/supabase-postgres-best-practices/SKILL.md](.agents/skills/supabase-postgres-best-practices/SKILL.md) | Al escribir, revisar u optimizar queries, esquema o configuración de Postgres: performance y buenas prácticas oficiales de Supabase. Clave para las invariantes de RLS y el endurecimiento del §7 (BD). |
 | `webapp-testing` | [.agents/skills/webapp-testing/SKILL.md](.agents/skills/webapp-testing/SKILL.md) | Toolkit con Playwright para probar la app local: verificar frontend, depurar UI, capturar screenshots y ver logs del navegador. Complementa el MCP `testsprite`. Oficial de Anthropic. |
+| `vitrina-component-design` | [.agents/skills/vitrina-component-design/SKILL.md](.agents/skills/vitrina-component-design/SKILL.md) | Al crear o revisar componentes en `components/`/`app/**/page.tsx`: qué primitivo de `components/ui/` reusar, qué patrón ya existente clonar (radiogroup en chips, combobox debounce/abort, fila expandible in-place, form con `apiClient`), Server vs Client Component, y la regla de tokens de tema de Tailwind v4. **Autoría local del proyecto** (no instalado vía `skills add`, no está en `skills-lock.json`). |
 
 ## MCPs
 
