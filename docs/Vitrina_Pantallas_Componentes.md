@@ -1270,7 +1270,7 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
 - **Sin primitivo `Popover`** en este proyecto — es un `<div>` posicionado en absoluto (`absolute right-0 mt-2`) bajo la campanita, mismo criterio que `MobileMenu` a esta escala.
 - **Datos:** al montarse, `GET /api/notificaciones?limit=8` (vía `apiClient`) — trae las 8 notificaciones más recientes con el actor embebido (`usuario_relacionado`).
 - **"Marcar todas leídas":** botón visible solo si hay alguna no leída en la lista cargada; `POST /api/notificaciones/marcar-todas-leidas` → marca todo local como leído + `onRead()` (refresca el badge del padre).
-- **"Ver todas":** link a `/notificaciones` al pie, cierra el dropdown al navegar.
+- **"Ver todas":** link a `/notificaciones` al pie, cierra el dropdown al navegar. Solo se muestra cuando `total >= 5` (usa el `total` de la respuesta de `GET /api/notificaciones`, no la cantidad de items cargados en el dropdown, que está topeada a 8) — con menos de 5 notificaciones no tiene sentido ofrecer un link a "ver todas".
 - **Estados:** cargando (`"Cargando…"`), error (`role="alert"`), vacío (`role="status"`, `"No tienes notificaciones."`).
 
 ### NotificationItem (`components/notificaciones/NotificationItem.tsx`)
@@ -1322,7 +1322,7 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
   - **Mismo `useEffect([pathname])`** que ya refresca el badge de mensajes ahora también llama `refetchNotifCount`.
   - **Mismo canal Realtime** `nav:notificaciones:{sessionId}` (no se abre un canal nuevo) — se le agrega un 4° handler `{ event: '*', schema: 'public', table: 'notificacion', filter: 'usuario_id=eq.{sessionId}' } → refetchNotifCount()`. `*` cubre inserts agregadores, updates de contador/lectura, y deletes de decremento/limpieza en un solo handler.
   - Renderiza `<NotificationBell count={notifCount} onRead={refetchNotifCount} />` en la barra de nav desktop, junto al botón "Salir"/antes de `ThemeToggle`.
-  - Agrega `/notificaciones` a `userLinks` (sin badge propio en el drawer móvil — solo la campanita desktop tiene badge+dropdown en vivo por ahora).
+  - El link `/notificaciones` en `userLinks` está comentado (no aparece en la nav desktop ni en el drawer móvil) — hoy la única entrada a `/notificaciones` es la campanita (dropdown → "Ver todas", visible solo con 5+ notificaciones) o la URL directa.
 
 **Archivos:** `components/ui/BellIcon.tsx`, `components/notificaciones/{NotificationBell,NotificationDropdown,NotificationItem,NotificationModal,NotificationFilterBar,NotificationList}.tsx`, `lib/constants/notificaciones.ts`, `app/(main)/notificaciones/{page,loading}.tsx`, `lib/data/notificaciones.ts` (modificado — agrega el embed `usuario_relacionado` y el filtro `tipo` a `getNotificaciones`), `lib/types/database.ts` (modificado — nuevo tipo `NotificacionConActor`), `components/layout/{Nav.server,NavClient}.tsx` (modificados).
 
