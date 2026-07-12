@@ -135,7 +135,7 @@ export default function NavClient({
     ? [
         { href: '/revistas', label: 'Revistas' },
         { href: '/mensajes', label: 'Mensajes' },
-        { href: '/notificaciones', label: 'Notificaciones' },
+        //{ href: '/notificaciones', label: 'Notificaciones' },
         { href: '/perfil', label: 'Mi Perfil' },
         { href: '/publicar', label: 'Publicar' },
         ...(session.rol === 'administrador'

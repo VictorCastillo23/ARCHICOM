@@ -252,12 +252,15 @@ Endpoints: [/api/publicaciones](app/api/publicaciones/route.ts) y `/api/publicac
 POST /api/publicaciones
 { "titulo": "Mi investigación", "resumen": "Resumen...", "tipo": "investigacion",
   "archivo_url": "https://.../archivo.pdf",
-  "archivo_thumbnail_url": "https://.../archivo-thumb.jpg" }
+  "archivo_thumbnail_url": "https://.../archivo-thumb.jpg",
+  "chat_habilitado": false }
 ```
 
 > **`autor_id` siempre sale de la sesión** (`auth.getUser()`), nunca del body. La capa Next lo ignora si viene en el payload.
 
 > **`archivo_thumbnail_url` (string, opcional)** — URL pública (Storage) de una miniatura JPEG generada **client-side** (`pdfjs-dist`, página 1 del PDF) antes del submit. Solo aplica cuando `archivo_url` es un PDF; se omite para imágenes (JPG/PNG, donde `archivo_url` ya es la miniatura) y para publicaciones sin archivo. Sin validación de formato en el servidor (mismo trato que `archivo_url`: se confía en la respuesta de `POST /api/storage/upload`, no es input arbitrario del cliente). En `PATCH /api/publicaciones/{id}` se acepta el mismo campo (string o `null` para limpiarlo) — el formulario de edición lo envía explícitamente a `null` cuando el archivo se reemplaza por uno sin miniatura (imagen, o PDF cuyo render client-side falló), para no dejar una miniatura obsoleta.
+
+> **`chat_habilitado` (boolean, opcional, default `false`)** — controla si el chat RAG está disponible para esta publicación. Independiente del indexado: los embeddings de un PDF se generan siempre (incondicional), este flag solo decide si `POST /api/publicaciones/{id}/chat` acepta preguntas. En `PATCH /api/publicaciones/{id}` se acepta el mismo campo; el formulario de edición lo envía siempre de forma explícita (nunca omitido) para poder apagarlo, no solo encenderlo. Valor no booleano → `400 validation_error` (`"chat_habilitado debe ser boolean"`).
 
 **Recomendar una obra de terceros** (`tipo: "recomendacion"`)
 
@@ -1439,7 +1442,7 @@ Si el PDF ya estaba indexado con el mismo hash: `{ "data": { "chunks": 12, "rein
 
 **Autenticación:** sesión válida. Sin sesión → 401.
 
-**Rate limit:** 15 preguntas por hora **por cuenta** (account-wide, sin importar la publicación). Se cuenta con el RPC `SECURITY DEFINER` `consumir_cuota_rag()` sobre la tabla `rag_rate_limit` (una fila por usuario, ventana fija de 1h; RLS impide que el usuario resetee su contador). Al pasarse → **429** `rate_limited`. Se consume una unidad por pregunta válida sobre una publicación existente (no se consume en 401/400/404).
+**Rate limit:** 15 preguntas por hora **por cuenta** (account-wide, sin importar la publicación). Se cuenta con el RPC `SECURITY DEFINER` `consumir_cuota_rag()` sobre la tabla `rag_rate_limit` (una fila por usuario, ventana fija de 1h; RLS impide que el usuario resetee su contador). Al pasarse → **429** `rate_limited`. Se consume una unidad por pregunta válida sobre una publicación existente **con el chat habilitado** (no se consume en 401/400/403/404) — el chequeo de `chat_habilitado` corre antes que `consumir_cuota_rag()`, así que una publicación con el chat apagado nunca gasta cuota.
 
 **Parámetros de ruta:** `id` — UUID de la publicación.
 
@@ -1469,6 +1472,7 @@ Si el PDF ya estaba indexado con el mismo hash: `{ "data": { "chunks": 12, "rein
 | `historial` no es array, o algún item no es `{ rol, contenido }` válido | 400 | `validation_error` |
 | Body no es JSON válido | 400 | `validation_error` |
 | Publicación no encontrada | 404 | `not_found` |
+| `chat_habilitado = false` para esta publicación | 403 | `forbidden` |
 | Límite de 15 preguntas/hora alcanzado | 429 | `rate_limited` |
 | Error interno (embeddings, RPC, o el proveedor de IA) | 500 | `internal_error` |
 

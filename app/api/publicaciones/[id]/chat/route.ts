@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, ctx: Context) {
 
   const { data: publicacion, error: fetchError } = await supabase
     .from('publicacion')
-    .select('titulo, resumen')
+    .select('titulo, resumen, chat_habilitado')
     .eq('id', id)
     .maybeSingle()
 
@@ -78,6 +78,13 @@ export async function POST(request: NextRequest, ctx: Context) {
       { error: { code: 'not_found', message: 'Publicación no encontrada' } },
       { status: 404 },
     )
+
+  if (!publicacion.chat_habilitado) {
+    return NextResponse.json(
+      { error: { code: 'forbidden', message: 'El chat está desactivado para esta publicación' } },
+      { status: 403 },
+    )
+  }
 
   // Rate limit: 15 questions/hour per account. Enforced atomically by the RPC,
   // which mutates a tamper-proof counter (RLS denies direct writes). Checked

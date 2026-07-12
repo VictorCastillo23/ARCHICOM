@@ -22,6 +22,7 @@ export interface NotificationDropdownProps {
  */
 export default function NotificationDropdown({ onClose, onRead }: NotificationDropdownProps) {
   const [items, setItems] = useState<NotificacionConActor[] | null>(null)
+  const [total, setTotal] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [marking, setMarking] = useState(false)
 
@@ -31,7 +32,10 @@ export default function NotificationDropdown({ onClose, onRead }: NotificationDr
       `/api/notificaciones?limit=${DROPDOWN_LIMIT}`,
     )
       .then((d) => {
-        if (!cancelled) setItems(d.items)
+        if (!cancelled) {
+          setItems(d.items)
+          setTotal(d.total)
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -107,15 +111,17 @@ export default function NotificationDropdown({ onClose, onRead }: NotificationDr
         ))}
       </div>
 
-      <div className="border-t border-border px-4 py-2 text-center">
-        <Link
-          href="/notificaciones"
-          onClick={onClose}
-          className="text-sm font-medium text-primary hover:underline"
-        >
-          Ver todas
-        </Link>
-      </div>
+      {total !== null && total >= 5 && (
+        <div className="border-t border-border px-4 py-2 text-center">
+          <Link
+            href="/notificaciones"
+            onClick={onClose}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Ver todas
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

@@ -287,6 +287,12 @@
     **reintenta hasta 3 veces** (1,5 s entre intentos) y si igual no lo logra, **no muestra ningún
     error** (re-editar reintenta; el backfill admin es el fallback). Muestra "Preparando el
     documento…" durante el proceso.
+  - **Con PDF (nuevo o ya adjunto)** → además aparece un toggle "Activar chat sobre el documento"
+    (`chat_habilitado`, componente `Toggle`, gateado por `tienePdf`, **apagado por defecto** en
+    creación). Independiente del auto-indexado de arriba: el indexado siempre corre; este toggle
+    solo controla si `ChatRAGWidget` queda disponible en el detalle de la publicación (ver §14). Se
+    envía siempre de forma explícita en el payload (`crearPublicacion`/`editarPublicacion`), nunca
+    omitido, para poder apagarlo y no solo encenderlo.
 
   Flujo:
   1. El usuario elige primero el tipo en el TipoPicker; recién entonces se muestra el resto del form.
@@ -1126,12 +1132,14 @@ El indexado se dispara automáticamente desde `PublicarForm` cuando se sube un *
 
 - `tienePdf = archivo_url` termina en `.pdf` (case-insensitive) — el bloque completo de RAG solo se monta si `tienePdf`.
 - `getEstadoRag(id)` se agrega al `Promise.all` existente (junto a likes/guardado/comentarios) — **no** introduce un request en cascada.
-- Sección **"Pregunta al documento"**, debajo de `ArchivoVistaPrevia` (ya **no** hay botón de indexar):
-  - **Logueado + indexado (`chunks > 0`):** ve `ChatRAGWidget`.
-  - **Logueado + no indexado:** mensaje muted. Al **autor** le dice que el documento se está preparando (el indexado corre solo al subir el PDF); a los demás, "El autor todavía no preparó este documento para preguntas." (sin input — evita una llamada al chat sin fragmentos).
-  - **No logueado:** mensaje con `Link` a `/login` (mismo patrón que la sección de comentarios) — no se monta el widget ni se expone el composer a anónimos, evitando el 401 esperable de `/chat` (solo logueados, guardrail de costo).
+- Sección **"Pregunta al documento"**, debajo de `ArchivoVistaPrevia` (ya **no** hay botón de indexar). Ahora tiene dos bloques hermanos, gateados además por `data.chat_habilitado` (ver `Vitrina_BD_Conexion_Backend.md` §3.24):
+  - **`tienePdf && chat_habilitado`** (el bloque de siempre):
+    - **Logueado + indexado (`chunks > 0`):** ve `ChatRAGWidget`.
+    - **Logueado + no indexado:** mensaje muted. Al **autor** le dice que el documento se está preparando (el indexado corre solo al subir el PDF); a los demás, "El autor todavía no preparó este documento para preguntas." (sin input — evita una llamada al chat sin fragmentos).
+    - **No logueado:** mensaje con `Link` a `/login` (mismo patrón que la sección de comentarios) — no se monta el widget ni se expone el composer a anónimos, evitando el 401 esperable de `/chat` (solo logueados, guardrail de costo).
+  - **`tienePdf && !chat_habilitado && isAuthor`** (bloque nuevo): la sección se **oculta para todos los demás** (nadie más ve rastro de que el PDF existe como chateable); solo el autor ve un hint muted — "El chat sobre este documento está desactivado." — con un `Link` a `/publicacion/[id]/editar` para activarlo.
 
-**Archivos:** `lib/data/rag.ts`, `components/publicacion/ChatRAGWidget.tsx`, `app/(main)/publicacion/[id]/page.tsx` (modificado). El indexado lo dispara `PublicarForm` (auto-index con PDF nuevo).
+**Archivos:** `lib/data/rag.ts`, `components/publicacion/ChatRAGWidget.tsx`, `app/(main)/publicacion/[id]/page.tsx` (modificado). El indexado lo dispara `PublicarForm` (auto-index con PDF nuevo, incondicional respecto a `chat_habilitado`).
 
 ---
 
@@ -1262,7 +1270,7 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
 - **Sin primitivo `Popover`** en este proyecto — es un `<div>` posicionado en absoluto (`absolute right-0 mt-2`) bajo la campanita, mismo criterio que `MobileMenu` a esta escala.
 - **Datos:** al montarse, `GET /api/notificaciones?limit=8` (vía `apiClient`) — trae las 8 notificaciones más recientes con el actor embebido (`usuario_relacionado`).
 - **"Marcar todas leídas":** botón visible solo si hay alguna no leída en la lista cargada; `POST /api/notificaciones/marcar-todas-leidas` → marca todo local como leído + `onRead()` (refresca el badge del padre).
-- **"Ver todas":** link a `/notificaciones` al pie, cierra el dropdown al navegar.
+- **"Ver todas":** link a `/notificaciones` al pie, cierra el dropdown al navegar. Solo se muestra cuando `total >= 5` (usa el `total` de la respuesta de `GET /api/notificaciones`, no la cantidad de items cargados en el dropdown, que está topeada a 8) — con menos de 5 notificaciones no tiene sentido ofrecer un link a "ver todas".
 - **Estados:** cargando (`"Cargando…"`), error (`role="alert"`), vacío (`role="status"`, `"No tienes notificaciones."`).
 
 ### NotificationItem (`components/notificaciones/NotificationItem.tsx`)
@@ -1314,7 +1322,7 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
   - **Mismo `useEffect([pathname])`** que ya refresca el badge de mensajes ahora también llama `refetchNotifCount`.
   - **Mismo canal Realtime** `nav:notificaciones:{sessionId}` (no se abre un canal nuevo) — se le agrega un 4° handler `{ event: '*', schema: 'public', table: 'notificacion', filter: 'usuario_id=eq.{sessionId}' } → refetchNotifCount()`. `*` cubre inserts agregadores, updates de contador/lectura, y deletes de decremento/limpieza en un solo handler.
   - Renderiza `<NotificationBell count={notifCount} onRead={refetchNotifCount} />` en la barra de nav desktop, junto al botón "Salir"/antes de `ThemeToggle`.
-  - Agrega `/notificaciones` a `userLinks` (sin badge propio en el drawer móvil — solo la campanita desktop tiene badge+dropdown en vivo por ahora).
+  - El link `/notificaciones` en `userLinks` está comentado (no aparece en la nav desktop ni en el drawer móvil) — hoy la única entrada a `/notificaciones` es la campanita (dropdown → "Ver todas", visible solo con 5+ notificaciones) o la URL directa.
 
 **Archivos:** `components/ui/BellIcon.tsx`, `components/notificaciones/{NotificationBell,NotificationDropdown,NotificationItem,NotificationModal,NotificationFilterBar,NotificationList}.tsx`, `lib/constants/notificaciones.ts`, `app/(main)/notificaciones/{page,loading}.tsx`, `lib/data/notificaciones.ts` (modificado — agrega el embed `usuario_relacionado` y el filtro `tipo` a `getNotificaciones`), `lib/types/database.ts` (modificado — nuevo tipo `NotificacionConActor`), `components/layout/{Nav.server,NavClient}.tsx` (modificados).
 
