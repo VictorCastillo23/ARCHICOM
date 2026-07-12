@@ -1232,4 +1232,86 @@ Listas curadas de publicaciones, propias o ajenas, con visibilidad `publica`/`pr
 
 ---
 
+## 18. Notificaciones In-App
+
+Campanita + dropdown + página completa para las 6 notificaciones auto-generadas (`comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`) — ver excepción documentada `notificaciones-app` en `CLAUDE.md`, esquema/RLS/triggers en `Vitrina_BD_Conexion_Backend.md` §3.22, endpoints en `Vitrina_Especificaciones_APIs.md` §22. Reemplaza/complementa el badge de mensajería (§13): son dos badges distintos (mensajes vs. notificaciones) en la misma barra de nav, sobre el mismo canal Realtime compartido.
+
+### BellIcon (`components/ui/BellIcon.tsx`)
+
+- **Tipo:** presentacional puro (sin `'use client'`, sin estado). SVG inline de campana, mismo patrón que los íconos de `ThemeToggle`/`MobileMenu` (`stroke="currentColor"`, `viewBox="0 0 24 24"`, `aria-hidden="true"` — decorativo, el control padre pone el `aria-label`).
+- **Props:** `className?: string` (default `'w-5 h-5'`).
+
+### NotificationBell (`components/notificaciones/NotificationBell.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `count: number`, `onRead: () => void`.
+- **Comportamiento:** botón con `BellIcon` + badge de conteo (mismo estilo que el badge de `/mensajes` en `NavClient` — círculo `bg-primary`, `9+` cuando supera 9). Controla el estado abierto/cerrado del dropdown; se cierra con click afuera (`pointerdown` fuera del contenedor) o Escape. El `NotificationDropdown` **solo se monta mientras está abierto** — su fetch es perezoso, no dispara ninguna request hasta que el usuario abre la campanita.
+
+### NotificationDropdown (`components/notificaciones/NotificationDropdown.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `onClose: () => void`, `onRead: () => void`.
+- **Sin primitivo `Popover`** en este proyecto — es un `<div>` posicionado en absoluto (`absolute right-0 mt-2`) bajo la campanita, mismo criterio que `MobileMenu` a esta escala.
+- **Datos:** al montarse, `GET /api/notificaciones?limit=8` (vía `apiClient`) — trae las 8 notificaciones más recientes con el actor embebido (`usuario_relacionado`).
+- **"Marcar todas leídas":** botón visible solo si hay alguna no leída en la lista cargada; `POST /api/notificaciones/marcar-todas-leidas` → marca todo local como leído + `onRead()` (refresca el badge del padre).
+- **"Ver todas":** link a `/notificaciones` al pie, cierra el dropdown al navegar.
+- **Estados:** cargando (`"Cargando…"`), error (`role="alert"`), vacío (`role="status"`, `"No tienes notificaciones."`).
+
+### NotificationItem (`components/notificaciones/NotificationItem.tsx`)
+
+- **Tipo:** Client Component (`'use client'`). Compartido por el dropdown y la página `/notificaciones`.
+- **Props:** `notificacion: NotificacionConActor`, `onRead?: (id) => void`, `onNavigate?: () => void`, `onOpenDetail?: (notificacion) => void`.
+- **Renderiza `descripcion` tal cual** — el texto ya viene pluralizado desde el trigger de BD (`notif_desc_agg`); el componente **no re-deriva** el conteo/copy en cliente.
+- **Avatar del actor:** `Avatar` (iniciales) con `usuario_relacionado.nombre` cuando existe; ícono `BellIcon` genérico cuando no (solo `obra_aceptada_revista` no tiene actor).
+- **Click:** es un `<Link href={enlace}>` real (no `router.push` manual) — al hacer click dispara un `POST /leer` **no bloqueante** (fire-and-forget, no espera la respuesta para navegar) y navega; mantiene funcionando Ctrl/Cmd-click y "abrir en pestaña nueva".
+- **`onOpenDetail` (opcional):** agrega un botón "ver detalle" (ícono, `stopPropagation` + `preventDefault`) que abre `NotificationModal` en vez de navegar. Solo se pasa desde la página `/notificaciones` — el dropdown no lo usa (tiene "Ver todas" para eso).
+- **Indicador de no leída:** punto `bg-primary` a la derecha mientras `leida === false`.
+
+### NotificationModal (`components/notificaciones/NotificationModal.tsx`)
+
+- **Tipo:** Client Component (`'use client'`). Reusa `components/ui/Modal.tsx` (focus trap, Escape, scroll-lock ya incluidos).
+- **Props:** `notificacion: NotificacionConActor | null`, `onClose: () => void`, `onRead?: (id) => void`, `onDelete?: (id) => void`.
+- **Contenido:** avatar + nombre del actor (link a `/usuario/{id}`, si hay actor), encabezado con la etiqueta del tipo (`TIPO_NOTIF_META`, `lib/constants/notificaciones.ts`), `descripcion` completa, link al `enlace` contextual ("Ver contenido →"), timestamp formateado (`Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })`).
+- **Acciones:** "Marcar leída" (`POST /leer`, solo si no está leída), "Eliminar" (`DELETE`, `Button variant="danger"` con `loading`), "Cerrar".
+
+### NotificationFilterBar (`components/notificaciones/NotificationFilterBar.tsx`)
+
+- **Tipo:** Server-renderable (sin `'use client'`) — chips de filtro `leidas`/`tipo` como `<Link>`s planos con `aria-current="page"` marcando el activo, mismo criterio "Links server-driven, sin estado cliente" que `Pagination`.
+- **Props:** `leidas?: 'no-leidas'`, `tipo?: TipoNotificacion`.
+- **Fila 1 (estado):** "Todas" / "No leídas".
+- **Fila 2 (tipo):** "Todos los tipos" + un chip por cada `TipoNotificacion` (orden fijo en `TIPOS_NOTIFICACION`).
+
+### NotificationList (`components/notificaciones/NotificationList.tsx`)
+
+- **Tipo:** Client Component (`'use client'`) — wrapper de estado para la página `/notificaciones` (que es un Server Component y no puede tener estado interactivo). Guarda el estado local de la lista (para reflejar leída/eliminada sin refetch) y cuál notificación está seleccionada para el modal.
+- **Props:** `items: NotificacionConActor[]` (SSR inicial).
+- **Vacío:** `EmptyState` — "No tienes notificaciones" / "Cuando alguien interactúe con tu obra o tu perfil, aparecerá aquí."
+- **Con datos:** `<ul>` de `NotificationItem` (con `onOpenDetail`) + `NotificationModal` controlado por el `id` seleccionado.
+
+### /notificaciones (`app/(main)/notificaciones/page.tsx`)
+
+- **Tipo:** Server Component async (SSR). Redirect defensivo a `/login` si no hay `user` (mismo patrón que `/mensajes`; la protección real vía `proxy.ts` queda pendiente — ver nota abajo).
+- **`searchParams`:** `Promise<Record<string,string>>`, `await`eado (Next 16 async API). Lee `leidas` (`'no-leidas'` o ausente = todas) y `tipo` (uno de `TipoNotificacion` o ausente = todos).
+- **Datos:** `getNotificaciones({ filtro, tipo, limit: 20, offset })` (`lib/data/notificaciones.ts`) — SSR directo, no pasa por el Route Handler.
+- **Render:** título, `NotificationFilterBar`, `NotificationList`, `Pagination` (mismo primitivo que `/area/[slug]`).
+- **`loading.tsx`:** skeleton propio (lista + chips), mismo criterio hand-rolled que `perfil/loading.tsx` en vez del `PageLoading` genérico variant `grid` (esto es una lista, no una grilla de cards).
+- **Nota (pendiente, PR de wiring final):** `proxy.ts` todavía no incluye `/notificaciones` en los prefijos protegidos — el redirect de arriba es la única protección real por ahora.
+
+### Nav — campanita de notificaciones (extiende §13)
+
+- **`Nav.server.tsx`** (modificado): agrega `getTotalNoLeidas()` (`lib/data/notificaciones.ts`) al mismo `Promise.all` que ya resuelve `unreadCount`; pasa `notifUnreadCount` a `<NavClient>` — mismo criterio de seed inicial que el badge de mensajes.
+- **`NavClient.tsx`** (modificado):
+  - Acepta `notifUnreadCount?: number` (default 0), estado local `notifCount`.
+  - `refetchNotifCount` — `GET /api/notificaciones/sin-leer/count`, lee `total` (no `count`).
+  - **Mismo `useEffect([pathname])`** que ya refresca el badge de mensajes ahora también llama `refetchNotifCount`.
+  - **Mismo canal Realtime** `nav:notificaciones:{sessionId}` (no se abre un canal nuevo) — se le agrega un 4° handler `{ event: '*', schema: 'public', table: 'notificacion', filter: 'usuario_id=eq.{sessionId}' } → refetchNotifCount()`. `*` cubre inserts agregadores, updates de contador/lectura, y deletes de decremento/limpieza en un solo handler.
+  - Renderiza `<NotificationBell count={notifCount} onRead={refetchNotifCount} />` en la barra de nav desktop, junto al botón "Salir"/antes de `ThemeToggle`.
+  - Agrega `/notificaciones` a `userLinks` (sin badge propio en el drawer móvil — solo la campanita desktop tiene badge+dropdown en vivo por ahora).
+
+**Archivos:** `components/ui/BellIcon.tsx`, `components/notificaciones/{NotificationBell,NotificationDropdown,NotificationItem,NotificationModal,NotificationFilterBar,NotificationList}.tsx`, `lib/constants/notificaciones.ts`, `app/(main)/notificaciones/{page,loading}.tsx`, `lib/data/notificaciones.ts` (modificado — agrega el embed `usuario_relacionado` y el filtro `tipo` a `getNotificaciones`), `lib/types/database.ts` (modificado — nuevo tipo `NotificacionConActor`), `components/layout/{Nav.server,NavClient}.tsx` (modificados).
+
+**Pendiente (fuera de esta pantalla):** protección de ruta en `proxy.ts`, los 5 toggles de preferencia `notif_app_*` en `/perfil/ajustes` (`NotificacionesForm` solo tiene hoy el toggle de correo, §3.4.1).
+
+---
+
   Con esta estructura tenés todo lo necesario para atacar la implementación del frontend sin adivinar nada. Cada pantalla  tiene su fuente de datos mapeada, los componentes definidos y las rutas de API que tocan.

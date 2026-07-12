@@ -433,3 +433,13 @@ export type PreferenciasNotifApp = {
   notif_app_mensajes: boolean
   notif_app_likes: boolean
 }
+
+/**
+ * `Notificacion` + the actor's public identity, embedded via the
+ * `usuario_relacionado_id` FK for UI display (bell dropdown / page / detail
+ * modal). Null for `obra_aceptada_revista`, which has no actor. Not embedded
+ * by every consumer of `Notificacion` — only `getNotificaciones` selects it.
+ */
+export type NotificacionConActor = Notificacion & {
+  usuario_relacionado: Pick<Usuario, 'id' | 'nombre'> | null
+}
