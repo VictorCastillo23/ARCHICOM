@@ -76,6 +76,7 @@ export type Publicacion = {
   url_externa?: string | null
   creado_en: string
   bloqueada: boolean
+  chat_habilitado: boolean
 }
 
 export type Tag = {

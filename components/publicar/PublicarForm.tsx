@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Field from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import Toggle from '@/components/ui/Toggle'
 import ArchivoPreview from './ArchivoPreview'
 import TipoPicker from './TipoPicker'
 import { apiClient, ApiError } from '@/lib/api/client'
@@ -28,6 +29,7 @@ export type PublicarFormInitialValues = {
   urlExterna: string
   archivoUrl?: string
   archivoThumbnailUrl?: string | null
+  chatHabilitado?: boolean
 }
 
 type PublicarFormProps = {
@@ -56,6 +58,7 @@ export default function PublicarForm({
   const [obraAutorExterno, setObraAutorExterno] = useState(initialValues?.obraAutorExterno ?? '')
   const [urlExterna, setUrlExterna] = useState(initialValues?.urlExterna ?? '')
   const [archivo, setArchivo] = useState<File | null>(null)
+  const [chatHabilitado, setChatHabilitado] = useState(initialValues?.chatHabilitado ?? false)
   // The file already attached to the publication (edit mode). Kept unless a new
   // file is chosen; satisfies the "at least one" rule without re-uploading.
   const existingArchivoUrl = initialValues?.archivoUrl
@@ -269,6 +272,7 @@ export default function PublicarForm({
         tipo,
         archivo_url: archivoUrl,
         ...(archivoThumbnailUrl ? { archivo_thumbnail_url: archivoThumbnailUrl } : {}),
+        chat_habilitado: chatHabilitado,
         ...(esRecomendacion
           ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
           : urlTrim
@@ -323,6 +327,7 @@ export default function PublicarForm({
         ...(archivoUrl
           ? { archivo_thumbnail_url: archivoThumbnailUrl ?? null }
           : {}),
+        chat_habilitado: chatHabilitado,
         ...(esRecomendacion
           ? { obra_autor_externo: obraAutorExterno, url_externa: urlExterna }
           : { url_externa: urlTrim ? urlTrim : null }),
@@ -507,6 +512,16 @@ export default function PublicarForm({
 
           {/* PDFs are indexed automatically on save (best-effort) so the
               publication is searchable by content and its chat works. */}
+
+          {tienePdf && (
+            <Toggle
+              id="chat-habilitado"
+              checked={chatHabilitado}
+              onChange={setChatHabilitado}
+              disabled={loading}
+              label="Activar chat sobre el documento"
+            />
+          )}
 
           {/* External link — optional on any normal type. For texto/otro it's the
               alternative to the file (at least one is required). */}

@@ -65,7 +65,7 @@ En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. 
 | Tabla | Propósito | Notas |
 |---|---|---|
 | `usuario` | Perfil de usuario | Extiende `auth.users` por `id`; `rol` por defecto `usuario` |
-| `publicacion` | Creaciones (libro, artículo, etc.) | `tipo` por defecto `investigacion`; `archivo_url` apunta a Storage; `archivo_thumbnail_url text` nullable — miniatura JPEG (página 1) de un PDF, generada client-side, ver §3.20b; `obra_autor_externo`/`url_externa` nullable, solo poblados cuando `tipo = 'recomendacion'`; `bloqueada boolean not null default false` — oculta la publicación a usuarios no-admin cuando es `true` |
+| `publicacion` | Creaciones (libro, artículo, etc.) | `tipo` por defecto `investigacion`; `archivo_url` apunta a Storage; `archivo_thumbnail_url text` nullable — miniatura JPEG (página 1) de un PDF, generada client-side, ver §3.20b; `obra_autor_externo`/`url_externa` nullable, solo poblados cuando `tipo = 'recomendacion'`; `bloqueada boolean not null default false` — oculta la publicación a usuarios no-admin cuando es `true`; `chat_habilitado boolean not null default false` (nuevas) / backfilled `true` (existentes, salvo una excepción) — controla si el chat RAG está activo para esa publicación, ver §3.24 |
 | `comentario` | Comentarios sobre publicaciones | Columna `responde_a uuid? FK→comentario(id) ON DELETE CASCADE` (auto-referencial). `NULL` = comentario raíz; no-null = respuesta (siempre apunta al raíz — profundidad máxima 2, garantizada por el POST handler). Ver §3.12 |
 | `"like"` | Likes (único por usuario/publicación) | **Nombre entre comillas** (palabra reservada) |
 | `tag` | Catálogo de etiquetas | Solo administradores las gestionan |
@@ -1306,6 +1306,18 @@ La migración base (`notificaciones_app`) se aplicó, y una revisión de `get_ad
 #### Endpoints y UI
 
 6 endpoints en `Vitrina_Especificaciones_APIs.md` §22; 5 toggles `notif_app_*` + protección de ruta en `Vitrina_Pantallas_Componentes.md` (`/perfil/ajustes` §3.4.1, `/notificaciones` §18). `proxy.ts` protege `/notificaciones` (redirect a `/login` sin sesión, mismo prefijo que `/perfil`/`/publicar`/`/mensajes`).
+
+---
+
+### 3.24 Columna `chat_habilitado` en `publicacion` — chat RAG opcional por publicación
+
+```sql
+alter table public.publicacion add column chat_habilitado boolean not null default true;
+update public.publicacion set chat_habilitado = false where id = '5072d255-5cdf-459e-9da8-eac16a8e430c';
+alter table public.publicacion alter column chat_habilitado set default false;
+```
+
+Cambio ADITIVO, aprobado explícitamente. El fast-fill inicial con `default true` backfillea todas las filas existentes como habilitadas (el chat ya funcionaba para ellas antes de este cambio); la única excepción es la publicación `5072d255-5cdf-459e-9da8-eac16a8e430c`, apagada explícitamente. El tercer `ALTER COLUMN ... SET DEFAULT false` deja las publicaciones **nuevas** desactivadas por defecto — el autor la enciende explícitamente desde el formulario de publicar/editar (toggle gateado por `tienePdf`, ver `Vitrina_Pantallas_Componentes.md`). `publicacion` usa GRANT de tabla completo (no por columna, a diferencia de `usuario` — ver footgun §3.19), así que no hizo falta un `GRANT` adicional, mismo precedente que `bloqueada` (§3.10) y `archivo_thumbnail_url` (§3.20b). Sin cambios en RLS: la policy `editar_propio` (UPDATE) ya cubre cualquier columna de la fila propia del autor. El indexado de PDFs (embeddings, `lib/rag/indexer.ts`) sigue siendo **incondicional** — corre siempre, independientemente de este flag. El endpoint `/api/publicaciones/[id]/chat` valida `chat_habilitado` inmediatamente después de resolver la publicación y **antes** de invocar `consumir_cuota_rag()`, para que una publicación con el chat apagado no consuma cuota horaria del usuario ni llame al LLM.
 
 ---
 

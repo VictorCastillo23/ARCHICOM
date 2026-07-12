@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   if (!user) return unauthorized()
 
   const body = await request.json().catch(() => ({}))
-  const { titulo, resumen, tipo, archivo_url, archivo_thumbnail_url, obra_autor_externo, url_externa } = body as {
+  const { titulo, resumen, tipo, archivo_url, archivo_thumbnail_url, obra_autor_externo, url_externa, chat_habilitado } = body as {
     titulo?: string
     resumen?: string
     tipo?: string
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     archivo_thumbnail_url?: string
     obra_autor_externo?: string
     url_externa?: string
+    chat_habilitado?: boolean
   }
 
   if (!titulo || typeof titulo !== 'string' || !resumen || typeof resumen !== 'string' || !tipo) {
@@ -66,6 +67,10 @@ export async function POST(request: NextRequest) {
 
   if (!TIPOS_PUBLICACION.includes(tipo as TipoPublicacion)) {
     return validationError('tipo inválido')
+  }
+
+  if (chat_habilitado !== undefined && typeof chat_habilitado !== 'boolean') {
+    return validationError('chat_habilitado debe ser boolean')
   }
 
   const urlExterna = url_externa?.trim()
@@ -96,6 +101,7 @@ export async function POST(request: NextRequest) {
       tipo,
       archivo_url,
       ...(archivo_thumbnail_url ? { archivo_thumbnail_url } : {}),
+      ...(chat_habilitado !== undefined ? { chat_habilitado } : {}),
       autor_id: user.id,
       ...(urlExterna ? { url_externa: urlExterna } : {}),
       ...(tipo === 'recomendacion' ? { obra_autor_externo } : {}),

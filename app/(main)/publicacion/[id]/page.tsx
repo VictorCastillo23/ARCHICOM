@@ -225,8 +225,8 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
         </div>
       )}
 
-      {/* Chat sobre el documento (RAG) — solo cuando hay un PDF que preguntar */}
-      {tienePdf && (
+      {/* Chat sobre el documento (RAG) — solo cuando hay un PDF que preguntar y el chat está habilitado */}
+      {tienePdf && data.chat_habilitado && (
         <section className="mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
             Pregunta al documento
@@ -247,6 +247,21 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
               para preguntarle al documento.
             </p>
           )}
+        </section>
+      )}
+
+      {/* Chat desactivado por el autor: hint visible solo para el autor */}
+      {tienePdf && !data.chat_habilitado && isAuthor && (
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
+            Pregunta al documento
+          </h2>
+          <p className="text-sm text-text-muted">
+            El chat sobre este documento está desactivado.{' '}
+            <Link href={`/publicacion/${id}/editar`} className="text-primary hover:underline">
+              Actívalo desde Editar
+            </Link>.
+          </p>
         </section>
       )}
 

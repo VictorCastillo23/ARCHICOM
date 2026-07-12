@@ -58,6 +58,7 @@ export default async function EditarPublicacionPage({ params }: EditarPublicacio
             urlExterna: data.url_externa ?? '',
             archivoUrl: data.archivo_url ?? undefined,
             archivoThumbnailUrl: data.archivo_thumbnail_url ?? undefined,
+            chatHabilitado: data.chat_habilitado,
           }}
         />
       </section>
