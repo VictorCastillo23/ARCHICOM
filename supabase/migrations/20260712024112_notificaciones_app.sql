@@ -13,7 +13,7 @@
 -- undo action (unlike / delete comment / unfollow). solicitud_mensaje and
 -- obra_aceptada_revista stay unaggregated (contador always 1, no undo).
 --
--- Additive-only change. See docs/Vitrina_BD_Conexion_Backend.md §3.22
+-- Additive-only change. See docs/Vitrina_BD_Conexion_Backend.md §3.23
 -- (added in a follow-up PR of this change) for the full narrative and the
 -- §7.1b citation for the column-scoped UPDATE grant pattern (Decision 6).
 --

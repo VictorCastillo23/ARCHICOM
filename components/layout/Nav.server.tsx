@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getSesionUsuario } from '@/lib/data/perfil'
 import { getTotalNoLeidos, getTotalSolicitudesPendientes } from '@/lib/data/mensajes'
+import { getTotalNoLeidas } from '@/lib/data/notificaciones'
 import NavClient, { type SessionProp } from './NavClient'
 
 // RSC — no 'use client'. Resolves auth server-side so HTML arrives with correct nav state.
@@ -13,19 +14,28 @@ export default async function Nav() {
 
   let session: SessionProp | null = null
   let unreadCount = 0
+  let notifUnreadCount = 0
 
   if (user) {
-    // Fetch session profile, unread messages, and pending solicitudes in parallel
-    const [{ data: perfil }, { data: noLeidos }, { data: solicitudesPendientes }] =
-      await Promise.all([
-        getSesionUsuario(user.id),
-        getTotalNoLeidos(),
-        getTotalSolicitudesPendientes(user.id),
-      ])
+    // Fetch session profile, unread messages, pending solicitudes, and unread
+    // notifications in parallel — mirrors the existing messaging badge seed
+    // so the notification bell also avoids a flash-of-zero on first render.
+    const [
+      { data: perfil },
+      { data: noLeidos },
+      { data: solicitudesPendientes },
+      { data: notifNoLeidas },
+    ] = await Promise.all([
+      getSesionUsuario(user.id),
+      getTotalNoLeidos(),
+      getTotalSolicitudesPendientes(user.id),
+      getTotalNoLeidas(),
+    ])
     if (perfil) {
       session = { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol }
     }
     unreadCount = (noLeidos ?? 0) + (solicitudesPendientes ?? 0)
+    notifUnreadCount = notifNoLeidas ?? 0
   }
 
   return (
@@ -37,7 +47,7 @@ export default async function Nav() {
         >
           Vitrina
         </Link>
-        <NavClient session={session} unreadCount={unreadCount} />
+        <NavClient session={session} unreadCount={unreadCount} notifUnreadCount={notifUnreadCount} />
       </div>
     </header>
   )
