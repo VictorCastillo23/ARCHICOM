@@ -381,7 +381,8 @@
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
   │ LinksEditor        │ Gestionar enlaces (alta/edición/orden/borrado)│ getLinksUsuario → POST/PATCH/DELETE /api/perfil/links* │  
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
-  │ NotificacionesForm │ Alternar notificaciones por correo (Toggle)   │ getPreferenciasNotificacion → notif_email_habilitado → PATCH /api/perfil │  
+  │ NotificacionesForm │ Alternar notificaciones por correo + 5 tipos  │ getPreferenciasNotificacion + getPreferenciasNotifApp → PATCH /api/perfil │  
+  │                    │ de notificación in-app (Toggle ×6)            │ + PATCH /api/usuario/preferencias-notificaciones (§22)                    │  
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
   │ ChangePasswordForm │ Cambiar contraseña (actual + nueva + confirmar)│ POST /api/auth/change-password               │  
   └────────────────────┴───────────────────────────────────────────────┴──────────────────────────────────────────────┘  
@@ -390,9 +391,16 @@
   1. Cabecera: "Ajustes de cuenta" + link "← Volver al perfil"
   2. Editar perfil (PerfilEditForm)
   3. Mis enlaces (LinksEditor)
-  4. Notificaciones (NotificacionesForm) — Toggle (`components/ui/Toggle.tsx`, `role="switch"` +
-     `aria-checked`, distinto del `aria-pressed` de ThemeToggle) que persiste `notif_email_habilitado`
-     vía PATCH /api/perfil en cada cambio (optimistic update con rollback si falla).
+  4. Notificaciones (NotificacionesForm) — 6 Toggles (`components/ui/Toggle.tsx`, `role="switch"` +
+     `aria-checked`, distinto del `aria-pressed` de ThemeToggle), cada uno con optimistic update +
+     rollback si falla, independiente de los demás (un `loadingKey` por fila, no un loading global):
+     el primero persiste `notif_email_habilitado` vía PATCH /api/perfil; los 5 siguientes
+     (`notif_app_comentarios`, `notif_app_seguidores`, `notif_app_revista`, `notif_app_mensajes`,
+     `notif_app_likes` — separados por un `border-t`, sección "Notificaciones dentro de la app")
+     persisten vía PATCH /api/usuario/preferencias-notificaciones (§22), un booleano por request.
+     Valores iniciales SSR: `getPreferenciasNotificacion()` (RPC `mi_notif_email_habilitado`) y
+     `getPreferenciasNotifApp()` (RPC `mis_preferencias_notif_app()`, §3.23) — ambos son el único
+     camino de lectura porque estas columnas no tienen GRANT SELECT (ver BD §3.23).
   5. Seguridad — cambio de contraseña (ChangePasswordForm). La confirmación se valida en el cliente;
      el backend re-verifica la contraseña actual antes de actualizar. POST a `/api/auth/change-password`.
 
@@ -1234,7 +1242,7 @@ Listas curadas de publicaciones, propias o ajenas, con visibilidad `publica`/`pr
 
 ## 18. Notificaciones In-App
 
-Campanita + dropdown + página completa para las 6 notificaciones auto-generadas (`comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`) — ver excepción documentada `notificaciones-app` en `CLAUDE.md`, esquema/RLS/triggers en `Vitrina_BD_Conexion_Backend.md` §3.22, endpoints en `Vitrina_Especificaciones_APIs.md` §22. Reemplaza/complementa el badge de mensajería (§13): son dos badges distintos (mensajes vs. notificaciones) en la misma barra de nav, sobre el mismo canal Realtime compartido.
+Campanita + dropdown + página completa para las 6 notificaciones auto-generadas (`comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`) — ver excepción documentada `notificaciones-app` en `CLAUDE.md`, esquema/RLS/triggers en `Vitrina_BD_Conexion_Backend.md` §3.23, endpoints en `Vitrina_Especificaciones_APIs.md` §22. Reemplaza/complementa el badge de mensajería (§13): son dos badges distintos (mensajes vs. notificaciones) en la misma barra de nav, sobre el mismo canal Realtime compartido.
 
 ### BellIcon (`components/ui/BellIcon.tsx`)
 
@@ -1295,7 +1303,7 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
 - **Datos:** `getNotificaciones({ filtro, tipo, limit: 20, offset })` (`lib/data/notificaciones.ts`) — SSR directo, no pasa por el Route Handler.
 - **Render:** título, `NotificationFilterBar`, `NotificationList`, `Pagination` (mismo primitivo que `/area/[slug]`).
 - **`loading.tsx`:** skeleton propio (lista + chips), mismo criterio hand-rolled que `perfil/loading.tsx` en vez del `PageLoading` genérico variant `grid` (esto es una lista, no una grilla de cards).
-- **Nota (pendiente, PR de wiring final):** `proxy.ts` todavía no incluye `/notificaciones` en los prefijos protegidos — el redirect de arriba es la única protección real por ahora.
+- **Protección de ruta:** `proxy.ts` incluye `/notificaciones` en los prefijos protegidos (mismo patrón que `/perfil`/`/publicar`/`/mensajes` — redirect a `/login` sin sesión); el redirect defensivo del Server Component de arriba queda como segunda capa, no la única.
 
 ### Nav — campanita de notificaciones (extiende §13)
 
@@ -1310,7 +1318,7 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
 
 **Archivos:** `components/ui/BellIcon.tsx`, `components/notificaciones/{NotificationBell,NotificationDropdown,NotificationItem,NotificationModal,NotificationFilterBar,NotificationList}.tsx`, `lib/constants/notificaciones.ts`, `app/(main)/notificaciones/{page,loading}.tsx`, `lib/data/notificaciones.ts` (modificado — agrega el embed `usuario_relacionado` y el filtro `tipo` a `getNotificaciones`), `lib/types/database.ts` (modificado — nuevo tipo `NotificacionConActor`), `components/layout/{Nav.server,NavClient}.tsx` (modificados).
 
-**Pendiente (fuera de esta pantalla):** protección de ruta en `proxy.ts`, los 5 toggles de preferencia `notif_app_*` en `/perfil/ajustes` (`NotificacionesForm` solo tiene hoy el toggle de correo, §3.4.1).
+**Preferencias:** los 5 toggles `notif_app_*` viven en `/perfil/ajustes` — ver `NotificacionesForm` (§3.4.1), extendido con una fila `Toggle` por tipo, cada una persistiendo vía PATCH `/api/usuario/preferencias-notificaciones` (§22).
 
 ---
 

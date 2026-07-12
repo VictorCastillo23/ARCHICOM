@@ -1723,4 +1723,85 @@ Endpoints de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge
 
 ---
 
+## 22. Endpoints de Notificaciones In-App (`/api/notificaciones`, `/api/usuario/preferencias-notificaciones`)
+
+Consumen el esquema/RLS/triggers ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.23 (tabla `notificacion`, RPC `mis_preferencias_notif_app`, 5 columnas `notif_app_*` en `usuario`). Ninguno de estos 6 endpoints toca esquema. Todos requieren **sesión válida** (`supabase.auth.getUser()`); sin sesión → 401 `unauthorized` en los 6.
+
+### GET /api/notificaciones — Lista paginada
+
+**Query params:** `filtro=no-leidas` (opcional; cualquier otro valor u omitido → todas las filas visibles por RLS) · `limit` (default 20, **máx 50**, clamp igual que `/area/[slug]`) · `offset` (default 0).
+
+**Datos:** `getNotificaciones({filtro, limit, offset})` (`lib/data/notificaciones.ts`) — RLS (`notif_select`) ya restringe a `auth.uid()`, no hace falta filtrar por `usuario_id` en el query. El `select` embebe el actor vía la FK `usuario_relacionado_id` (`usuario_relacionado:usuario!notificacion_usuario_relacionado_id_fkey(id, nombre)` — desambiguado porque `notificacion` tiene dos FKs a `usuario`), `null` para `obra_aceptada_revista` (sin actor).
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "items": [ <NotificacionConActor>, ... ], "total": 12 } }
+```
+`total` viene de `{count:'exact'}` sobre el mismo query paginado (no un segundo round-trip). No soporta `tipo` como query param — ese filtro solo lo aplica la lectura SSR de `/notificaciones` (`lib/data/notificaciones.ts`, no este Route Handler).
+
+### GET /api/notificaciones/sin-leer/count — Total no leídas
+
+Endpoint liviano para el badge de la campanita; el nav (`NavClient.tsx`) lo vuelve a pedir en cada evento Realtime del canal `nav:notificaciones:${sessionId}` (§3.23).
+
+**Datos:** `getTotalNoLeidas()` — `count:'exact', head:true` filtrado `leida=false` (no trae filas, solo el conteo).
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "total": 3 } }
+```
+La clave es **`total`, no `count`** — mismo nombre que la paginación de arriba, por consistencia de contrato dentro de este recurso.
+
+### POST /api/notificaciones/[id]/leer — Marcar una notificación como leída
+
+**Parámetros de ruta:** `id` — UUID de `notificacion`. Ausente/vacío → 400 `validation_error`.
+
+**Flujo:** `.from('notificacion').update({leida:true, leida_en: now}).eq('id', id).eq('usuario_id', user.id).select('id, leida, leida_en').maybeSingle()`. Solo `leida`/`leida_en` son columnas con `GRANT UPDATE` para `authenticated` (§3.23) — es la única mutación de columna que el cliente puede hacer sobre esta tabla. El `.eq('usuario_id', user.id)` es una comodidad para distinguir "no existe" de "no es tuya" en la respuesta (ambas devuelven 404 igual, sin filtrar cuál fue); la RLS (`notif_update`) es el candado real.
+
+**Respuesta 200 OK:** `{ "data": { "id": "...", "leida": true, "leida_en": "2026-07-12T..." } }`
+
+**Errores:** no encontrada / no es tuya → 404 `not_found`.
+
+### POST /api/notificaciones/marcar-todas-leidas — Marcar todas como leídas
+
+Sin body ni parámetros. `.from('notificacion').update({leida:true, leida_en: now}).eq('usuario_id', user.id).eq('leida', false).select('id')` — el `.eq('usuario_id', ...)` es un filtro de performance (menos filas a evaluar), no el candado de seguridad; la RLS (`notif_update`) ya scopea la escritura a `auth.uid()` sin importar el filtro explícito.
+
+**Respuesta 200 OK:** `{ "data": { "updated": 5 } }` — `updated` es la cantidad de filas afectadas (`data?.length ?? 0` del `.select('id')` encadenado). `0` si no había ninguna no leída — no es error.
+
+### DELETE /api/notificaciones/[id] — Borrar una notificación
+
+**Parámetros de ruta:** `id` — UUID de `notificacion`. Ausente/vacío → 400 `validation_error`.
+
+**Flujo:** `.from('notificacion').delete().eq('id', id).eq('usuario_id', user.id).select('id').maybeSingle()` — misma lógica de "no encontrada vs. no es tuya → 404 sin distinguir" que el endpoint de leer; la RLS (`notif_delete`) es el candado real.
+
+**Respuesta 200 OK:** `{ "data": null }` · No encontrada / no es tuya → 404 `not_found`.
+
+### PATCH /api/usuario/preferencias-notificaciones — Actualizar preferencias `notif_app_*`
+
+**Body:** 1 o más de las 5 claves booleanas (todas opcionales individualmente, pero se exige **al menos una**):
+```json
+{ "notif_app_comentarios": true, "notif_app_seguidores": false,
+  "notif_app_revista": true, "notif_app_mensajes": true, "notif_app_likes": true }
+```
+
+**Validación:** cada clave presente debe ser `boolean` (si no → 400 `validation_error` con el nombre de la clave en el mensaje); body sin ninguna de las 5 claves → 400 `validation_error`. Claves desconocidas se ignoran silenciosamente (no whitelisted explícitamente contra un error, solo no se copian al objeto `updates`).
+
+**Flujo:** `.from('usuario').update(updates).eq('id', user.id)` — **deliberadamente sin `.select()` encadenado**: las 5 columnas no tienen `GRANT SELECT` para ningún rol (§3.23), así que un `.select()` tras el `UPDATE` fallaría con `permission denied for column` aunque la escritura misma haya funcionado (el `UPDATE` sí tiene `GRANT UPDATE` de columna). La respuesta en su lugar hace eco del `updates` ya validado, no de una lectura post-escritura.
+
+**Respuesta 200 OK:** `{ "data": { "notif_app_comentarios": true, "notif_app_seguidores": false, ... } }` — solo las claves que vinieron en el body (no las 5 siempre).
+
+**Errores:** `usuario` inválido/no boolean → 400 `validation_error`.
+
+### DTOs de Notificaciones
+
+Añadidos a `lib/types/database.ts` (extensión aditiva):
+
+| DTO | Campos |
+|---|---|
+| `TipoNotificacion` (tipo) | `'comentario_nueva' \| 'comentario_respuesta' \| 'obra_aceptada_revista' \| 'nuevo_seguidor' \| 'solicitud_mensaje' \| 'obra_likeada'` |
+| `Notificacion` | `id` string · `usuario_id` string · `tipo` TipoNotificacion · `usuario_relacionado_id` string\|null (actor) · `publicacion_relacionada_id` string\|null · `comentario_relacionado_id` string\|null (ancla de agregación, ver BD §3.23) · `descripcion` string · `enlace` string\|null · `contador` number · `leida` boolean · `leida_en` string\|null · `creada_en` string |
+| `NotificacionConActor` | `Notificacion & { usuario_relacionado: Pick<Usuario,'id'\|'nombre'> \| null }` — shape real devuelto por `GET /api/notificaciones` (embed de actor) |
+| `PreferenciasNotifApp` | `notif_app_comentarios` boolean · `notif_app_seguidores` boolean · `notif_app_revista` boolean · `notif_app_mensajes` boolean · `notif_app_likes` boolean — shape de `mis_preferencias_notif_app()` y del body/respuesta de `PATCH /api/usuario/preferencias-notificaciones` |
+
+---
+
 *Vitrina · Especificaciones de la API*

@@ -1126,6 +1126,189 @@ grant execute on function public.get_area_counts() to anon, authenticated;
 
 ---
 
+### 3.23 Notificaciones in-app — tabla `notificacion`, 5 columnas `notif_app_*` en `usuario`, 9 triggers `SECURITY DEFINER` y RPC `mis_preferencias_notif_app()` (migraciones `notificaciones_app`, `notificaciones_app_harden_advisors`, `notificaciones_app_harden_trigger_fn_execute`)
+
+> Cambio ADITIVO, aprobado explícitamente: tabla nueva `notificacion`, 5 columnas nuevas en `usuario`, 9 triggers y 2 funciones nuevas (1 RPC + 1 helper). Sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá. **Verificado EN VIVO contra el proyecto `fdfbyhjwnbteccagulxb` vía el MCP `supabase`** (no es una lectura de la migración a ciegas): esquema, índices, policies, grants de columna, `EXECUTE` de las 10 funciones y el job de `pg_cron` confirmados con `execute_sql`/`get_advisors` contra la base real, incluidas las 2 migraciones de endurecimiento de seguimiento (`get_advisors` limpio de hallazgos de `notificaciones_app` tras aplicarlas).
+
+Campanita + dropdown + página `/notificaciones` (`Vitrina_Pantallas_Componentes.md` §18) sobre un sistema de notificaciones in-app para 6 eventos: `comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`. La tabla `notificacion` la escriben **exclusivamente** triggers `SECURITY DEFINER` (el owner `postgres` bypassea RLS, mismo patrón que `handle_new_user`/`bloquear_cambio_rol`) — **cero `service_role`**.
+
+#### Tabla `notificacion`
+
+```sql
+create table public.notificacion (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid not null references public.usuario(id) on delete cascade,       -- destinatario
+  tipo text not null check (tipo in ('comentario_nueva','comentario_respuesta',
+    'obra_aceptada_revista','nuevo_seguidor','solicitud_mensaje','obra_likeada')),
+  usuario_relacionado_id uuid references public.usuario(id) on delete set null,    -- actor
+  publicacion_relacionada_id uuid references public.publicacion(id) on delete cascade,
+  comentario_relacionado_id uuid references public.comentario(id) on delete cascade,
+  descripcion text not null,
+  enlace text,
+  contador int not null default 1,
+  leida boolean not null default false,
+  leida_en timestamptz,
+  creada_en timestamptz not null default now()
+);
+create index notificacion_usuario_idx on public.notificacion (usuario_id);
+create index notificacion_usuario_leida_idx on public.notificacion (usuario_id, leida);
+create index notificacion_creada_idx on public.notificacion (creada_en desc);
+```
+
+3 índices base (`usuario_id`; `usuario_id, leida`; `creada_en desc`) más **4 índices únicos parciales**, uno por tipo agregable (ver "Agregación" abajo):
+
+```sql
+create unique index notificacion_like_agg_uniq on public.notificacion (usuario_id, publicacion_relacionada_id)
+  where tipo='obra_likeada' and leida=false;
+create unique index notificacion_comnueva_agg_uniq on public.notificacion (usuario_id, publicacion_relacionada_id)
+  where tipo='comentario_nueva' and leida=false;
+create unique index notificacion_comresp_agg_uniq on public.notificacion (usuario_id, comentario_relacionado_id)
+  where tipo='comentario_respuesta' and leida=false;
+create unique index notificacion_seguidor_agg_uniq on public.notificacion (usuario_id)
+  where tipo='nuevo_seguidor' and leida=false;
+```
+
+`obra_likeada` y `comentario_nueva` comparten la misma clave `(usuario_id, publicacion_relacionada_id)` pero el predicado `WHERE tipo=...` los resuelve a **índices arbitrarios distintos** — sin colisión posible entre ambos tipos.
+
+#### RLS: 3 policies, sin policy de INSERT (deliberado)
+
+```sql
+alter table public.notificacion enable row level security;
+
+create policy notif_select on public.notificacion for select to authenticated using (usuario_id = auth.uid());
+create policy notif_update on public.notificacion for update to authenticated
+  using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
+create policy notif_delete on public.notificacion for delete to authenticated using (usuario_id = auth.uid());
+```
+
+Solo `SELECT`/`UPDATE`/`DELETE`, todas row-scoped a `usuario_id = auth.uid()` (cada quien ve/marca-leído/borra únicamente sus propias notificaciones). **No existe policy de INSERT** — decisión deliberada, no un olvido: los 9 triggers que escriben la tabla son `SECURITY DEFINER` y corren como su owner (`postgres`), que **bypassea RLS por completo**; ningún cliente autenticado necesita insertar una fila directamente, así que no hay policy que darle. Con RLS habilitada y sin policy de INSERT aplicable, el motor de RLS **deniega por defecto** cualquier intento de INSERT de `anon`/`authenticated` (el `WITH CHECK` implícito es `false` cuando no hay policy que aplique) — este es el candado real.
+
+> **Precisión sobre el GRANT de tabla (verificado en vivo, matiza el diseño original):** al igual que en `mensaje`/`correo_admin`, el esquema `public` tiene privilegios por defecto (`ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO anon, authenticated`) que se aplican a **toda** tabla nueva — confirmado vía `pg_default_acl`. Esto significa que `anon`/`authenticated` sí retienen `INSERT`/`SELECT`/`DELETE` a nivel de ACL de tabla sobre `notificacion` (`relacl` idéntico byte a byte al de `mensaje`: `ardDxtm`), pese a que la migración nunca emitió un `GRANT INSERT` explícito ni un `REVOKE INSERT` explícito. El candado real para INSERT **no es el GRANT, es la RLS**: sin policy de INSERT, ninguna fila pasa el `WITH CHECK`, así que el `INSERT` de un cliente falla igual con `new row violates row-level security policy` aunque el `GRANT` lo permita en el papel. Mismo patrón exacto que `mensaje` (cuyo único camino de INSERT es la RPC `enviar_mensaje`, también owner-bypass). Documentado así para que quede claro que "sin grant de INSERT" en el diseño original era una simplificación — la fuente de verdad es RLS, no el ACL.
+
+#### Grant de columna para UPDATE — mismo blocker que `mensaje` (§7.1b)
+
+```sql
+grant select, delete on public.notificacion to authenticated;
+revoke update on public.notificacion from anon, authenticated;
+grant update (leida, leida_en) on public.notificacion to authenticated;
+```
+
+**Este fue un blocker real encontrado por una revisión de seguridad durante el diseño, documentado sin rodeos:** la policy `notif_update` restringe *filas* (`usuario_id = auth.uid()`), no *columnas*. Sin el `revoke`+`grant (columna)` de arriba, un usuario autenticado podría hacer `PATCH` sobre **cualquier** columna de su propia fila vía PostgREST — incluido `tipo`, `descripcion`, `contador` o `usuario_relacionado_id` — falsificando el contenido de sus propias notificaciones. Es exactamente el mismo aprendizaje que **§7.1b** documentó para `mensaje` (`mensaje_update_column_grant_leido`): `REVOKE UPDATE` de tabla completa + `GRANT UPDATE (columna)` específica es obligatorio para que una policy de fila no termine exponiendo todas las columnas. Verificado en vivo: `has_column_privilege('authenticated', 'notificacion', 'leida', 'UPDATE')` → `true`; `has_column_privilege('authenticated', 'notificacion', 'tipo', 'UPDATE')` → `false`; `has_table_privilege('authenticated', 'notificacion', 'UPDATE')` (a nivel de tabla completa) → `false`. `leida`/`leida_en` son las únicas columnas mutables por el cliente — es la única mutación real que expone la API (marcar como leída).
+
+#### 5 columnas `notif_app_*` en `usuario` — preferencias por tipo
+
+```sql
+alter table public.usuario
+  add column notif_app_comentarios boolean not null default true,
+  add column notif_app_seguidores  boolean not null default true,
+  add column notif_app_revista     boolean not null default true,
+  add column notif_app_mensajes    boolean not null default true,
+  add column notif_app_likes       boolean not null default true;
+grant update (notif_app_comentarios) on public.usuario to authenticated;
+grant update (notif_app_seguidores)  on public.usuario to authenticated;
+grant update (notif_app_revista)     on public.usuario to authenticated;
+grant update (notif_app_mensajes)    on public.usuario to authenticated;
+grant update (notif_app_likes)       on public.usuario to authenticated;
+-- SIN GRANT SELECT en ninguna de las 5 — ver razón abajo.
+```
+
+Modelo opt-out (default `true`, como `notif_email_habilitado`). `UPDATE` de columna es seguro porque `editar_propio` (`USING`/`WITH CHECK auth.uid() = id`) es row-scoped. **Deliberadamente sin `GRANT SELECT`** — ni siquiera de columna — sobre ninguna de las 5: `usuario` tiene una policy de lectura pública (`lectura_publica`, `USING (true)`, para que `/usuario/[id]` funcione), y **§3.21 ya demostró** que un `GRANT SELECT` de columna es *role-wide*, no row-scoped — no hereda el filtrado de filas de otras policies. Si estas 5 columnas tuvieran `SELECT` de columna, cualquier usuario podría leer las preferencias de notificación de **cualquier otro** usuario visible por `lectura_publica` (fuga de privacidad entre cuentas, misma clase de bug que se corrigió para `notif_email_habilitado` en `fix_notif_email_habilitado_column_leak`). Único camino de lectura: la RPC self-scoped de abajo.
+
+#### RPC `mis_preferencias_notif_app()` — lectura self-scoped, sin parámetros
+
+```sql
+create or replace function public.mis_preferencias_notif_app()
+returns table (notif_app_comentarios boolean, notif_app_seguidores boolean,
+  notif_app_revista boolean, notif_app_mensajes boolean, notif_app_likes boolean)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select notif_app_comentarios, notif_app_seguidores, notif_app_revista,
+         notif_app_mensajes, notif_app_likes from public.usuario where id = auth.uid();
+$$;
+revoke execute on function public.mis_preferencias_notif_app() from anon;
+grant execute on function public.mis_preferencias_notif_app() to authenticated;
+```
+
+`SECURITY DEFINER`, sin parámetros — deriva `auth.uid()` internamente, así que estructuralmente no puede leer la fila de otro usuario. Mismo patrón exacto que `mi_notif_email_habilitado()` (§3.21). `EXECUTE` a `anon` deliberadamente NO otorgado (requiere sesión); verificado en vivo con `has_function_privilege`: `anon` → `false`, `authenticated` → `true`. La usa `lib/data/perfil.ts` → `getPreferenciasNotifApp()` (`.rpc('mis_preferencias_notif_app').single()`).
+
+#### Helper `notif_desc_agg(p_tipo text, p_n int)` — pluralización compartida
+
+```sql
+create or replace function public.notif_desc_agg(p_tipo text, p_n int) returns text
+language sql immutable set search_path = public, pg_temp as $$
+  select case p_tipo
+    when 'obra_likeada' then case when p_n=1 then 'A alguien le gustó tu obra'
+      else 'A '||p_n||' personas les gustó tu obra' end
+    when 'comentario_nueva' then case when p_n=1 then 'Comentaron tu obra'
+      else p_n||' comentarios nuevos en tu obra' end
+    when 'comentario_respuesta' then case when p_n=1 then 'Respondieron tu comentario'
+      else p_n||' respuestas nuevas a tu comentario' end
+    when 'nuevo_seguidor' then case when p_n=1 then 'Tienes un nuevo seguidor'
+      else p_n||' personas nuevas te siguen' end
+  end;
+$$;
+```
+
+`IMMUTABLE`, sin `SECURITY DEFINER` (no necesita bypass, no toca tablas). Genera el texto singular/plural de `descripcion` para los 4 tipos agregables; lo llaman tanto los triggers de INSERT (al agregar, `contador+1`) como los de DELETE (al decrementar) para que la copia se mantenga consistente en ambas direcciones. El cliente **nunca** re-deriva la pluralización — `NotificationItem` renderiza `descripcion` tal cual llega de la BD.
+
+#### 9 triggers, 8 funciones — INSERT-side (6) y DELETE-side (3)
+
+Los 6 triggers de INSERT crean/agregan la notificación en el momento del evento; los 3 triggers de DELETE (Decisiones A/B del diseño, REV 3) decrementan o borran la fila agregada cuando el usuario deshace la acción origen (unlike, borrar comentario, dejar de seguir). Los otros 2 tipos (`solicitud_mensaje`, `obra_aceptada_revista`) son de baja frecuencia/alta señal y **no** tienen contraparte de deshacer — quedan sin agregar (`contador` siempre 1) y sin trigger de DELETE.
+
+| # | Trigger | Tabla | Evento | Función | Tipo generado | Agrega |
+|---|---|---|---|---|---|---|
+| 1 | `trg_notif_comentario` | `comentario` | AFTER INSERT | `notif_comentario()` | `comentario_nueva` (si `responde_a is null`) o `comentario_respuesta` (si no) | Sí |
+| 2 | `trg_notif_obra_aceptada` | `solicitud_revista` | AFTER UPDATE | `notif_obra_aceptada()` | `obra_aceptada_revista` | No |
+| 3 | `trg_notif_nuevo_seguidor` | `seguidor` | AFTER INSERT | `notif_nuevo_seguidor()` | `nuevo_seguidor` | Sí |
+| 4 | `trg_notif_solicitud_mensaje` | `solicitud_mensaje` | AFTER INSERT | `notif_solicitud_mensaje()` | `solicitud_mensaje` | No |
+| 5 | `trg_notif_obra_likeada` | `"like"` | AFTER INSERT | `notif_obra_likeada()` | `obra_likeada` | Sí |
+| 6 | `trg_notif_obra_likeada_del` | `"like"` | AFTER DELETE | `notif_obra_likeada_del()` | decrementa/borra `obra_likeada` | — |
+| 7 | `trg_notif_comentario_del` | `comentario` | AFTER DELETE | `notif_comentario_del()` | decrementa/borra `comentario_nueva`/`comentario_respuesta` (branch por `OLD.responde_a`) | — |
+| 8 | `trg_notif_nuevo_seguidor_del` | `seguidor` | AFTER DELETE | `notif_nuevo_seguidor_del()` | decrementa/borra `nuevo_seguidor` | — |
+
+Todas las 8 funciones son `SECURITY DEFINER`, `set search_path = public, pg_temp`, y cada una respeta la preferencia `notif_app_*` correspondiente del destinatario **en el INSERT** (`if not (select notif_app_x from usuario where id=v_dest) then return NEW/OLD; end if` — si la preferencia está apagada, no se crea la notificación). Cada trigger evita auto-notificación (`if v_autor = NEW.usuario_id then return NEW`, etc. — nadie recibe una notificación de su propia acción sobre su propio contenido).
+
+**Agregación (INSERT-side, 4 tipos):** cada uno hace `INSERT ... ON CONFLICT (claves) WHERE <predicado del índice parcial> DO UPDATE SET contador = notificacion.contador + 1, usuario_relacionado_id = excluded.usuario_relacionado_id, descripcion = notif_desc_agg(tipo, contador+1)`. Mientras exista una fila **sin leer** para esa clave, N eventos nuevos actualizan la misma fila (`contador` sube, `descripcion` se repluraliza, `usuario_relacionado_id` se actualiza al actor más reciente). `creada_en` **no** se toca en el `DO UPDATE` (agregación silenciosa, no reordena el feed de notificaciones).
+
+**"Marcar como leída" resetea la agregación — es el comportamiento INTENCIONAL**, no un bug: el predicado de cada índice único parcial incluye `leida=false`, así que en cuanto una fila se marca leída deja de matchear el índice y el siguiente evento del mismo tipo/clave crea una fila **nueva** en vez de seguir sumando sobre la ya leída. Es la semántica esperada: leer "vacía" el contador visualmente, y la siguiente tanda de actividad arranca su propio contador desde 1.
+
+**Decremento simétrico (DELETE-side, 3 triggers, 4 tipos cubiertos incluyendo el de INSERT #5):** cada uno bloquea la fila agregada sin leer que matchea (`... for update`), y si `contador > 1` decrementa + repluraliza; si `contador <= 1` **borra la fila** (no queda nada que notificar); si no encuentra fila (ya estaba leída, o el evento predata la feature) **no-op**. Ningún trigger de DELETE re-chequea `notif_app_*`: si la fila existe debe mantenerse precisa; si la preferencia estaba apagada nunca se creó la fila, así que el decremento no encuentra nada y no-opea solo.
+
+> **Imprecisión cosmética ACEPTADA (decisión explícita del diseño, no un descuido):** en el decremento, `usuario_relacionado_id` **no se rebobina** al penúltimo actor — queda con el valor que tenía (el último actor antes de la acción deshecha). Postgres no tiene forma barata de saber "quién fue el penúltimo" sin bookkeeping adicional (historial completo de actores por fila agregada), y el costo de implementarlo no se justificó para un campo puramente cosmético (el avatar/nombre que se muestra junto al contador). Aceptado tal cual.
+
+**Cascade-safety (por qué `comentario_nueva` ancla `NULL` y `comentario_respuesta` ancla el padre):** `notificacion.comentario_relacionado_id references comentario on delete cascade`. Para `comentario_nueva` el ancla de agregación es la **publicación** (todos los comentarios de nivel raíz de una publicación agregan en la misma fila), así que esa fila agregada guarda `comentario_relacionado_id = NULL` — si guardara el id de un comentario cualquiera, borrar **ese** comentario específico haría cascade-delete de toda la fila agregada, perdiendo el conteo de los demás. El conteo lo mantiene únicamente el trigger de decremento. Para `comentario_respuesta` el ancla **sí** es el comentario padre (`comentario_relacionado_id = OLD.responde_a`), y eso es correcto: borrar el padre debe cascade-borrar toda la agregación de respuestas (el hilo entero desapareció, tiene sentido que sus notificaciones también); borrar una respuesta individual (no referenciada por ningún FK) la maneja el trigger de decremento.
+
+#### Realtime
+
+```sql
+alter publication supabase_realtime add table public.notificacion;
+```
+
+Extiende el canal Realtime **ya existente** `nav:notificaciones:${sessionId}` en `NavClient.tsx` (no se abre un segundo `supabase.channel(...)`) con un handler `{event:'*', schema:'public', table:'notificacion', filter:'usuario_id=eq.${sessionId}'}` que dispara `refetchNotifCount()`. Un solo handler `*` cubre INSERT agregando, UPDATE de contador, UPDATE de marcar-leído y DELETE de decremento — todos deben refrescar el badge.
+
+#### `pg_cron` — retención de 90 días
+
+```sql
+select cron.schedule('notificaciones-cleanup', '30 8 * * *',  -- diario, 02:30 UTC-6
+  $$ delete from public.notificacion where leida = true and creada_en < now() - interval '90 days'; $$);
+```
+
+Mismo patrón que `revista-mensual` (§9). Solo borra notificaciones **ya leídas** con más de 90 días — las no leídas se conservan indefinidamente sin importar su antigüedad. Verificado en vivo (`select * from cron.job where jobname like '%notif%'`): job activo, `schedule = '30 8 * * *'`.
+
+#### Endurecimiento posterior — 2 migraciones de seguimiento (aplicadas en vivo el mismo día)
+
+La migración base (`notificaciones_app`) se aplicó, y una revisión de `get_advisors` encontró 2 hallazgos que se corrigieron con migraciones adicionales, **también aplicadas en vivo y verificadas**:
+
+1. **`notificaciones_app_harden_advisors`** — fix de `search_path` en `notif_desc_agg` (no lo traía desde la migración base). Verificado: `pg_proc.proconfig` para las 10 funciones (8 triggers + `notif_desc_agg` + `mis_preferencias_notif_app`) muestra `search_path=public, pg_temp` en las 10, sin excepción.
+2. **`notificaciones_app_harden_trigger_fn_execute`** — revoca `EXECUTE` de `anon`/`authenticated` en las **8 funciones de trigger** (no en `notif_desc_agg` ni en la RPC, que sí deben ser invocables). Necesaria porque este proyecto tiene `ALTER DEFAULT PRIVILEGES` que otorga `EXECUTE` a `anon`/`authenticated`/`service_role` en toda función nueva por defecto — un `revoke ... from public` solo no alcanza para retirar el grant directo a esos roles (mismo aprendizaje ya aplicado en `rag_rate_limit_revoke_anon`/`mensajeria_directa_revoke_anon`/`resolver_destinatarios_correo`, §7.1). Verificado con `has_function_privilege`: las 8 funciones de trigger → `anon: false, authenticated: false` para las dos; `mis_preferencias_notif_app` → `anon: false, authenticated: true` (Decisión 1); `notif_desc_agg` → `anon: true, authenticated: true` (helper puro, sin objeción).
+
+`get_advisors(type: 'security')` quedó limpio de hallazgos propios de `notificaciones_app` tras ambas migraciones — los únicos WARN restantes en el proyecto son los ya documentados en §7.1 (RPC de negocio flagueadas por el mismo patrón "autenticado puede invocar, el control real es interno").
+
+#### Endpoints y UI
+
+6 endpoints en `Vitrina_Especificaciones_APIs.md` §22; 5 toggles `notif_app_*` + protección de ruta en `Vitrina_Pantallas_Componentes.md` (`/perfil/ajustes` §3.4.1, `/notificaciones` §18). `proxy.ts` protege `/notificaciones` (redirect a `/login` sin sesión, mismo prefijo que `/perfil`/`/publicar`/`/mensajes`).
+
+---
+
 ## 4. Objetos adicionales (no son tablas)
 
 | Objeto | Tipo | Función |
@@ -1154,6 +1337,13 @@ grant execute on function public.get_area_counts() to anon, authenticated;
 | `resolver_destinatario_notificacion(p_secret, p_usuario_id)` | RPC (SECURITY DEFINER) | **Notificaciones transaccionales.** Resuelve `email` + `notif_email_habilitado` de un usuario para el Edge Function del webhook (sin JWT); gateada por un secreto comparado contra `private.notif_config` (no `current_setting`, ver nota en §3.21). `EXECUTE` a `anon`+`authenticated` (el webhook llama sin sesión). Ver §3.21 |
 | `resolver_destinatarios_correo(p_tipo, p_ciudad?, p_ids?)` | RPC (SECURITY DEFINER) | **Panel admin de envío masivo.** Resuelve `id`+`email`+`nombre` de múltiples usuarios según `p_tipo` (`todos`/`ciudad`/`ids`), filtrando SIEMPRE `notif_email_habilitado=true` (incluso en `ids`, hand-picked). Gateada por `es_admin()` (P0001 `No autorizado` si no). `EXECUTE` solo `authenticated` (`anon` revocado explícitamente). Ver §3.21 |
 | `mi_notif_email_habilitado()` | RPC (SECURITY DEFINER) | **Lectura self-scoped de la preferencia propia.** Sin parámetros — deriva `auth.uid()` internamente, único camino de lectura tras revocarse `SELECT` de columna a `authenticated` (fue una fuga de privacidad entre usuarios, no protegida por RLS — ver §3.21). `EXECUTE` solo a `authenticated`. Ver §3.21 |
+| `mis_preferencias_notif_app()` | RPC (SECURITY DEFINER) | **Lectura self-scoped de las 5 preferencias `notif_app_*`.** Sin parámetros — deriva `auth.uid()` internamente; único camino de lectura, las 5 columnas no tienen `GRANT SELECT` (mismo riesgo de fuga que `notif_email_habilitado`). `EXECUTE` solo a `authenticated`. Ver §3.23 |
+| `notif_desc_agg(p_tipo, p_n)` | Función (IMMUTABLE) | Pluralización compartida de la `descripcion` de notificaciones agregadas; la llaman los 6 triggers de agregación (INSERT y DELETE). Sin `SECURITY DEFINER`, no toca tablas. Ver §3.23 |
+| `notif_comentario()` / `notif_comentario_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `comentario` → crea o decrementa `comentario_nueva`/`comentario_respuesta` (branch por `responde_a`), agregando vía índice único parcial. `EXECUTE` revocado de `anon`/`authenticated` (solo invocables como trigger). Ver §3.23 |
+| `notif_obra_aceptada()` | Trigger (SECURITY DEFINER) | UPDATE en `solicitud_revista` (`estado→'aceptada'`) → crea `obra_aceptada_revista` (sin agregar). Ver §3.23 |
+| `notif_nuevo_seguidor()` / `notif_nuevo_seguidor_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `seguidor` → crea o decrementa `nuevo_seguidor`, agregando por `usuario_id`. Ver §3.23 |
+| `notif_solicitud_mensaje()` | Trigger (SECURITY DEFINER) | INSERT en `solicitud_mensaje` → crea `solicitud_mensaje` (sin agregar). Ver §3.23 |
+| `notif_obra_likeada()` / `notif_obra_likeada_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `"like"` → crea o decrementa `obra_likeada`, agregando por `(usuario_id, publicacion_relacionada_id)`. Ver §3.23 |
 | Bucket `publicaciones` | Storage | Lectura pública; subir/editar/borrar restringido a la carpeta `{user_id}/...` de cada usuario |
 
 ---
@@ -1335,8 +1525,11 @@ Estado real de los `EXECUTE` (de `information_schema.role_routine_grants`):
 | `resolver_destinatario_notificacion(text, uuid)` | `anon, authenticated, postgres, service_role` | Flagueada (WARN); misma clase, pero el control real **no** es `es_admin()` — es un secreto compartido comparado contra `private.notif_config` (el webhook llama sin JWT, solo `anon key`). `EXECUTE` a `anon` es intencional. Ver §3.21 |
 | `resolver_destinatarios_correo(text, text, uuid[])` | `authenticated, postgres, service_role` | Flagueada (WARN); misma clase que las RPC de negocio — el control real es `es_admin()` internamente. `EXECUTE` revocado de `public` **y** `anon` explícitamente (funciones nuevas auto-otorgan a `anon` además de `public`; el `revoke all from public` solo no basta). Ver §3.21 |
 | `mi_notif_email_habilitado()` | `authenticated, postgres, service_role` | Flagueada (WARN); mismo patrón, pero sin parámetros — deriva el `usuario_id` de `auth.uid()` internamente, así que estructuralmente no puede leer la fila de otro usuario (a diferencia de `resolver_destinatario_notificacion`, que recibe `p_usuario_id` explícito pero está gateada por secreto). `EXECUTE` a `anon` deliberadamente NO otorgado — requiere sesión. Ver §3.21 |
+| `mis_preferencias_notif_app()` | `authenticated, postgres, service_role` | Flagueada (WARN); mismo patrón que `mi_notif_email_habilitado()` — sin parámetros, deriva `auth.uid()` internamente. `EXECUTE` a `anon` NO otorgado. Ver §3.23 |
 
-El advisor `authenticated_security_definer_function_executable` (WARN) marca las cinco RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
+Las **8 funciones de trigger** de `notificacion` (`notif_comentario`, `notif_comentario_del`, `notif_obra_aceptada`, `notif_nuevo_seguidor`, `notif_nuevo_seguidor_del`, `notif_solicitud_mensaje`, `notif_obra_likeada`, `notif_obra_likeada_del`) son `SECURITY DEFINER` pero **no aparecen en este advisor**: `EXECUTE` fue revocado explícitamente de `anon` y `authenticated` en la migración de endurecimiento `notificaciones_app_harden_trigger_fn_execute` (el advisor solo flaguea funciones invocables vía `/rest/v1/rpc/…`; una función solo alcanzable como disparador de trigger, sin `EXECUTE` para ningún rol de PostgREST, no es una RPC expuesta). Verificado en vivo con `has_function_privilege`. Ver §3.23.
+
+El advisor `authenticated_security_definer_function_executable` (WARN) marca las RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
 
 **Trampa importante (no la ignores):** el admin **es** un usuario `authenticated` y, como este proyecto NO usa `service_role`, las rutas de admin invocan estas RPC con el **JWT del propio admin**. Revocar `EXECUTE … from authenticated` sobre las cinco RPC de negocio **rompería los endpoints de admin**.
 
@@ -1424,6 +1617,18 @@ select cron.unschedule('revista-mensual');
 ```
 
 > Como `publicar_revista_mensual()` es idempotente respecto a "hay borrador o no", un disparo manual de recuperación no genera ediciones duplicadas: si el job ya rotó, simplemente publicaría el borrador recién creado. Ejecútalo manualmente solo si confirmas en `cron.job_run_details` que la corrida automática falló.
+
+### 9.4 Limpieza de notificaciones leídas (`notificaciones-cleanup`, §3.23)
+
+Job diario e independiente del ciclo de revista, mismo mecanismo `pg_cron`:
+
+```sql
+-- Diario, 02:30 UTC-6 == 08:30 UTC
+select cron.schedule('notificaciones-cleanup', '30 8 * * *',
+  $$ delete from public.notificacion where leida = true and creada_en < now() - interval '90 days'; $$);
+```
+
+Borra únicamente notificaciones **ya leídas** con más de 90 días — las no leídas nunca se borran automáticamente, sin importar su antigüedad. Verificado en vivo (`select * from cron.job where jobname like '%notif%'`): job activo con ese schedule exacto.
 
 ---
 

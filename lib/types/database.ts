@@ -410,7 +410,7 @@ export type Notificacion = {
   /** The actor who triggered the notification (liker, commenter, follower...). */
   usuario_relacionado_id: string | null
   publicacion_relacionada_id: string | null
-  /** For `comentario_respuesta`, the parent (root) comment — the cascade anchor. Always null for `comentario_nueva` (see BD §3.22). */
+  /** For `comentario_respuesta`, the parent (root) comment — the cascade anchor. Always null for `comentario_nueva` (see BD §3.23). */
   comentario_relacionado_id: string | null
   descripcion: string
   enlace: string | null
@@ -424,7 +424,7 @@ export type Notificacion = {
 /**
  * Shape returned by RPC `mis_preferencias_notif_app()` — these 5 columns have
  * NO SELECT grant (private, unlike public profile fields); only readable via
- * this self-scoped SECURITY DEFINER RPC. See BD §3.22.
+ * this self-scoped SECURITY DEFINER RPC. See BD §3.23.
  */
 export type PreferenciasNotifApp = {
   notif_app_comentarios: boolean
