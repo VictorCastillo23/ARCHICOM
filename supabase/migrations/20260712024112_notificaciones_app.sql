@@ -17,14 +17,9 @@
 -- (added in a follow-up PR of this change) for the full narrative and the
 -- §7.1b citation for the column-scoped UPDATE grant pattern (Decision 6).
 --
--- NOTE (process deviation, see apply-progress for notificaciones-app PR1):
--- this repo has no prior committed migration files — every previous
--- "Excepción documentada" schema change was applied directly via the
--- `apply_migration` MCP tool against the live remote project. This file
--- establishes a new file-based migration convention for this change; it
--- must still be applied to the live project (via `supabase db push`,
--- MCP `apply_migration`, or the SQL editor) by someone with access — this
--- file alone does not mutate the live database.
+-- Applied live via the `supabase` MCP (project fdfbyhjwnbteccagulxb,
+-- version 20260712024112) — see the two follow-up hardening migrations in
+-- this same directory for the get_advisors fixes applied immediately after.
 
 -- ============================================================
 -- Phase 1.1: notificacion table + indexes
