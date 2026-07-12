@@ -34,7 +34,7 @@ function formatRelativeTime(iso: string): string {
 /**
  * One notification row — shared by the dropdown and the `/notificaciones`
  * page. Renders `descripcion` as-is (already pluralized by the DB trigger's
- * `notif_desc_agg` helper — never re-derived client-side, see BD §3.22).
+ * `notif_desc_agg` helper — never re-derived client-side, see BD §3.23).
  * Clicking marks the notification read (fire-and-forget POST, doesn't block
  * navigation) and follows `enlace` via a real `<Link>` so modifier-clicks
  * (open in new tab, etc.) keep working.

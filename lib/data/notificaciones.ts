@@ -16,7 +16,7 @@ const SELECT_WITH_ACTOR =
  * the total matching count (for pagination controls). RLS (`notif_select`)
  * scopes rows to `auth.uid()` — no usuario_id param needed. `tipo` filters
  * server-side only (used by the `/notificaciones` page, not the route
- * handler — see BD §3.22 / spec's `leidas`/`tipo` page filters).
+ * handler — see BD §3.23 / spec's `leidas`/`tipo` page filters).
  */
 export async function getNotificaciones(opts?: {
   filtro?: 'no-leidas'

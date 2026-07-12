@@ -17,7 +17,7 @@ const PREF_KEYS = [
 
 // Updates 1+ of the 5 notif_app_* booleans. Deliberately does NOT chain
 // .select() after .update() (Decision 5): these columns have no SELECT grant
-// at all (see BD §3.22 / lib/data/perfil.ts getPreferenciasNotifApp), so a
+// at all (see BD §3.23 / lib/data/perfil.ts getPreferenciasNotifApp), so a
 // chained .select() would trip a permission error even though the UPDATE
 // itself succeeds. The response instead echoes back the validated input.
 export async function PATCH(request: Request) {

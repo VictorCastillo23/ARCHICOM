@@ -61,7 +61,7 @@ export async function getPreferenciasNotificacion(): Promise<{
  * SELECT grant at all (not even column-scoped) — `usuario`'s SELECT policy is
  * row-public, so any grant would leak them across users. The only read path
  * is the self-scoped SECURITY DEFINER RPC `mis_preferencias_notif_app()`,
- * which derives the row from `auth.uid()` internally. See BD §3.22.
+ * which derives the row from `auth.uid()` internally. See BD §3.23.
  */
 export async function getPreferenciasNotifApp(): Promise<{
   data: PreferenciasNotifApp | null
