@@ -13,7 +13,7 @@ export default function TerminosPage() {
           Términos de servicio
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Versión 1.2 · Última actualización: 4 de julio de 2026.
+          Versión 1.3 · Última actualización: 12 de julio de 2026.
         </p>
       </div>
 
@@ -111,7 +111,7 @@ export default function TerminosPage() {
             regalías para alojar, almacenar, reproducir, mostrar, distribuir y <span className="font-semibold text-text">procesar</span>{' '}
             dicho contenido con el único fin de operar y ofrecer el servicio (por ejemplo, mostrar tu
             obra en el feed, en tu perfil o en la revista mensual, e indexar el contenido de tus
-            documentos PDF para habilitar la búsqueda y el asistente descritos en la cláusula 8).
+            documentos PDF para habilitar la búsqueda y el asistente descritos en la cláusula 9).
             Esta licencia termina cuando eliminas el contenido, salvo por copias residuales en
             respaldos.
           </p>
@@ -271,7 +271,35 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          8. Indexado, búsqueda y asistente de documentos
+          8. Colecciones
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            Puedes crear colecciones para organizar publicaciones propias o de otros usuarios, con
+            visibilidad &laquo;pública&raquo; o &laquo;privada&raquo;.
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>Las colecciones privadas solo son visibles para ti.</li>
+            <li>
+              Las colecciones públicas —incluidos su título, descripción y las publicaciones que
+              contienen— son visibles para cualquier visitante, incluso sin sesión iniciada.
+            </li>
+            <li>
+              Agregar una publicación a una colección no te transfiere ningún derecho sobre ella ni
+              modifica su visibilidad original: una publicación bloqueada o eliminada deja de
+              aparecer en las colecciones que la incluían.
+            </li>
+            <li>
+              Puedes eliminar tus colecciones en cualquier momento; esto no elimina las
+              publicaciones que contenían, solo la lista que las agrupaba.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          9. Indexado, búsqueda y asistente de documentos
         </h2>
         <div className="space-y-4">
           <p className="text-text-muted leading-relaxed">
@@ -283,13 +311,17 @@ export default function TerminosPage() {
             guardas cambios en la publicación o reemplazas el archivo.
           </p>
           <p className="text-text-muted leading-relaxed">
-            <span className="font-semibold text-text">Asistente de preguntas y respuestas.</span> Los
-            usuarios con sesión iniciada pueden formular preguntas sobre un documento PDF publicado.
-            Las respuestas las genera un modelo de inteligencia artificial a partir del contenido de
-            ese documento (título, resumen y fragmentos recuperados), no del conocimiento general del
-            modelo. Para generar cada respuesta, los fragmentos pertinentes y tu pregunta se envían a
-            un proveedor de modelos de inteligencia artificial con el único fin de producir la
-            respuesta.
+            <span className="font-semibold text-text">Asistente de preguntas y respuestas —
+            opcional.</span> El asistente de preguntas y respuestas es una función que el autor de la
+            obra activa o desactiva de forma independiente para cada publicación con PDF; está
+            desactivada de forma predeterminada en las publicaciones nuevas. El indexado automático
+            descrito arriba ocurre igualmente, esté o no activado el asistente, para que el autor
+            pueda habilitarlo en cualquier momento sin demora. Cuando está activado, los usuarios con
+            sesión iniciada pueden formular preguntas sobre ese documento; las respuestas las genera
+            un modelo de inteligencia artificial a partir del contenido de ese documento (título,
+            resumen y fragmentos recuperados), no del conocimiento general del modelo. Para generar
+            cada respuesta, los fragmentos pertinentes y tu pregunta se envían a un proveedor de
+            modelos de inteligencia artificial con el único fin de producir la respuesta.
           </p>
           <p className="text-text-muted leading-relaxed">
             <span className="font-semibold text-text">Uso limitado.</span> El contenido que publicas
@@ -308,17 +340,49 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          9. Privacidad y datos personales
+          10. Notificaciones por correo electrónico
+        </h2>
+        <div className="space-y-4">
+          <p className="text-text-muted leading-relaxed">
+            Vitrina puede enviarte comunicaciones a la dirección de correo electrónico con la que
+            te registraste. Distinguimos dos tipos:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
+            <li>
+              <span className="font-semibold text-text">Notificaciones transaccionales</span>{' '}
+              ligadas a tu actividad en la plataforma —por ejemplo, cuando recibes una solicitud de
+              mensaje o cuando una obra tuya es aceptada en la revista mensual.
+            </li>
+            <li>
+              <span className="font-semibold text-text">Comunicaciones de los administradores</span>{' '}
+              dirigidas a la comunidad de usuarios, que pueden enviarse a todos los usuarios, a un
+              subconjunto por ciudad o a usuarios seleccionados individualmente.
+            </li>
+          </ul>
+          <p className="text-text-muted leading-relaxed">
+            Puedes desactivar la recepción de ambos tipos de correo en cualquier momento desde
+            Ajustes de tu perfil (<span className="font-semibold text-text">/perfil/ajustes</span>
+            ); un mismo interruptor controla las dos categorías. Esta preferencia no afecta a los
+            correos estrictamente necesarios para el funcionamiento de tu cuenta (por ejemplo,
+            confirmación de registro o recuperación de acceso), que gestiona directamente nuestro
+            proveedor de autenticación y no puede desactivarse.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10 max-w-2xl">
+        <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
+          11. Privacidad y datos personales
         </h2>
         <div className="space-y-4">
           <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
             <li>
               Recopilamos los datos necesarios para operar el servicio: nombre, correo electrónico
-              y, opcionalmente, institución, carrera y enlaces de perfil.
+              y, opcionalmente, institución, carrera, ciudad y enlaces de perfil.
             </li>
             <li>
               Tu correo electrónico no se muestra públicamente a otros usuarios; se utiliza para
-              autenticación y comunicaciones del servicio.
+              autenticación y para las comunicaciones descritas en la cláusula 10.
             </li>
             <li>
               Cierta información de tu perfil (nombre, institución, carrera, publicaciones, enlaces
@@ -333,7 +397,7 @@ export default function TerminosPage() {
             <li>
               El contenido de tus documentos PDF se procesa de forma automatizada (extracción de
               texto y generación de &laquo;embeddings&raquo;) para habilitar la búsqueda por
-              contenido y el asistente de documentos, conforme a la cláusula 8. Este procesamiento no
+              contenido y el asistente de documentos, conforme a la cláusula 9. Este procesamiento no
               se utiliza para entrenar modelos de inteligencia artificial.
             </li>
             <li>
@@ -351,7 +415,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          10. Propiedad intelectual de la plataforma
+          12. Propiedad intelectual de la plataforma
         </h2>
         <p className="text-text-muted leading-relaxed">
           El software, el diseño, la marca &laquo;Vitrina&raquo;, los logotipos y los demás
@@ -363,14 +427,14 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          11. Terminación
+          13. Terminación
         </h2>
         <ul className="list-disc pl-5 space-y-1 text-text-muted leading-relaxed">
           <li>
             Puedes dejar de usar el servicio en cualquier momento. Para eliminar tu cuenta,
             comunícate con el equipo de soporte de la plataforma; al ejecutarse la baja se eliminan
             en cascada tus publicaciones, comentarios, &laquo;me gusta&raquo;, enlaces, relaciones
-            de seguimiento, conversaciones y mensajes, y postulaciones.
+            de seguimiento, conversaciones y mensajes, colecciones y postulaciones.
           </li>
           <li>
             Podemos suspender o cancelar tu cuenta, con o sin aviso previo, si incumples estos
@@ -381,7 +445,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          12. Exención de garantías
+          14. Exención de garantías
         </h2>
         <p className="text-text-muted leading-relaxed">
           El servicio se proporciona &laquo;tal cual&raquo; y &laquo;según disponibilidad&raquo;,
@@ -396,7 +460,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          13. Limitación de responsabilidad
+          15. Limitación de responsabilidad
         </h2>
         <p className="text-text-muted leading-relaxed">
           En la máxima medida permitida por la ley, Vitrina no será responsable por daños
@@ -408,7 +472,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          14. Modificaciones a los Términos
+          16. Modificaciones a los Términos
         </h2>
         <p className="text-text-muted leading-relaxed">
           Podemos actualizar estos Términos en cualquier momento. Cuando los cambios sean
@@ -420,7 +484,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          15. Ley aplicable
+          17. Ley aplicable
         </h2>
         <p className="text-text-muted leading-relaxed">
           Estos Términos se rigen por las leyes de los Estados Unidos Mexicanos. Cualquier
@@ -431,7 +495,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 max-w-2xl">
         <h2 className="text-[length:var(--size-heading-sm)] font-normal font-display text-text mb-4">
-          16. Contacto
+          18. Contacto
         </h2>
         <p className="text-text-muted leading-relaxed">
           Para preguntas sobre estos Términos, reportes o solicitudes relacionadas con tu cuenta,
