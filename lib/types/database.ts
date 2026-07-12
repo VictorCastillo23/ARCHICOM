@@ -392,3 +392,44 @@ export type CorreoAdminDetalle = CorreoAdmin & {
   /** null if the sending admin's account was later deleted (admin_id ON DELETE SET NULL). */
   admin: Pick<Usuario, 'id' | 'nombre'> | null
 }
+
+// Notificaciones DTOs (notificaciones-app)
+
+export type TipoNotificacion =
+  | 'comentario_nueva'
+  | 'comentario_respuesta'
+  | 'obra_aceptada_revista'
+  | 'nuevo_seguidor'
+  | 'solicitud_mensaje'
+  | 'obra_likeada'
+
+export type Notificacion = {
+  id: string
+  usuario_id: string
+  tipo: TipoNotificacion
+  /** The actor who triggered the notification (liker, commenter, follower...). */
+  usuario_relacionado_id: string | null
+  publicacion_relacionada_id: string | null
+  /** For `comentario_respuesta`, the parent (root) comment — the cascade anchor. Always null for `comentario_nueva` (see BD §3.22). */
+  comentario_relacionado_id: string | null
+  descripcion: string
+  enlace: string | null
+  /** Aggregation count for the 4 aggregating types (obra_likeada, comentario_nueva, comentario_respuesta, nuevo_seguidor); always 1 for the other 2. */
+  contador: number
+  leida: boolean
+  leida_en: string | null
+  creada_en: string
+}
+
+/**
+ * Shape returned by RPC `mis_preferencias_notif_app()` — these 5 columns have
+ * NO SELECT grant (private, unlike public profile fields); only readable via
+ * this self-scoped SECURITY DEFINER RPC. See BD §3.22.
+ */
+export type PreferenciasNotifApp = {
+  notif_app_comentarios: boolean
+  notif_app_seguidores: boolean
+  notif_app_revista: boolean
+  notif_app_mensajes: boolean
+  notif_app_likes: boolean
+}
