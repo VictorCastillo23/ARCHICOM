@@ -133,23 +133,23 @@ export default function NavClient({
   // Role-aware links for a signed-in user. Reused by the desktop bar and the mobile drawer.
   const userLinks: NavLink[] = session
     ? [
-        { href: '/revistas', label: 'Revistas' },
-        { href: '/mensajes', label: 'Mensajes' },
-        //{ href: '/notificaciones', label: 'Notificaciones' },
-        { href: '/perfil', label: 'Mi Perfil' },
-        { href: '/publicar', label: 'Publicar' },
-        ...(session.rol === 'administrador'
-          ? [{ href: '/admin', label: 'Admin' }]
-          : []),
-      ]
+      { href: '/revistas', label: 'Revistas' },
+      { href: '/mensajes', label: 'Mensajes' },
+      //{ href: '/notificaciones', label: 'Notificaciones' },
+      { href: '/perfil', label: 'Mi Perfil' },
+      { href: '/publicar', label: 'Publicar' },
+      ...(session.rol === 'administrador'
+        ? [{ href: '/admin', label: 'Admin' }]
+        : []),
+    ]
     : []
 
   const mobileLinks: NavLink[] = session
     ? userLinks
     : [
-        { href: '/login', label: 'Iniciar sesión' },
-        { href: '/signup', label: 'Crear cuenta' },
-      ]
+      { href: '/login', label: 'Iniciar sesión' },
+      { href: '/signup', label: 'Crear cuenta' },
+    ]
 
   return (
     <>
@@ -163,6 +163,24 @@ export default function NavClient({
         </div>
         {session === null ? (
           <>
+            <Link
+              href="/revistas"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Revistas
+            </Link>
+            <Link
+              href="/login"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Mensajes
+            </Link>
+            <Link
+              href="/login"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Publicar
+            </Link>
             <Link
               href="/login"
               className="text-text-muted hover:text-text transition-colors"
