@@ -8,6 +8,7 @@ import {
 } from '@/lib/supabase/handleError'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { getRevistaActiva } from '@/lib/data/revistas'
+import { getEstadoVentanaPostulacion } from '@/lib/utils/revistaCiclo'
 import type { EstadoSolicitud } from '@/lib/types/database'
 
 export async function GET(request: Request) {
@@ -52,6 +53,18 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: { code: 'no_active_revista', message: 'No hay una revista abierta este mes' } },
       { status: 404 }
+    )
+  }
+
+  if (!getEstadoVentanaPostulacion().abierta) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'ventana_cerrada',
+          message: 'Las postulaciones reabren el día 2 del próximo mes.',
+        },
+      },
+      { status: 400 }
     )
   }
 

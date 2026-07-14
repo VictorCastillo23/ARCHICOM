@@ -403,6 +403,8 @@ export type TipoNotificacion =
   | 'nuevo_seguidor'
   | 'solicitud_mensaje'
   | 'obra_likeada'
+  | 'obra_rechazada_revista'
+  | 'recordatorio_cierre_revista'
 
 export type Notificacion = {
   id: string

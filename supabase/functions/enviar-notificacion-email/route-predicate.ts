@@ -12,7 +12,11 @@ export type WebhookPayload = {
   old_record?: Record<string, unknown> | null
 }
 
-export type EmailTemplateTipo = 'nueva_solicitud_mensaje' | 'solicitud_revista_aceptada'
+export type EmailTemplateTipo =
+  | 'nueva_solicitud_mensaje'
+  | 'solicitud_revista_aceptada'
+  | 'solicitud_revista_rechazada'
+  | 'recordatorio_cierre_revista'
 
 export type RecipientResolution = {
   usuarioId: string
@@ -45,6 +49,31 @@ export function resolveRecipient(payload: WebhookPayload): RecipientResolution |
       const solicitanteId = asString(record.solicitante_id)
       if (!solicitanteId) return null
       return { usuarioId: solicitanteId, template: 'solicitud_revista_aceptada' }
+    }
+    // No `notif_app_revista` check here: this rail is driven by the UPDATE
+    // itself (fires for both human `rechazar_solicitud` and automatic
+    // `publicar_revista_mensual` discards), independent of the in-app
+    // preference — the only real gate for this email is
+    // `notif_email_habilitado`, evaluated downstream by
+    // `resolver_destinatario_notificacion()`, same as `aceptada` above.
+    if (estado === 'rechazada' && oldEstado !== 'rechazada') {
+      const solicitanteId = asString(record.solicitante_id)
+      if (!solicitanteId) return null
+      return { usuarioId: solicitanteId, template: 'solicitud_revista_rechazada' }
+    }
+    return null
+  }
+
+  // GOTCHA: this webhook fires for EVERY `notificacion` INSERT (likes,
+  // comments, aceptada, etc.) — only route the recordatorio tipo here, else
+  // `null`, to avoid double-sending emails already handled by the
+  // `solicitud_revista` UPDATE webhook above (or by no email at all for the
+  // other in-app-only tipos).
+  if (table === 'notificacion' && type === 'INSERT') {
+    if (record.tipo === 'recordatorio_cierre_revista') {
+      const usuarioId = asString(record.usuario_id)
+      if (!usuarioId) return null
+      return { usuarioId, template: 'recordatorio_cierre_revista' }
     }
     return null
   }

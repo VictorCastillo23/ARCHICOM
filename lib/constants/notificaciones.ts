@@ -13,6 +13,8 @@ export const TIPO_NOTIF_META: Record<TipoNotificacion, { label: string }> = {
   nuevo_seguidor: { label: 'Nuevo seguidor' },
   solicitud_mensaje: { label: 'Solicitud de mensaje' },
   obra_likeada: { label: 'Le gustó tu obra' },
+  obra_rechazada_revista: { label: 'Obra no aceptada en revista' },
+  recordatorio_cierre_revista: { label: 'Cierre de postulación próximo' },
 }
 
 /** Key order = filter-chip display order on `/notificaciones`. */
@@ -22,5 +24,7 @@ export const TIPOS_NOTIFICACION: TipoNotificacion[] = [
   'obra_likeada',
   'nuevo_seguidor',
   'obra_aceptada_revista',
+  'obra_rechazada_revista',
   'solicitud_mensaje',
+  'recordatorio_cierre_revista',
 ]

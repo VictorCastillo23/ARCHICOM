@@ -416,6 +416,8 @@ POST /api/solicitudes
 ```
 
 > El autor solo puede postular **su propia** publicación (lo exige la RLS). Si no hay revista abierta ese mes → **404** `{ code: "no_active_revista" }`. Restricción `UNIQUE (publicacion_id, revista_id)`: reenviar la misma obra a la misma edición devuelve `409`. Como cada mes es una revista distinta, la obra puede postularse de nuevo en ediciones futuras.
+>
+> **Ventana de postulación (guard de aplicación, no de RLS):** además del chequeo de revista activa, el servidor valida la ventana de postulación del mes vía `getEstadoVentanaPostulacion()` (`lib/utils/revistaCiclo.ts`, hora `America/Mexico_City`). Solo los días **2 al 25** (inclusive) del mes están abiertos; el día 1 y del 26 en adelante están cerrados uniformemente — el día 1 se excluye por completo (no solo hasta que corra el cron de rotación de las 13:00 MX), porque `public.revista` no tiene columna `creado_en` y no hay forma de detectar desde el esquema si la rotación del día 1 ya corrió. Fuera de la ventana → **400** `{ error: { code: "ventana_cerrada", message: "Las postulaciones reabren el día 2 del próximo mes." } }`, sin insertar la fila. Este guard es solo de la capa Next (aplicación); RLS **no** lo replica — un JWT válido puede seguir insertando directo vía PostgREST fuera de la ventana. Es un riesgo aceptado explícitamente (decisión de producto), no un bug; el endurecimiento vía RLS queda diferido a un cambio de esquema autorizado aparte. Las RPC `aceptar_solicitud`/`rechazar_solicitud` siguen funcionando sin cambios los días 26–31 (curación editorial de solicitudes ya creadas).
 
 ---
 
