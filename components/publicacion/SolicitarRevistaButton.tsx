@@ -12,6 +12,7 @@ interface Props {
   isAuthor: boolean
   revistaActiva: { id: string; titulo: string } | null
   solicitudExistente: { id: string; estado: EstadoSolicitud } | null
+  estadoVentana: { abierta: boolean; diasRestantes: number | null }
 }
 
 const estadoTone: Record<EstadoSolicitud, 'neutral' | 'success' | 'danger'> = {
@@ -26,6 +27,7 @@ export default function SolicitarRevistaButton({
   isAuthor,
   revistaActiva,
   solicitudExistente,
+  estadoVentana,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -72,6 +74,14 @@ export default function SolicitarRevistaButton({
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!estadoVentana.abierta) {
+    return (
+      <p className="text-xs text-text-muted">
+        Las postulaciones a la edición de este mes están cerradas. Reabren el día 2 del próximo mes.
+      </p>
+    )
   }
 
   return (

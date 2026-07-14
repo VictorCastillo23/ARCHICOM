@@ -142,6 +142,7 @@
 
   Componentes adicionales en la home (NO listados arriba):
   - **HeroBanner** (`components/feed/HeroBanner.tsx`) — banner de conversión; se renderiza **solo para anónimos** (`!isAuthenticated`), encima de todo.
+  - **VentanaRevistaBanner** (`components/feed/VentanaRevistaBanner.tsx`) — banner de postulación a revista, entre HeroBanner y TrendingSection. Ver §12.
   - **TrendingSection** — sección "Tendencias" encima del feed, solo sin filtros (`!area && !tipo`).
 
   Comportamiento:
@@ -235,6 +236,7 @@
   Comportamiento condicional:
   - Sin sesión: el toggle de LikeButton redirige a /login al hacer click (el corazón no queda "deshabilitado" visualmente); ComentarioForm oculto, SolicitarRevistaButton oculto; aparece aviso "Iniciá sesión para comentar" con link a /login. GuardarButton **NO** se deshabilita: al hacer click redirige a /login (punto de conversión, igual que SeguirButton).
   - Con sesión, pero NO es el autor: todo habilitado excepto SolicitarRevistaButton (solo el autor puede postular su obra)
+  - Con sesión, autor, revista activa, pero ventana de postulación cerrada (día 1, o día 26 en adelante, hora `America/Mexico_City`): SolicitarRevistaButton reemplaza el botón "Postular a {titulo}" por un texto explicativo ("Las postulaciones a la edición de este mes están cerradas. Reabren el día 2 del próximo mes.") — no se intenta el POST. Ver §12 (VentanaRevistaBanner) y `lib/utils/revistaCiclo.ts`.
   - Con sesión y ES el autor:
     - Si no hay solicitud previa para la edición activa → botón "Postular a la revista de este mes" (POST /api/solicitudes con el revista_id de la edición en borrador)
     - Si ya postuló → muestra el estado (pendiente / aceptada / rechazada) en lugar del botón; si fue rechazada en una edición anterior, puede volver a postular en la edición activa
@@ -356,7 +358,7 @@
   ├────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────┤  
   │ PerfilStats    │ Contadores (pubs, revistas, likes, seguidores)│ getPerfilStats + getConteos                      │  
   ├────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────┤  
-  │ SolicitudesHistorial │ "Mis postulaciones"                     │ getMisSolicitudes                                │  
+  │ SolicitudesHistorial │ "Mis postulaciones"                     │ getMisSolicitudes + estadoVentana (prop única)   │  
   ├────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────┤  
   │ FeedList       │ Lista de publicaciones propias                │ publicaciones del usuario autenticado            │  
   └────────────────┴───────────────────────────────────────────────┴──────────────────────────────────────────────────┘  
@@ -364,7 +366,13 @@
   Secciones:
   1. Cabecera con datos actuales (PerfilView — incluye LinksStrip de solo lectura) + link "Ajustes" → /perfil/ajustes
   2. Stats (PerfilStats)
-  3. "Mis postulaciones" — SolicitudesHistorial
+  3. "Mis postulaciones" — SolicitudesHistorial. Para cada solicitud `pendiente` de la edición en curso
+     (`revista.estado === 'borrador'`) muestra "N días restantes" cuando la ventana está abierta, o un
+     `Badge` "En curación editorial" cuando está cerrada (día 1, o día 26 en adelante) — nunca un número,
+     nunca "0 días restantes". Solicitudes no `pendiente` no muestran este texto. `estadoVentana` se
+     calcula **una sola vez** en `perfil/page.tsx` vía `getEstadoVentanaPostulacion()` y se pasa como
+     prop única — no se enhebra por `getMisSolicitudes`/`SolicitudConDetalle` (el estado de la ventana
+     es global y derivado del tiempo, no un dato por fila).
   4. "Mis publicaciones" — reutiliza FeedList
 
   Nota: los enlaces se **muestran** acá (LinksStrip, read-only) y se **editan** en /perfil/ajustes.
@@ -669,7 +677,8 @@
     └─ LikeButton           ← POST /api/likes (client component)
     └─ ComentarioList
     └─ ComentarioForm       ← POST /api/comentarios (client component)
-    └─ SolicitarRevistaButton ← POST /api/solicitudes (solo el autor; obra → edición activa)
+    └─ SolicitarRevistaButton ← POST /api/solicitudes (solo el autor; obra → edición activa; deshabilitado
+                                 con explainer inline cuando la ventana de postulación está cerrada)
 
   PerfilPage
     └─ PerfilView           ← read-only display (renderiza LinksStrip)
@@ -840,6 +849,16 @@
   ---
 
 ## 12. Trending, Áreas y CTAs
+
+### VentanaRevistaBanner (`components/feed/VentanaRevistaBanner.tsx`)
+
+- **Tipo:** Server Component (sin `'use client'`).
+- **Props:** `{ revista: { id: string; titulo: string }; diasRestantes: number }` (`diasRestantes` nunca `null` acá — solo se renderiza cuando la ventana está abierta).
+- **Ubicación en UI:** home (`app/(main)/page.tsx`), entre `HeroBanner` y `TrendingSection`.
+- **Condición de render:** solo cuando NO hay filtros activos (`!area && !tipo`) **Y** existe una revista activa (`getRevistaActiva()`) **Y** la ventana de postulación está abierta (`getEstadoVentanaPostulacion().abierta`, días 2–25 `America/Mexico_City`). Si falta cualquiera de las tres condiciones, no se renderiza nada (sin banner, sin error).
+- **Render:** `Badge` "Postulaciones abiertas" + texto con el título de la revista y "quedan N días" (o "queda 1 día"); CTA → `/publicar`.
+- **Estilo:** mismo patrón visual que `HeroBanner` (`rounded-lg bg-surface-muted border border-border`).
+- **No hay countdown ni recomputo en cliente:** el estado se calcula server-side por request; no hay hidratación ni `setInterval`.
 
 ### TrendingSection (`components/feed/TrendingSection.tsx`)
 

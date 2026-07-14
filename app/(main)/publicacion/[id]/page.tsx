@@ -7,6 +7,7 @@ import { getEstadoRag } from '@/lib/data/rag'
 import { esAdmin } from '@/lib/data/perfil'
 import { getRevistaActiva } from '@/lib/data/revistas'
 import { getSolicitudParaEdicion } from '@/lib/data/solicitudes'
+import { getEstadoVentanaPostulacion } from '@/lib/utils/revistaCiclo'
 import { createClient } from '@/lib/supabase/server'
 import TipoBadge from '@/components/ui/TipoBadge'
 import ErrorState from '@/components/ui/ErrorState'
@@ -289,6 +290,7 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             isAuthor={isAuthor}
             revistaActiva={revistaActiva ? { id: revistaActiva.id, titulo: revistaActiva.titulo } : null}
             solicitudExistente={solicitudExistente}
+            estadoVentana={getEstadoVentanaPostulacion()}
           />
           <EliminarPublicacionButton
             publicacionId={id}
