@@ -41,10 +41,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# local AI/tooling state
-.agents/
+# local AI/tooling state (CLI-managed skill cache, reproducible via skills-lock.json)
+.agents/*
+# ...except locally-authored project skills with no upstream source (not in skills-lock.json)
+!.agents/skills
+.agents/skills/*
+!.agents/skills/vitrina-component-design
 .atl/
 .mcp.json
 .vscode/
 auditorias/
 testsprite_tests/
+scripts/
+docs/prompts/

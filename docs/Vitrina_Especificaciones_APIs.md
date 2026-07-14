@@ -3,14 +3,12 @@
 
 | Campo | Detalle |
 |---|---|
-| Versión | 1.1 — Junio 2026 |
-| Fecha | 04/06/2026 |
 | Base de datos | Supabase (proyecto `archicom`, ref `fdfbyhjwnbteccagulxb`) |
 | Documentos relacionados | `Vitrina_BD_Conexion_Backend.md` (esquema + conexión), `Vitrina_Pantallas_Componentes.md` (pantallas/UI) |
 
 > Este documento es el **contrato de la API**: rutas, métodos, parámetros, cuerpos, respuestas, permisos y errores de cada endpoint. La API es la que Supabase (PostgREST) expone automáticamente a partir del esquema, más las funciones RPC y la API de Storage. La autorización la aplican las políticas RLS ya desplegadas.
 >
-> **Cambio v1.1 (revista semanal):** las revistas ya no se crean ni publican por la API (lo hace el job `pg_cron`, ver `Vitrina_BD_Conexion_Backend.md` §9). Las solicitudes se postulan siempre a la edición activa (la única en `borrador`). Las RPC de curación las puede llamar **cualquier administrador**. La tabla `revista` ya no tiene `editor_id`.
+> Las revistas se crean y publican únicamente vía el job `pg_cron` (ver `Vitrina_BD_Conexion_Backend.md` §9); no hay endpoint de API para eso. Las solicitudes se postulan siempre a la edición activa (la única en `borrador`). Las RPC de curación las puede llamar **cualquier administrador**. La tabla `revista` no tiene `editor_id`.
 
 ---
 
@@ -98,7 +96,7 @@ Todos responden con el envelope uniforme: éxito `{ "data": ... }`, error `{ "er
 | Usuario actual + perfil | `GET` | `/api/auth/me` | — |
 | Cambiar contraseña | `POST` | `/api/auth/change-password` | `{ "currentPassword", "newPassword" }` |
 
-> El refresco de sesión se hace de forma transparente en `proxy.ts` (patrón `updateSession` de `@supabase/ssr`), no por un endpoint. No hay endpoint de "recuperar contraseña" expuesto en esta capa todavía.
+> El refresco de sesión se hace de forma transparente en `proxy.ts` (patrón `updateSession` de `@supabase/ssr`), no por un endpoint. No hay endpoint de "recuperar contraseña" expuesto en esta capa.
 
 ### 3.1 `POST /api/auth/signup` — registro
 
@@ -253,10 +251,16 @@ Endpoints: [/api/publicaciones](app/api/publicaciones/route.ts) y `/api/publicac
 ```http
 POST /api/publicaciones
 { "titulo": "Mi investigación", "resumen": "Resumen...", "tipo": "investigacion",
-  "archivo_url": "https://.../archivo.pdf" }
+  "archivo_url": "https://.../archivo.pdf",
+  "archivo_thumbnail_url": "https://.../archivo-thumb.jpg",
+  "chat_habilitado": false }
 ```
 
 > **`autor_id` siempre sale de la sesión** (`auth.getUser()`), nunca del body. La capa Next lo ignora si viene en el payload.
+
+> **`archivo_thumbnail_url` (string, opcional)** — URL pública (Storage) de una miniatura JPEG generada **client-side** (`pdfjs-dist`, página 1 del PDF) antes del submit. Solo aplica cuando `archivo_url` es un PDF; se omite para imágenes (JPG/PNG, donde `archivo_url` ya es la miniatura) y para publicaciones sin archivo. Sin validación de formato en el servidor (mismo trato que `archivo_url`: se confía en la respuesta de `POST /api/storage/upload`, no es input arbitrario del cliente). En `PATCH /api/publicaciones/{id}` se acepta el mismo campo (string o `null` para limpiarlo) — el formulario de edición lo envía explícitamente a `null` cuando el archivo se reemplaza por uno sin miniatura (imagen, o PDF cuyo render client-side falló), para no dejar una miniatura obsoleta.
+
+> **`chat_habilitado` (boolean, opcional, default `false`)** — controla si el chat RAG está disponible para esta publicación. Independiente del indexado: los embeddings de un PDF se generan siempre (incondicional), este flag solo decide si `POST /api/publicaciones/{id}/chat` acepta preguntas. En `PATCH /api/publicaciones/{id}` se acepta el mismo campo; el formulario de edición lo envía siempre de forma explícita (nunca omitido) para poder apagarlo, no solo encenderlo. Valor no booleano → `400 validation_error` (`"chat_habilitado debe ser boolean"`).
 
 **Recomendar una obra de terceros** (`tipo: "recomendacion"`)
 
@@ -270,7 +274,7 @@ POST /api/publicaciones
 
 Validación de la capa Next (`400 validation_error` si falla):
 
-- `tipo` debe pertenecer al enum; un `tipo` inválido devuelve **400** (antes era 500).
+- `tipo` debe pertenecer al enum; un `tipo` inválido devuelve **400**.
 - Para `recomendacion`: `obra_autor_externo` es **requerido** (no vacío) y `url_externa` debe ser una **URL http(s) válida**.
 - Para cualquier **otro** tipo: `url_externa` es **opcional**, pero si se envía debe ser una **URL http(s) válida**; y se requiere **al menos uno** de `archivo_url` o `url_externa` (si faltan ambos → 400 `Agrega un archivo o un enlace`).
 - `obra_autor_externo` solo se persiste para `recomendacion`. `url_externa` se persiste para cualquier tipo cuando se envía.
@@ -301,7 +305,7 @@ Respuesta (cada elemento):
 
 ```json
 { "id": "uuid", "autor_id": "uuid", "autor_nombre": "María García",
-  "titulo": "...", "resumen": "...", "archivo_url": "...", "tipo": "investigacion",
+  "titulo": "...", "resumen": "...", "archivo_url": "...", "archivo_thumbnail_url": null, "tipo": "investigacion",
   "creado_en": "2026-06-03T...", "likes": 2, "comentarios": 2 }
 ```
 
@@ -412,6 +416,8 @@ POST /api/solicitudes
 ```
 
 > El autor solo puede postular **su propia** publicación (lo exige la RLS). Si no hay revista abierta ese mes → **404** `{ code: "no_active_revista" }`. Restricción `UNIQUE (publicacion_id, revista_id)`: reenviar la misma obra a la misma edición devuelve `409`. Como cada mes es una revista distinta, la obra puede postularse de nuevo en ediciones futuras.
+>
+> **Ventana de postulación (guard de aplicación, no de RLS):** además del chequeo de revista activa, el servidor valida la ventana de postulación del mes vía `getEstadoVentanaPostulacion()` (`lib/utils/revistaCiclo.ts`, hora `America/Mexico_City`). Solo los días **2 al 25** (inclusive) del mes están abiertos; el día 1 y del 26 en adelante están cerrados uniformemente — el día 1 se excluye por completo (no solo hasta que corra el cron de rotación de las 13:00 MX), porque `public.revista` no tiene columna `creado_en` y no hay forma de detectar desde el esquema si la rotación del día 1 ya corrió. Fuera de la ventana → **400** `{ error: { code: "ventana_cerrada", message: "Las postulaciones reabren el día 2 del próximo mes." } }`, sin insertar la fila. Este guard es solo de la capa Next (aplicación); RLS **no** lo replica — un JWT válido puede seguir insertando directo vía PostgREST fuera de la ventana. Es un riesgo aceptado explícitamente (decisión de producto), no un bug; el endurecimiento vía RLS queda diferido a un cambio de esquema autorizado aparte. Las RPC `aceptar_solicitud`/`rechazar_solicitud` siguen funcionando sin cambios los días 26–31 (curación editorial de solicitudes ya creadas).
 
 ---
 
@@ -543,6 +549,7 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 1. Subir el archivo a `{user_id}/{uuid}-{nombre}`.
 2. Obtener su URL pública.
 3. Guardar esa URL en `publicacion.archivo_url`.
+4. **Si el archivo es un PDF:** generar client-side una miniatura JPEG de su página 1 (`pdfjs-dist`, ver `lib/pdf/generateThumbnail.ts`), subirla igual que el archivo principal (mismo endpoint, segunda llamada) y guardar su URL en `publicacion.archivo_thumbnail_url`. Falla de generación/subida → no bloquea el paso 3, la publicación queda sin miniatura (fallback: ícono genérico en el feed).
 
 > Validar en cliente y servidor: solo PDF e imágenes (JPG, PNG), máximo 10 MB. El nombre de carpeta debe ser el `id` del usuario para cumplir la política de Storage.
 
@@ -585,7 +592,7 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 | Entidad | Campos |
 |---|---|
 | `usuario` | `id` uuid · `nombre` text · `email` text · `institucion` text? · `carrera` text? · `rol` `usuario\|administrador` · `creado_en` timestamptz |
-| `publicacion` | `id` uuid · `autor_id` uuid · `titulo` text · `resumen` text? · `archivo_url` text? · `tipo` `libro\|articulo\|investigacion\|ensayo\|cuento\|poema\|resena\|tesis\|ponencia\|proyecto\|dibujo\|ilustracion\|pintura\|diseno_grafico\|diseno_modas\|fotografia\|infografia\|recomendacion\|otro` · `obra_autor_externo` text? (solo `recomendacion`) · `url_externa` text? (recomendación: requerido; otros tipos: opcional) · `bloqueada` boolean (default false) · `creado_en` timestamptz |
+| `publicacion` | `id` uuid · `autor_id` uuid · `titulo` text · `resumen` text? · `archivo_url` text? · `archivo_thumbnail_url` text? (miniatura JPEG de PDF, client-side; null para imágenes o PDFs sin re-guardar) · `tipo` `libro\|articulo\|investigacion\|ensayo\|cuento\|poema\|resena\|tesis\|ponencia\|proyecto\|dibujo\|ilustracion\|pintura\|diseno_grafico\|diseno_modas\|fotografia\|infografia\|recomendacion\|otro` · `obra_autor_externo` text? (solo `recomendacion`) · `url_externa` text? (recomendación: requerido; otros tipos: opcional) · `bloqueada` boolean (default false) · `creado_en` timestamptz |
 | `comentario` | `id` uuid · `publicacion_id` uuid · `autor_id` uuid · `contenido` text · `creado_en` timestamptz · `responde_a` uuid? (FK self → `comentario.id`, null = raíz) |
 | `ComentarioConUsuario` (DTO join) | `Comentario` + `usuario: { id, nombre } \| null` |
 | `ComentarioArbol` (DTO árbol) | `ComentarioConUsuario` + `respuestas: ComentarioConUsuario[]` (respuestas directas, siempre presente, puede estar vacío) |
@@ -595,8 +602,8 @@ Lectura pública; escritura restringida a la carpeta `{user_id}/...` de cada usu
 | `revista` | `id` uuid · `titulo` text · `volumen` int · `estado` `borrador\|publicada` · `publicada_en` timestamptz? |
 | `revista_articulo` | `revista_id` uuid · `publicacion_id` uuid · `orden` int |
 | `solicitud_revista` | `id` uuid · `publicacion_id` uuid · `revista_id` uuid · `solicitante_id` uuid · `revisor_id` uuid? · `estado` `pendiente\|aceptada\|rechazada\|retirada` · `mensaje` text? · `respuesta` text? · `solicitado_en` timestamptz · `resuelto_en` timestamptz? |
-| `feed_publicaciones` (vista) | `id` · `autor_id` · `autor_nombre` · `titulo` · `resumen` · `archivo_url` · `tipo` · `creado_en` · `likes` int · `comentarios` int |
-| `PublicacionCardData` (DTO) | `id` · `titulo` · `resumen` · `tipo` · `nombre_autor` · `autor_id`? · `creado_en`? |
+| `feed_publicaciones` (vista) | `id` · `autor_id` · `autor_nombre` · `titulo` · `resumen` · `archivo_url` · `archivo_thumbnail_url` · `tipo` · `creado_en` · `likes` int · `comentarios` int |
+| `PublicacionCardData` (DTO) | `id` · `titulo` · `resumen` · `tipo` · `nombre_autor` · `autor_id`? · `creado_en`? · `archivo_url`? · `archivo_thumbnail_url`? |
 | `UsuarioCardData` (DTO) | `id` · `nombre` · `institucion`? · `carrera`? — never includes `rol`, `email`, `avatar_url` |
 | `seguidor` | `seguidor_id` uuid · `seguido_id` uuid · `creado_en` timestamptz |
 | `perfil_contadores` (vista) | `usuario_id` uuid · `n_seguidores` int · `n_seguidos` int · `n_publicaciones` int |
@@ -866,7 +873,7 @@ Elimina un enlace. Solo el propietario puede borrarlo (RLS).
 
 ---
 
-## 11. API de Seguidores (Feature 3)
+## 11. API de Seguidores
 
 ### POST /api/seguidores — Seguir a un usuario
 
@@ -1014,7 +1021,7 @@ Marcadores **privados** del usuario (contraste con `like`, que es público). `us
 
 ---
 
-## 12. DTOs adicionales (Feature 3)
+## 12. DTOs adicionales
 
 Añadidos a `lib/types/database.ts`:
 
@@ -1030,7 +1037,7 @@ Añadidos a `lib/types/database.ts`:
 
 ---
 
-## 13. Endpoints aditivos — tendencias-areas-ctas (Junio 2026)
+## 13. Trending, contador de vistas y CTAs
 
 ### 13.1 Trending (`feed_trending`)
 
@@ -1301,7 +1308,7 @@ El caller redirige a `/mensajes/nuevo?u=<receptor_id>` cuando `resultado === 'mu
 | RPC P0001 (otros) | 400 | mensaje original de la RPC |
 | Error interno | 500 | `internal_error` |
 
-> Los dos casos nuevos (cooldown y rate limit) son guards añadidos dentro de `enviar_solicitud_mensaje` (migraciones `solicitud_mensaje_anti_spam` y `solicitud_mensaje_cooldown_2_dias`, 2026-06-28). El `handleError` los mapea a 400 preservando el `message` exacto de la RPC, igual que el resto de P0001 — ver `Vitrina_BD_Conexion_Backend.md` §3.14.
+> Ver `Vitrina_BD_Conexion_Backend.md` §3.14 para el detalle de los guards de cooldown y rate limit.
 
 ---
 
@@ -1437,7 +1444,7 @@ Si el PDF ya estaba indexado con el mismo hash: `{ "data": { "chunks": 12, "rein
 
 **Autenticación:** sesión válida. Sin sesión → 401.
 
-**Rate limit:** 15 preguntas por hora **por cuenta** (account-wide, sin importar la publicación). Se cuenta con el RPC `SECURITY DEFINER` `consumir_cuota_rag()` sobre la tabla `rag_rate_limit` (una fila por usuario, ventana fija de 1h; RLS impide que el usuario resetee su contador). Al pasarse → **429** `rate_limited`. Se consume una unidad por pregunta válida sobre una publicación existente (no se consume en 401/400/404).
+**Rate limit:** 15 preguntas por hora **por cuenta** (account-wide, sin importar la publicación). Se cuenta con el RPC `SECURITY DEFINER` `consumir_cuota_rag()` sobre la tabla `rag_rate_limit` (una fila por usuario, ventana fija de 1h; RLS impide que el usuario resetee su contador). Al pasarse → **429** `rate_limited`. Se consume una unidad por pregunta válida sobre una publicación existente **con el chat habilitado** (no se consume en 401/400/403/404) — el chequeo de `chat_habilitado` corre antes que `consumir_cuota_rag()`, así que una publicación con el chat apagado nunca gasta cuota.
 
 **Parámetros de ruta:** `id` — UUID de la publicación.
 
@@ -1467,6 +1474,7 @@ Si el PDF ya estaba indexado con el mismo hash: `{ "data": { "chunks": 12, "rein
 | `historial` no es array, o algún item no es `{ rol, contenido }` válido | 400 | `validation_error` |
 | Body no es JSON válido | 400 | `validation_error` |
 | Publicación no encontrada | 404 | `not_found` |
+| `chat_habilitado = false` para esta publicación | 403 | `forbidden` |
 | Límite de 15 preguntas/hora alcanzado | 429 | `rate_limited` |
 | Error interno (embeddings, RPC, o el proveedor de IA) | 500 | `internal_error` |
 
@@ -1541,7 +1549,7 @@ Listas curadas de publicaciones, propias o ajenas, con visibilidad `publica`/`pr
 { "data": [ { "id": "...", "usuario_id": "...", "titulo": "...", "descripcion": null, "visibilidad": "privada", "creado_en": "...", "agregada": true } ] }
 ```
 
-Ordenadas por `creado_en desc`. Con `publicacion_id`, hace una segunda consulta a `coleccion_publicacion` (`eq('publicacion_id', ...)`, `in('coleccion_id', <ids del usuario>)`) y arma un `Set` de coincidencias — no un join anidado. Usado por `AgregarAColeccionButton` (`components/publicacion/AgregarAColeccionButton.tsx`) para precargar qué colecciones ya tienen la publicación **al abrir el modal**; antes de esto, cada apertura reseteaba el estado a "ninguna agregada" sin importar el estado real (bug corregido 2026-07-09).
+Ordenadas por `creado_en desc`. Con `publicacion_id`, hace una segunda consulta a `coleccion_publicacion` (`eq('publicacion_id', ...)`, `in('coleccion_id', <ids del usuario>)`) y arma un `Set` de coincidencias — no un join anidado. Usado por `AgregarAColeccionButton` (`components/publicacion/AgregarAColeccionButton.tsx`) para precargar qué colecciones ya tienen la publicación **al abrir el modal**.
 
 ---
 
@@ -1647,8 +1655,159 @@ Añadidos a `lib/types/database.ts` (extensión aditiva):
 | `ColeccionPublicacion` | `coleccion_id` string · `publicacion_id` string · `orden` number · `agregado_en` string · `publicacion?` `Pick<Publicacion,'id'\|'titulo'\|'resumen'\|'tipo'> & { usuario?: Pick<Usuario,'id'\|'nombre'> }` |
 | `ColeccionDetalle` | `Coleccion & { coleccion_publicacion?: ColeccionPublicacion[] }` |
 | `ColeccionConMembership` | `Coleccion & { agregada: boolean }` — respuesta de `GET /api/colecciones?publicacion_id=` (§19) |
-| `ColeccionCardData` | `id` string · `titulo` string · `visibilidad` VisibilidadColeccion · `total_publicaciones` number — **declarado, sin consumidor actual** (`ColeccionCard` usa `Coleccion` directo); dejar o limpiar en la próxima pasada |
+| `ColeccionCardData` | `id` string · `titulo` string · `visibilidad` VisibilidadColeccion · `total_publicaciones` number — declarado, sin consumidor actual (`ColeccionCard` usa `Coleccion` directo) |
 
 ---
 
-*Vitrina · Especificaciones de la API v1.2 · Junio 2026*
+## 21. Endpoints de Correos Admin — envío masivo (`/api/admin/correos`)
+
+Endpoints de notificaciones por correo (Resend) — consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 (tabla `correo_admin`, RPC `resolver_destinatarios_correo`, Edge Function `enviar-correo-masivo`). Ninguno de estos 3 endpoints toca esquema.
+
+### GET /api/admin/correos — Historial de envíos (solo admin)
+
+**Autenticación:** sesión válida + `es_admin()` (`requireAdmin()`). Sin sesión → 401; no admin → 403.
+
+**Query params:** `limit` (default 10, máx 50) · `offset` (default 0) — mismo clamp que `GET /api/publicaciones`.
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "correos": [ <CorreoAdminDetalle>, ... ], "hasMore": false } }
+```
+`hasMore` es `correos.length === limit` (mismo patrón que `/area/[slug]`), no un `count(*)` separado.
+
+### POST /api/admin/correos — Enviar un correo masivo (solo admin)
+
+**Autenticación:** sesión válida + `es_admin()`. Sin sesión → 401; no admin → 403.
+
+**Body:**
+```json
+{ "asunto": "string, 1-200 chars", "cuerpo": "string, 10-5000 chars",
+  "destinatarios_criterio": { "tipo": "todos" } }
+```
+`destinatarios_criterio` es `{tipo:'todos'}` \| `{tipo:'ciudad', valor}` \| `{tipo:'ids', valor: string[]}` \| `{tipo:'sin_publicacion'}` (tipo `DestinatariosCriterio`, ver BD §3.21). La UI de `/admin/correos` expone `todos`, `ids` y `sin_publicacion` — **no** `ciudad` (sigue siendo válido a nivel de contrato/RPC pero sin selector en el form; no existe una lista de municipios en el proyecto, decisión explícita).
+
+`sin_publicacion` ("Usuarios sin publicaciones") es **resuelto por el Route Handler antes de tocar la RPC/Edge Function**, no por ellas: `resolverIdsSinPublicacion` (`lib/data/correos.ts`) consulta `usuario.id` y `publicacion.autor_id` (ambas columnas públicas vía RLS, sin RPC ni `service_role`) y arma la lista de ids que nunca publicaron; esa lista se convierte en un `{tipo:'ids', valor}` **solo para la llamada a `resolver_destinatarios_correo`/`enviar-correo-masivo`** — el opt-out `notif_email_habilitado` lo sigue aplicando la RPC sobre esos ids, igual que con cualquier `ids` armado a mano. `correo_admin.destinatarios_criterio` guarda el criterio **original** (`sin_publicacion`), no el resuelto, para que el historial refleje la intención real del envío. Si la lista resuelta queda vacía (todos publicaron algo), el Route Handler no invoca la Edge Function — la validación de payload de `enviar-correo-masivo` rechaza un `ids` vacío — y cierra la fila directo como `estado:'completado'` con los 3 contadores en 0 (mismo criterio de "no es error" que ya usa la Edge Function para destinatarios resueltos en cero).
+
+**Flujo (síncrono, sin job async ni `tracking_id`):** valida el body (`lib/validation/correoAdmin.ts`, misma forma que `validate-payload.ts` de la Edge Function) → **inserta** en `correo_admin` (`admin_id` de sesión, `estado:'pendiente'`, criterio **original**) → resuelve `sin_publicacion` si aplica → `functions.invoke('enviar-correo-masivo', {...})` con el criterio **resuelto** (JWT del admin reenviado implícito) → la Edge Function resuelve destinatarios ELLA MISMA vía `resolver_destinatarios_correo` (aplica el opt-out `notif_email_habilitado`, cap `LIMITE_DESTINATARIOS = 500`) y envía por Resend en lotes de 50 → el Route Handler **actualiza** la fila con `cantidad_destinatarios/cantidad_enviados/cantidad_fallidos` y `estado` final (`'completado'`, o `'fallido'` si todos los envíos fallaron).
+
+**Respuesta 201 Created:**
+```json
+{ "data": { "correo": <CorreoAdminDetalle>, "detalles": [ { "email": "...", "error": "opcional" } ] } }
+```
+
+**Errores:**
+
+| Condición | Status | `code` / `message` |
+|---|---|---|
+| Sin sesión | 401 | `unauthorized` |
+| No admin | 403 | `forbidden` |
+| `asunto`/`cuerpo`/`destinatarios_criterio` inválidos | 400 | `validation_error` |
+| Falla el `insert` en `correo_admin` | según `handleError` | — |
+| Falla la invocación de la Edge Function (red) | 500 | `internal_error` — la fila queda en `estado:'fallido'` |
+
+### GET /api/admin/correos/[id] — Detalle de un envío (solo admin)
+
+**Autenticación:** igual que arriba. **Parámetros de ruta:** `id` — UUID de `correo_admin`.
+
+**Respuesta 200 OK:** `{ "data": { "correo": <CorreoAdminDetalle> } }` · No encontrado → 404 `not_found`.
+
+> No lo usa la UI del historial (la lista ya trae todas las columnas necesarias y expande la fila in-place sin segundo fetch) — queda disponible para uso directo de la API o un futuro deep-link.
+
+### POST /api/admin/correos/contar — Preview del conteo y la lista de destinatarios (solo admin)
+
+**Autenticación:** igual que arriba.
+
+**Body:** `{ "destinatarios_criterio": <DestinatariosCriterio> }` — incluye `{tipo:'sin_publicacion'}` (ver DTO abajo).
+
+**Flujo:** llama a `resolver_destinatarios_correo` (misma RPC que la Edge Function) y devuelve las filas resueltas — **no envía nada ni escribe en `correo_admin`**. Respalda el botón "Ver vista previa" del form, incluida la lista desplegable de destinatarios de `AdminCorreoPreview`.
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "cantidad": 42, "destinatarios": [ { "id": "...", "email": "...", "nombre": "..." } ] } }
+```
+`destinatarios` es `DestinatarioResuelto[]` (mismo shape que retorna `resolver_destinatarios_correo`: `id/email/nombre`) — el admin ya ve estos mismos pares email/nombre en `detalles` tras un envío completado (arriba, `POST /api/admin/correos`), así que mostrarlos acá no es una exposición nueva.
+
+---
+
+## 22. Endpoints de Notificaciones In-App (`/api/notificaciones`, `/api/usuario/preferencias-notificaciones`)
+
+Consumen el esquema/RLS/triggers ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.23 (tabla `notificacion`, RPC `mis_preferencias_notif_app`, 5 columnas `notif_app_*` en `usuario`). Ninguno de estos 6 endpoints toca esquema. Todos requieren **sesión válida** (`supabase.auth.getUser()`); sin sesión → 401 `unauthorized` en los 6.
+
+### GET /api/notificaciones — Lista paginada
+
+**Query params:** `filtro=no-leidas` (opcional; cualquier otro valor u omitido → todas las filas visibles por RLS) · `limit` (default 20, **máx 50**, clamp igual que `/area/[slug]`) · `offset` (default 0).
+
+**Datos:** `getNotificaciones({filtro, limit, offset})` (`lib/data/notificaciones.ts`) — RLS (`notif_select`) ya restringe a `auth.uid()`, no hace falta filtrar por `usuario_id` en el query. El `select` embebe el actor vía la FK `usuario_relacionado_id` (`usuario_relacionado:usuario!notificacion_usuario_relacionado_id_fkey(id, nombre)` — desambiguado porque `notificacion` tiene dos FKs a `usuario`), `null` para `obra_aceptada_revista` (sin actor).
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "items": [ <NotificacionConActor>, ... ], "total": 12 } }
+```
+`total` viene de `{count:'exact'}` sobre el mismo query paginado (no un segundo round-trip). No soporta `tipo` como query param — ese filtro solo lo aplica la lectura SSR de `/notificaciones` (`lib/data/notificaciones.ts`, no este Route Handler).
+
+### GET /api/notificaciones/sin-leer/count — Total no leídas
+
+Endpoint liviano para el badge de la campanita; el nav (`NavClient.tsx`) lo vuelve a pedir en cada evento Realtime del canal `nav:notificaciones:${sessionId}` (§3.23).
+
+**Datos:** `getTotalNoLeidas()` — `count:'exact', head:true` filtrado `leida=false` (no trae filas, solo el conteo).
+
+**Respuesta 200 OK:**
+```json
+{ "data": { "total": 3 } }
+```
+La clave es **`total`, no `count`** — mismo nombre que la paginación de arriba, por consistencia de contrato dentro de este recurso.
+
+### POST /api/notificaciones/[id]/leer — Marcar una notificación como leída
+
+**Parámetros de ruta:** `id` — UUID de `notificacion`. Ausente/vacío → 400 `validation_error`.
+
+**Flujo:** `.from('notificacion').update({leida:true, leida_en: now}).eq('id', id).eq('usuario_id', user.id).select('id, leida, leida_en').maybeSingle()`. Solo `leida`/`leida_en` son columnas con `GRANT UPDATE` para `authenticated` (§3.23) — es la única mutación de columna que el cliente puede hacer sobre esta tabla. El `.eq('usuario_id', user.id)` es una comodidad para distinguir "no existe" de "no es tuya" en la respuesta (ambas devuelven 404 igual, sin filtrar cuál fue); la RLS (`notif_update`) es el candado real.
+
+**Respuesta 200 OK:** `{ "data": { "id": "...", "leida": true, "leida_en": "2026-07-12T..." } }`
+
+**Errores:** no encontrada / no es tuya → 404 `not_found`.
+
+### POST /api/notificaciones/marcar-todas-leidas — Marcar todas como leídas
+
+Sin body ni parámetros. `.from('notificacion').update({leida:true, leida_en: now}).eq('usuario_id', user.id).eq('leida', false).select('id')` — el `.eq('usuario_id', ...)` es un filtro de performance (menos filas a evaluar), no el candado de seguridad; la RLS (`notif_update`) ya scopea la escritura a `auth.uid()` sin importar el filtro explícito.
+
+**Respuesta 200 OK:** `{ "data": { "updated": 5 } }` — `updated` es la cantidad de filas afectadas (`data?.length ?? 0` del `.select('id')` encadenado). `0` si no había ninguna no leída — no es error.
+
+### DELETE /api/notificaciones/[id] — Borrar una notificación
+
+**Parámetros de ruta:** `id` — UUID de `notificacion`. Ausente/vacío → 400 `validation_error`.
+
+**Flujo:** `.from('notificacion').delete().eq('id', id).eq('usuario_id', user.id).select('id').maybeSingle()` — misma lógica de "no encontrada vs. no es tuya → 404 sin distinguir" que el endpoint de leer; la RLS (`notif_delete`) es el candado real.
+
+**Respuesta 200 OK:** `{ "data": null }` · No encontrada / no es tuya → 404 `not_found`.
+
+### PATCH /api/usuario/preferencias-notificaciones — Actualizar preferencias `notif_app_*`
+
+**Body:** 1 o más de las 5 claves booleanas (todas opcionales individualmente, pero se exige **al menos una**):
+```json
+{ "notif_app_comentarios": true, "notif_app_seguidores": false,
+  "notif_app_revista": true, "notif_app_mensajes": true, "notif_app_likes": true }
+```
+
+**Validación:** cada clave presente debe ser `boolean` (si no → 400 `validation_error` con el nombre de la clave en el mensaje); body sin ninguna de las 5 claves → 400 `validation_error`. Claves desconocidas se ignoran silenciosamente (no whitelisted explícitamente contra un error, solo no se copian al objeto `updates`).
+
+**Flujo:** `.from('usuario').update(updates).eq('id', user.id)` — **deliberadamente sin `.select()` encadenado**: las 5 columnas no tienen `GRANT SELECT` para ningún rol (§3.23), así que un `.select()` tras el `UPDATE` fallaría con `permission denied for column` aunque la escritura misma haya funcionado (el `UPDATE` sí tiene `GRANT UPDATE` de columna). La respuesta en su lugar hace eco del `updates` ya validado, no de una lectura post-escritura.
+
+**Respuesta 200 OK:** `{ "data": { "notif_app_comentarios": true, "notif_app_seguidores": false, ... } }` — solo las claves que vinieron en el body (no las 5 siempre).
+
+**Errores:** `usuario` inválido/no boolean → 400 `validation_error`.
+
+### DTOs de Notificaciones
+
+Añadidos a `lib/types/database.ts` (extensión aditiva):
+
+| DTO | Campos |
+|---|---|
+| `TipoNotificacion` (tipo) | `'comentario_nueva' \| 'comentario_respuesta' \| 'obra_aceptada_revista' \| 'nuevo_seguidor' \| 'solicitud_mensaje' \| 'obra_likeada'` |
+| `Notificacion` | `id` string · `usuario_id` string · `tipo` TipoNotificacion · `usuario_relacionado_id` string\|null (actor) · `publicacion_relacionada_id` string\|null · `comentario_relacionado_id` string\|null (ancla de agregación, ver BD §3.23) · `descripcion` string · `enlace` string\|null · `contador` number · `leida` boolean · `leida_en` string\|null · `creada_en` string |
+| `NotificacionConActor` | `Notificacion & { usuario_relacionado: Pick<Usuario,'id'\|'nombre'> \| null }` — shape real devuelto por `GET /api/notificaciones` (embed de actor) |
+| `PreferenciasNotifApp` | `notif_app_comentarios` boolean · `notif_app_seguidores` boolean · `notif_app_revista` boolean · `notif_app_mensajes` boolean · `notif_app_likes` boolean — shape de `mis_preferencias_notif_app()` y del body/respuesta de `PATCH /api/usuario/preferencias-notificaciones` |
+
+---
+
+*Vitrina · Especificaciones de la API*

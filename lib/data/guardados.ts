@@ -36,7 +36,7 @@ export async function getMisGuardados(
   const { data, error } = await supabase
     .from('guardado')
     .select(
-      'creado_en, publicacion:publicacion!guardado_publicacion_id_fkey(id, titulo, resumen, tipo, autor_id, creado_en, usuario(id, nombre))'
+      'creado_en, publicacion:publicacion!guardado_publicacion_id_fkey(id, titulo, resumen, tipo, autor_id, creado_en, archivo_url, archivo_thumbnail_url, usuario(id, nombre))'
     )
     .eq('usuario_id', usuarioId)
     .order('creado_en', { ascending: false })
@@ -48,7 +48,12 @@ export async function getMisGuardados(
       | (Pick<
           PublicacionCardData,
           'id' | 'titulo' | 'resumen' | 'autor_id' | 'creado_en'
-        > & { tipo: TipoPublicacion; usuario?: Pick<Usuario, 'id' | 'nombre'> | null })
+        > & {
+          tipo: TipoPublicacion
+          archivo_url: string | null
+          archivo_thumbnail_url: string | null
+          usuario?: Pick<Usuario, 'id' | 'nombre'> | null
+        })
       | null
   }
 
@@ -64,6 +69,8 @@ export async function getMisGuardados(
         nombre_autor: p.usuario?.nombre ?? 'Autor desconocido',
         autor_id: p.autor_id,
         creado_en: p.creado_en,
+        archivo_url: p.archivo_url ?? undefined,
+        archivo_thumbnail_url: p.archivo_thumbnail_url,
       }
     })
     .filter((c): c is PublicacionCardData => c !== null)

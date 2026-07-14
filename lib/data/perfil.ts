@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { PerfilPublico, Usuario } from '@/lib/types/database'
+import type { PerfilPublico, PreferenciasNotifApp, Usuario } from '@/lib/types/database'
 
 export async function getPerfil(
   id: string
@@ -53,6 +53,25 @@ export async function getPreferenciasNotificacion(): Promise<{
   const { data, error } = await supabase.rpc('mi_notif_email_habilitado')
 
   return { data, error }
+}
+
+/**
+ * Own user's in-app notification preferences (5 `notif_app_*` booleans). Same
+ * privacy shape as `getPreferenciasNotificacion` above: these columns have NO
+ * SELECT grant at all (not even column-scoped) — `usuario`'s SELECT policy is
+ * row-public, so any grant would leak them across users. The only read path
+ * is the self-scoped SECURITY DEFINER RPC `mis_preferencias_notif_app()`,
+ * which derives the row from `auth.uid()` internally. See BD §3.23.
+ */
+export async function getPreferenciasNotifApp(): Promise<{
+  data: PreferenciasNotifApp | null
+  error: unknown
+}> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc('mis_preferencias_notif_app').single()
+
+  return { data: data as PreferenciasNotifApp | null, error }
 }
 
 /**

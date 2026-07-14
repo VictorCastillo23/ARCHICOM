@@ -3,14 +3,12 @@
 
 | Campo | Detalle |
 |---|---|
-| Versión | 1.1 — Junio 2026 |
-| Fecha | 04/06/2026 |
-| Estado | Base de datos creada y poblada con datos de prueba · **ciclo de revista mensual aplicado** (RPC, `es_admin()`, índice `una_revista_borrador` y job `pg_cron` `revista-mensual` verificados en vivo). El ciclo pasó de semanal a **mensual** el 2026-06-24 (día 1 de cada mes, 13:00 UTC-6) |
+| Estado | Base de datos creada y poblada con datos de prueba · **ciclo de revista mensual aplicado** (RPC, `es_admin()`, índice `una_revista_borrador` y job `pg_cron` `revista-mensual` verificados en vivo). Cadencia mensual (día 1 de cada mes, 13:00 UTC-6) |
 | Documentos relacionados | `Vitrina_Especificaciones_APIs.md` (contrato de la API), `Vitrina_Pantallas_Componentes.md` (pantallas/UI) |
 
-> Este documento describe la base de datos **tal como fue creada** en Supabase, incluyendo los ajustes hechos respecto al plan, y explica cómo conectarla al backend (Next.js con `supabase-js`).
+> Este documento describe la base de datos **tal como fue creada** en Supabase y explica cómo conectarla al backend (Next.js con `supabase-js`).
 >
-> **Cambio v1.1 (revista automática):** se elimina `revista.editor_id`, se añade un índice único parcial para garantizar una sola revista en `borrador`, las RPC pasan a validar solo `rol = 'administrador'`, y se incorpora un job `pg_cron` que publica la edición activa, descarta sus solicitudes pendientes y crea el siguiente borrador. **Cadencia mensual desde 2026-06-24** (job `revista-mensual`, función `publicar_revista_mensual`, día 1 de cada mes 13:00 UTC-6; antes era semanal). Los pasos SQL están en §3.5 y §9.
+> **Revista automática:** las RPC validan solo `rol = 'administrador'`, y un job `pg_cron` publica la edición activa, descarta sus solicitudes pendientes y crea el siguiente borrador. Cadencia mensual (job `revista-mensual`, función `publicar_revista_mensual`, día 1 de cada mes 13:00 UTC-6). Los pasos SQL están en §3.5 y §9.
 
 ---
 
@@ -25,8 +23,6 @@
 | Versión de PostgreSQL | 17 |
 | Organización | VictorCastillo Org (plan **free**) |
 | Estado | `ACTIVE_HEALTHY` |
-
-> **Nota histórica:** este proyecto reemplaza a uno anterior que estuvo pausado más de 90 días y Supabase ya no permitía recuperar. En el plan free, un proyecto inactivo se pausa automáticamente; mantenlo con actividad o respáldalo para no perderlo.
 
 ---
 
@@ -64,12 +60,12 @@ En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. 
 | `motivo_reporte` | `contenido_inapropiado`, `plagio`, `spam`, `otro` |
 | `estado_reporte` | `pendiente`, `revisado`, `descartado` |
 
-### Tablas (16, todas con RLS activado)
+### Tablas (22, todas con RLS activado)
 
 | Tabla | Propósito | Notas |
 |---|---|---|
 | `usuario` | Perfil de usuario | Extiende `auth.users` por `id`; `rol` por defecto `usuario` |
-| `publicacion` | Creaciones (libro, artículo, etc.) | `tipo` por defecto `investigacion`; `archivo_url` apunta a Storage; `obra_autor_externo`/`url_externa` nullable, solo poblados cuando `tipo = 'recomendacion'`; `bloqueada boolean not null default false` — oculta la publicación a usuarios no-admin cuando es `true` |
+| `publicacion` | Creaciones (libro, artículo, etc.) | `tipo` por defecto `investigacion`; `archivo_url` apunta a Storage; `archivo_thumbnail_url text` nullable — miniatura JPEG (página 1) de un PDF, generada client-side, ver §3.20b; `obra_autor_externo`/`url_externa` nullable, solo poblados cuando `tipo = 'recomendacion'`; `bloqueada boolean not null default false` — oculta la publicación a usuarios no-admin cuando es `true`; `chat_habilitado boolean not null default false` (nuevas) / backfilled `true` (existentes, salvo una excepción) — controla si el chat RAG está activo para esa publicación, ver §3.24 |
 | `comentario` | Comentarios sobre publicaciones | Columna `responde_a uuid? FK→comentario(id) ON DELETE CASCADE` (auto-referencial). `NULL` = comentario raíz; no-null = respuesta (siempre apunta al raíz — profundidad máxima 2, garantizada por el POST handler). Ver §3.12 |
 | `"like"` | Likes (único por usuario/publicación) | **Nombre entre comillas** (palabra reservada) |
 | `tag` | Catálogo de etiquetas | Solo administradores las gestionan |
@@ -84,25 +80,28 @@ En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. 
 | `conversacion` | Canal 1-a-1 entre dos usuarios | Par ordenado `(usuario_a, usuario_b)` con `usuario_a < usuario_b`; UNIQUE garantiza un solo canal por par; ver §3.13 |
 | `mensaje` | Mensajes dentro de una conversación | `leido boolean default false`; solo el receptor puede marcarlo `true` (policy `mensaje_marca_leido`); ver §3.13 |
 | `solicitud_mensaje` | Solicitudes para iniciar una conversación | `UNIQUE (emisor_id, receptor_id) WHERE estado='pendiente'` — una sola pendiente por dirección; CHECK anti-self-request; solo las RPC escriben; ver §3.14 |
+| `publicacion_chunk` | Chunks embebidos del PDF de cada publicación para el chat RAG | RLS respeta `bloqueada`; solo el autor inserta, autor o admin borra; ver §3.15 |
+| `publicacion_rag` | Estado de indexado RAG por publicación (fingerprint) | Ver §3.15 |
+| `rag_rate_limit` | Cuota del chat RAG (contador + ventana de tiempo) | Una fila por usuario; el usuario solo lee su propia fila; ver §3.16 |
+| `coleccion` | Colecciones de publicaciones guardadas por un usuario | `visibilidad` `publica`/`privada`; RLS por dueño; ver §3.20 |
+| `coleccion_publicacion` | Puente colección ↔ publicación | PK compuesta `(coleccion_id, publicacion_id)`; hereda visibilidad de la colección; ver §3.20 |
+| `correo_admin` | Historial de envíos masivos de correo hechos por administradores | RLS gateada por `es_admin()`; ver §3.21 |
 
 > El DDL real (columnas, llaves foráneas, índices y las **41 políticas RLS** actuales) se aplicó como migraciones en Supabase (`esquema_inicial`, `logica_negocio`, `rls_politicas`, `almacenamiento` + las aditivas posteriores); consúltalo directamente en el panel o mediante `supabase db dump`.
 >
-> **CHECK de longitud a nivel BD (verificados en vivo):** además de la validación server-side, la BD impone: `publicacion.titulo ≤ 150`, `publicacion.resumen ≤ 700`, `comentario.contenido ≤ 250`, `revista.titulo ≤ 65`, `revista.volumen < 9999` (o NULL), `usuario.nombre/institucion/carrera ≤ 50` y `usuario.email ≤ 254` (alineado con el `signup` y con RFC 5321 — migración `widen_usuario_email_check_to_254`, 2026-06-24; antes era ≤ 50, lo que podía romper el trigger `handle_new_user` con emails largos).
+> **CHECK de longitud a nivel BD (verificados en vivo):** además de la validación server-side, la BD impone: `publicacion.titulo ≤ 150`, `publicacion.resumen ≤ 700`, `comentario.contenido ≤ 250`, `revista.titulo ≤ 65`, `revista.volumen < 9999` (o NULL), `usuario.nombre/institucion/carrera ≤ 50` y `usuario.email ≤ 254`.
 
 ### Diferencias respecto al plan original
 
 - **Tabla `like`:** `LIKE` es palabra reservada en PostgreSQL, así que la tabla se creó como `"like"` (entre comillas). En **SQL crudo** debes escribirla siempre así; desde `supabase-js` usas `.from('like')` con normalidad (PostgREST lo resuelve).
-- **`tipo_publicacion`** se amplió a los siete tipos de obra de Vitrina (antes era investigación/ensayo/otro).
-- **`tipo_publicacion` — extensión aditiva (más tipos de obra):** se añadieron 8 valores con `ALTER TYPE ... ADD VALUE IF NOT EXISTS` — `ensayo`, `cuento`, `tesis`, `resena`, `fotografia`, `infografia`, `ponencia`, `proyecto`. Luego 4 más (migración `add_tipo_publicacion_visuales`) — `ilustracion`, `pintura`, `diseno_grafico`, `diseno_modas`. Siguen la convención ASCII sin acentos del enum (`articulo`, `investigacion`); los valores multi-palabra usan snake_case (`diseno_grafico`, como `contenido_inapropiado`). Las etiquetas acentuadas (`Reseña`, `Diseño gráfico`, etc.) viven en `lib/constants/publicaciones.ts` (`TIPO_META`). Cambio puramente aditivo: **sin cambios en columnas, RLS, policies, RPC ni en la vista `feed_publicaciones`.**
-- **Recomendaciones (extensión aditiva):** el valor `recomendacion` permite publicar obras de terceros. Se añadieron dos columnas **nullable** a `publicacion` — `obra_autor_externo` (autor real de la obra) y `url_externa` (enlace http/https) — pobladas únicamente para ese tipo. `autor_id` sigue siendo **el recomendador** (de la sesión), no el autor externo. La vista `feed_publicaciones` se recreó preservando `security_invoker=true` y exponiendo ambas columnas. **Sin cambios en RLS, policies ni RPC.**
-- **`rol_usuario`** usa `usuario` como rol base (antes `estudiante`).
-- **Revista sin editor (v1.1):** se eliminó `revista.editor_id`; ahora cualquier administrador cura cualquier edición. Se añadió un índice único parcial que garantiza una sola revista en `borrador`. Ver §3.5. (La cadencia es **mensual** desde 2026-06-24 — ver §3.5 y §9.)
+- **`tipo_publicacion`** sigue la convención ASCII sin acentos del enum (`articulo`, `investigacion`); los valores multi-palabra usan snake_case (`diseno_grafico`, como `contenido_inapropiado`). Las etiquetas acentuadas (`Reseña`, `Diseño gráfico`, etc.) viven en `lib/constants/publicaciones.ts` (`TIPO_META`). Cambio puramente aditivo respecto al esquema base: **sin cambios en columnas, RLS, policies, RPC ni en la vista `feed_publicaciones`.**
+- **Recomendaciones:** el valor `recomendacion` permite publicar obras de terceros. `publicacion` tiene dos columnas **nullable** — `obra_autor_externo` (autor real de la obra) y `url_externa` (enlace http/https) — pobladas únicamente para ese tipo. `autor_id` sigue siendo **el recomendador** (de la sesión), no el autor externo. La vista `feed_publicaciones` expone ambas columnas preservando `security_invoker=true`.
+- **`rol_usuario`** usa `usuario` como rol base.
+- **Revista sin editor:** no existe `revista.editor_id`; cualquier administrador cura cualquier edición. Un índice único parcial garantiza una sola revista en `borrador`. Ver §3.5.
 
-### 3.5 Migración de revista automática (v1.1) — cadencia actual: **mensual**
+### 3.5 Migración de revista automática — cadencia actual: **mensual**
 
-Esta migración convirtió la revista manual en un ciclo automático. Se aplicó como migración `revista_semanal`.
-
-> **Actualización 2026-06-24 (migración `revista_mensual_en_lugar_de_semanal`):** la cadencia pasó de **semanal** a **mensual**. La función se renombró a `publicar_revista_mensual`, el job `pg_cron` a `revista-mensual` con expresión `0 19 1 * *` (día 1 de cada mes, 13:00 UTC-6 = 19:00 UTC) y el título del nuevo borrador a `'Revista mensual Archicom'`. Lo de abajo refleja el estado actual.
+La revista rota de forma automática (no manual): un job `pg_cron` publica la edición activa, descarta sus solicitudes pendientes y crea el siguiente borrador. Función `publicar_revista_mensual`, job `pg_cron` `revista-mensual` con expresión `0 19 1 * *` (día 1 de cada mes, 13:00 UTC-6 = 19:00 UTC), título del nuevo borrador `'Revista mensual Archicom'`.
 
 **a) Función auxiliar `es_admin()`**
 
@@ -118,26 +117,7 @@ returns boolean language sql stable security definer as $$
 $$;
 ```
 
-**b) Reemplazar las RPC (quitar verificación de `editor_id`)**
-
-Las funciones `aceptar_solicitud` y `rechazar_solicitud` referenciaban `revista.editor_id` en su cuerpo. Hay que reemplazarlas **antes** de soltar la columna. Los nuevos cuerpos están en §3.6.
-
-**c) Eliminar las políticas de `solicitud_revista` que dependían de `editor_id`**
-
-Las políticas `admin_ve_sus_revistas` (SELECT) y `admin_actualiza` (UPDATE) en `solicitud_revista` filtraban con un join a `revista.editor_id`. Las políticas `admin_gestiona` de `revista` y `revista_articulo` **no** dependían de `editor_id` (verifican el rol con subquery inline) y se dejaron intactas.
-
-```sql
-drop policy if exists admin_ve_sus_revistas on solicitud_revista;
-drop policy if exists admin_actualiza       on solicitud_revista;
-```
-
-**d) Eliminar la columna de editor**
-
-```sql
-alter table revista drop column editor_id;
-```
-
-**e) Recrear las políticas de `solicitud_revista` (cualquier administrador)**
+**b) Políticas de `solicitud_revista` (cualquier administrador)**
 
 ```sql
 create policy admin_ve_solicitudes on solicitud_revista
@@ -151,7 +131,7 @@ create policy admin_actualiza_solicitudes on solicitud_revista
 
 > Estas conviven con las políticas existentes `autor_ve_suyas` (SELECT, el solicitante ve las suyas) y `autor_inserta` (INSERT, el autor postula su obra). Un usuario ve solo sus solicitudes; un administrador ve todas.
 
-**f) Garantizar una sola revista activa**
+**c) Una sola revista activa**
 
 ```sql
 create unique index una_revista_borrador
@@ -159,15 +139,13 @@ create unique index una_revista_borrador
   where (estado = 'borrador');
 ```
 
-> Si actualmente hay más de una revista en `borrador`, este índice fallará al crearse. Deja una sola en borrador (publica o elimina las demás) antes de aplicarlo.
+Las políticas `admin_gestiona` (FOR ALL) en `revista` y `revista_articulo` verifican `rol = 'administrador'` mediante subquery inline — funcionalmente equivalen a `es_admin()` aunque usen una implementación distinta.
 
-**Nota sobre las políticas de `revista` y `revista_articulo`:** las políticas `admin_gestiona` (FOR ALL) en ambas tablas ya verificaban `rol = 'administrador'` mediante subquery inline y nunca referenciaron `editor_id`, por lo que **no fue necesario modificarlas**. Funcionalmente equivalen a `es_admin()` aunque usen una implementación distinta.
+### 3.6 Funciones
 
-### 3.6 Funciones (cuerpos para la v1.1)
+**RPC `aceptar_solicitud` / `rechazar_solicitud`**
 
-**d) RPC: validar solo administrador (ya no editor)**
-
-Reemplaza la verificación interna de las dos RPC. La firma y el comportamiento transaccional no cambian; solo la autorización.
+Validan internamente solo `es_admin()`.
 
 ```sql
 create or replace function public.aceptar_solicitud(p_solicitud_id uuid, p_respuesta text default null)
@@ -250,7 +228,7 @@ end $$;
 
 ### 3.6b Borrado por administrador (`admin_elimina`)
 
-Migración aditiva `publicacion_admin_delete_policy` (cambio de esquema con aprobación explícita). Permite que un administrador elimine **cualquier** publicación, no solo las propias.
+Policy aditiva, aprobada explícitamente. Permite que un administrador elimine **cualquier** publicación, no solo las propias.
 
 ```sql
 create policy "admin_elimina" on public.publicacion
@@ -264,7 +242,95 @@ create policy "admin_elimina" on public.publicacion
 - Todas las FK hacia `publicacion` y `revista` son `ON DELETE CASCADE`: borrar una publicación arrastra sus `comentario`, `like`, `publicacion_tag`, `revista_articulo` y `solicitud_revista`; borrar una revista arrastra sus `revista_articulo` y `solicitud_revista`. El cascade lo ejecuta el sistema (no pasa por RLS), por lo que limpia también filas de otros usuarios.
 - **Storage:** cuando el **autor** borra su propia publicación, el handler `DELETE /api/publicaciones/[id]` limpia el archivo del bucket (best-effort, con el JWT del autor, vía `removeOwnStorageObject`). Cuando el **admin** borra una publicación ajena, su JWT no puede tocar la carpeta `{user_id}/...` del autor (y no se usa `service_role`), por lo que **el archivo queda huérfano** — limitación conocida y aceptada (ver F-004). Los huérfanos por reemplazo de archivo al editar y por fallo de guardado se limpian desde el cliente vía `DELETE /api/storage`.
 
-### 3.10 Moderación de reportes (migración `reportes_moderacion`)
+### 3.7 Tabla `usuario_link` (Feature 1 — enlaces de perfil)
+
+Puramente aditiva: no modifica ninguna tabla, RLS, RPC, vista ni policy existente.
+
+**Columnas:**
+
+| Columna | Tipo | Restricciones | Notas |
+|---|---|---|---|
+| `id` | `uuid` | `primary key default gen_random_uuid()` | — |
+| `usuario_id` | `uuid not null` | `references usuario(id) on delete cascade` | Propietario del enlace |
+| `etiqueta` | `text not null` | — | Texto visible del enlace; máx. 50 chars (validado en servidor) |
+| `url` | `text not null` | — | URL https-only (validado en servidor) |
+| `orden` | `int not null` | `default 0` | Posición de visualización (0-indexed) |
+| `creado_en` | `timestamptz not null` | `default now()` | — |
+
+**RLS habilitado.** Dos políticas:
+
+| Policy | FOR | TO | USING | WITH CHECK |
+|---|---|---|---|---|
+| `links_lectura_publica` | `SELECT` | all roles (incl. anon) | `true` | — |
+| `links_gestiona_propio` | `ALL` | `authenticated` | `usuario_id = auth.uid()` | `usuario_id = auth.uid()` |
+
+- La política de lectura permite a visitantes anónimos ver los enlaces en `/usuario/[id]` (vía SSR usando el cliente anon).
+- La política `FOR ALL` a `authenticated` cubre INSERT, UPDATE y DELETE. Los handlers nunca leen `usuario_id` del body — siempre de `supabase.auth.getUser()`.
+- Sin RPC, sin §7.1 revoke/grant (no hay funciones SECURITY DEFINER en esta feature).
+- Los cascades de `usuario(id) on delete cascade` limpian los enlaces cuando se borra el usuario.
+
+**Orden de visualización:** `order('orden').order('creado_en')` — sin empates incluso si dos filas tienen el mismo `orden`.
+
+**Límite:** máx. 10 por usuario. Aplicado server-side en `POST /api/perfil/links` con un count previo al insert; no hay constraint de BD (soft cap, race condition aceptado en MVP).
+
+---
+
+### 3.8 Tabla `seguidor` (Feature 3 — grafo social)
+
+Puramente aditiva. Representa un grafo dirigido: si A sigue a B existe la fila `(A, B)`.
+
+**Columnas:**
+
+| Columna | Tipo | Restricciones | Notas |
+|---|---|---|---|
+| `seguidor_id` | `uuid not null` | `references usuario(id) on delete cascade` | El que sigue |
+| `seguido_id` | `uuid not null` | `references usuario(id) on delete cascade` | El que es seguido |
+| `creado_en` | `timestamptz not null` | `default now()` | — |
+
+**Restricciones:** `primary key (seguidor_id, seguido_id)` (unicidad + índice) · `check (seguidor_id <> seguido_id)` (error 23514 si se intenta auto-follow por BD, aunque la capa Next lo previene antes).
+
+**FK constraint names (verificados):** `seguidor_seguidor_id_fkey` (sobre `seguidor_id`) · `seguidor_seguido_id_fkey` (sobre `seguido_id`). Estos nombres son necesarios para los hints de PostgREST en `lib/data/seguidores.ts` porque la tabla tiene dos FK a `usuario`.
+
+**ON DELETE CASCADE** en ambas FK: borrar un usuario elimina todos sus edges como seguidor y como seguido.
+
+**RLS habilitado.** Tres políticas:
+
+| Policy | FOR | TO | USING / WITH CHECK |
+|---|---|---|---|
+| `seguidor_lectura` | `SELECT` | todos (incl. anon) | `using (true)` — counts son públicos |
+| `seguidor_sigue` | `INSERT` | `authenticated` | `with check (seguidor_id = auth.uid())` |
+| `seguidor_deja_de_seguir` | `DELETE` | `authenticated` | `using (seguidor_id = auth.uid())` |
+
+**handleError:** el error 23514 (check_violation — auto-follow a nivel BD) se mapea a **400** `validation_error`. La capa Next pre-chequea `seguido_id !== user.id` antes del insert, por lo que 23514 es défense en profundidad.
+
+### 3.9 Vista `perfil_contadores` (Feature 3)
+
+Vista con `security_invoker = true` que devuelve conteos por usuario en una sola consulta. Diseño análogo a `feed_publicaciones`.
+
+```sql
+create view perfil_contadores
+with (security_invoker = true) as
+select
+  u.id                       as usuario_id,
+  coalesce(sg.total, 0)      as n_seguidores,
+  coalesce(sd.total, 0)      as n_seguidos,
+  coalesce(p.total, 0)       as n_publicaciones
+from usuario u
+left join (select seguido_id,  count(*) total from seguidor   group by seguido_id)  sg on sg.seguido_id  = u.id
+left join (select seguidor_id, count(*) total from seguidor   group by seguidor_id) sd on sd.seguidor_id = u.id
+left join (select autor_id,    count(*) total from publicacion group by autor_id)   p  on p.autor_id     = u.id;
+```
+
+- `n_seguidores` = usuarios que siguen a u (agrupado por `seguido_id`).
+- `n_seguidos` = usuarios a quienes u sigue (agrupado por `seguidor_id`).
+- `n_publicaciones` respeta la RLS de `publicacion` (security_invoker → corre con el JWT del llamante).
+- COALESCE garantiza 0 para usuarios sin actividad.
+- Sin policies propias (hereda RLS de las tablas base via `security_invoker`).
+- Consultada en `lib/data/seguidores.ts` → `getConteos(usuarioId)` con `.maybeSingle()`.
+
+---
+
+### 3.10 Moderación de reportes
 
 Esta sección describe los cambios de esquema para la funcionalidad de moderación de reportes. Todos los cambios son **aditivos**: no se modifica ninguna tabla, política, RPC ni vista existente.
 
@@ -322,9 +388,9 @@ SECURITY DEFINER, `set search_path = public`. Mismas validaciones que `bloquear_
 
 #### §7.1 — Hardening de las nuevas RPCs
 
-> **Estado verificado (2026-06-18):** `bloquear_publicacion` y `descartar_reporte` ya tienen grants `authenticated, postgres, service_role` (no `anon`/`public`). Validan `es_admin()` internamente. Como el admin las llama con su propio JWT y no hay `service_role`, **no** se puede revocar de `authenticated` sin romper el flujo de admin. Tratadas como excepción documentada — ver §7.1 principal y `SECURITY_AUDIT.md` (F-002).
+> **Estado real:** `bloquear_publicacion` y `descartar_reporte` tienen grants `authenticated, postgres, service_role` (no `anon`/`public`). Validan `es_admin()` internamente. Como el admin las llama con su propio JWT y no hay `service_role`, **no** se puede revocar de `authenticated` sin romper el flujo de admin. Tratadas como excepción documentada — ver §7.1 principal y `SECURITY_AUDIT.md` (F-002).
 
-#### Política RESTRICTIVE `publicacion_oculta_bloqueadas` (migración `reportes_moderacion_ocultar`)
+#### Política RESTRICTIVE `publicacion_oculta_bloqueadas`
 
 ```sql
 create policy publicacion_oculta_bloqueadas on publicacion
@@ -334,13 +400,13 @@ create policy publicacion_oculta_bloqueadas on publicacion
 
 Es RESTRICTIVE: se ANDea con el OR-union de las políticas PERMISSIVE. Efecto: `lectura_publica` (USING true) permite todo, pero este RESTRICTIVE lo restringe a `bloqueada=false OR es_admin() OR es_el_autor`. Autores pueden seguir viendo sus propias publicaciones bloqueadas.
 
-> ⚠️ **Esta policy llama a `es_admin()` en cada SELECT de `publicacion`.** Por eso **todo rol que lea `publicacion` (incluido `anon`) necesita `EXECUTE` sobre `public.es_admin()`**; las policies RLS se evalúan en contexto del rol que llama. Sin ese grant, un visitante anónimo recibe `permission denied for function es_admin (42501)` y el feed le devuelve **cero filas**. Grant aplicado en migración `grant_execute_es_admin_to_anon`. Ver §7.1.
+> ⚠️ **Esta policy llama a `es_admin()` en cada SELECT de `publicacion`.** Por eso **todo rol que lea `publicacion` (incluido `anon`) necesita `EXECUTE` sobre `public.es_admin()`**; las policies RLS se evalúan en contexto del rol que llama. Sin ese grant, un visitante anónimo recibe `permission denied for function es_admin (42501)` y el feed le devuelve **cero filas**. Ver §7.1.
 
 #### Vista `feed_publicaciones` (recreada)
 
 La vista se recreó con `WHERE p.bloqueada = false` para excluir publicaciones bloqueadas del feed. Se preservan: `security_invoker=true`, todas las columnas previas (`id, autor_id, autor_nombre, titulo, resumen, archivo_url, tipo, creado_en, likes, comentarios, obra_autor_externo, url_externa`). El FeedPublicacion DTO no expone `bloqueada` (la vista no la incluye).
 
-### 3.11 Guardados privados (migración `guardados`)
+### 3.11 Guardados privados
 
 Marcadores personales: un usuario logueado guarda publicaciones para verlas luego en `/perfil/guardados`. Es el contraste con `"like"` (público): los guardados son **PRIVADOS** — solo el dueño los lee. Cambio **puramente aditivo** (aprobado explícitamente): no toca ninguna tabla, RLS, RPC ni vista existente.
 
@@ -367,7 +433,7 @@ FK constraint names (verificados): `guardado_usuario_id_fkey`, `guardado_publica
 
 > ⚠️ **La privacidad es por diseño.** No hay policy para `anon` ni `using (true)`: un visitante anónimo NUNCA puede leer los guardados de nadie. El `UNIQUE (usuario_id, publicacion_id)` evita duplicados (violarlo devuelve `23505` → 409). Las FK son `ON DELETE CASCADE`: borrar un usuario o una publicación limpia sus guardados.
 
-### 3.12 Hilos de comentarios (migración `comentarios_hilos`)
+### 3.12 Hilos de comentarios
 
 Extensión **aditiva** para soporte de respuestas a comentarios (profundidad máxima 2). Aprobada explícitamente. No modifica ninguna política RLS, RPC, ni vista existente.
 
@@ -384,7 +450,7 @@ alter table public.comentario
 
 ---
 
-### 3.13 Mensajería directa (migraciones `mensajeria_directa`, `mensajeria_directa_revoke_anon`, `mensajeria_directa_fix_no_leidos`)
+### 3.13 Mensajería directa
 
 Extensión **aditiva** aprobada explícitamente. Añade mensajería 1-a-1 privada entre usuarios que se siguen mutuamente. No modifica ninguna tabla, RLS, RPC, vista ni policy existentes.
 
@@ -450,7 +516,7 @@ Mensajes dentro de una conversación. Solo el receptor puede marcar mensajes com
 
 > **`mensaje_marca_leido`:** el receptor solo puede poner `leido = true` en mensajes que NO envió él. No hay política INSERT: todo insert es vía `enviar_mensaje`.
 
-> **Grant de columna restringido a `leido` (migración `mensaje_update_column_grant_leido`, 2026-06-28):** la policy RLS `mensaje_marca_leido` restringe *filas* (solo las del otro participante) pero **no columnas**; con el grant de UPDATE a nivel de tabla, un participante podía alterar vía PostgREST directo campos como `contenido`, `emisor_id` o `creado_en` de mensajes ajenos. Fix: `REVOKE UPDATE ON public.mensaje FROM anon, authenticated` + `GRANT UPDATE (leido) ON public.mensaje TO authenticated`. Ahora `authenticated` solo puede actualizar la columna `leido`; el resto de columnas queda denegado a nivel de grant. El endpoint `leer` y los recibos de lectura en tiempo real siguen funcionando (solo escriben `leido`). La RPC `enviar_mensaje` es SECURITY DEFINER y no se ve afectada.
+> **Regla: RLS restringe filas, no columnas.** La policy `mensaje_marca_leido` restringe *filas* (solo las del otro participante) pero **no columnas**; con el grant de UPDATE a nivel de tabla, un participante podría alterar vía PostgREST directo campos como `contenido`, `emisor_id` o `creado_en` de mensajes ajenos. Por eso: `REVOKE UPDATE ON public.mensaje FROM anon, authenticated` + `GRANT UPDATE (leido) ON public.mensaje TO authenticated`. `authenticated` solo puede actualizar la columna `leido`; el resto de columnas queda denegado a nivel de grant. El endpoint `leer` y los recibos de lectura en tiempo real siguen funcionando (solo escriben `leido`). La RPC `enviar_mensaje` es SECURITY DEFINER y no se ve afectada.
 
 #### Helper `se_siguen(a uuid, b uuid) returns boolean` — SECURITY INVOKER
 
@@ -570,8 +636,6 @@ left join (
 - Sin policies propias: hereda RLS de `conversacion` y `mensaje` via `security_invoker`.
 - Consumida por `getConversaciones(viewerId)` y `getTotalNoLeidos(viewerId)` en `lib/data/mensajes.ts`.
 
-**Corrección aplicada (migración `mensajeria_directa_fix_no_leidos`):** la primera versión de la vista no filtraba `emisor_id <> auth.uid()` en la subquery `nl`, lo que hacía que los propios mensajes no leídos del emisor se contaran en `no_leidos`. La migración recreó la vista con esa condición.
-
 #### Realtime
 
 ```sql
@@ -580,7 +644,7 @@ alter publication supabase_realtime add table public.mensaje;
 
 Solo `mensaje` se publica en la publicación Realtime (no `conversacion`). La bandeja no necesita actualizaciones en tiempo real en v1; solo el hilo abierto las requiere. La policy `mensaje_lectura` (SELECT) filtra lo que cada suscriptor puede recibir — un no-participante no recibe eventos aunque esté conectado.
 
-**`mensaje` → `REPLICA IDENTITY FULL` (migración `mensaje_replica_identity_full`):** por defecto Postgres solo incluye la PK en el registro WAL del "viejo" de un UPDATE. La suscripción Realtime filtra eventos por `conversacion_id=eq.<id>` (columna no-PK); cuando la identidad de réplica es solo PK, el registro WAL antiguo no lleva `conversacion_id` y Supabase Realtime **no puede hacer match del filtro**, por lo que **los eventos UPDATE no llegan al cliente**. Esto afecta directamente a los recibos de lectura en tiempo real (el campo `leido` pasando a `true`). La migración aplica:
+**`mensaje` → `REPLICA IDENTITY FULL`:** por defecto Postgres solo incluye la PK en el registro WAL del "viejo" de un UPDATE. La suscripción Realtime filtra eventos por `conversacion_id=eq.<id>` (columna no-PK); cuando la identidad de réplica es solo PK, el registro WAL antiguo no lleva `conversacion_id` y Supabase Realtime **no puede hacer match del filtro**, por lo que **los eventos UPDATE no llegan al cliente**. Esto afecta directamente a los recibos de lectura en tiempo real (el campo `leido` pasando a `true`).
 
 ```sql
 alter table public.mensaje replica identity full;
@@ -592,7 +656,7 @@ Cambio puramente operativo (no modifica RLS, policies, RPC ni vista); aumenta el
 
 ---
 
-### 3.14 Solicitudes de mensaje (migración `solicitudes_mensaje`)
+### 3.14 Solicitudes de mensaje
 
 Extensión **aditiva** aprobada explícitamente. Permite que un usuario sin seguimiento mutuo solicite iniciar una conversación. No modifica ninguna tabla, RLS, RPC, vista ni policy existentes.
 
@@ -635,7 +699,7 @@ SECURITY DEFINER, `set search_path = public, pg_temp`. Revocado de `public`/`ano
 3. Verifica `se_siguen(auth.uid(), p_receptor_id)`. Si quedó `true`: acepta cualquier solicitud `pendiente` entre ambos (en cualquier dirección) y devuelve `{"resultado":"mutuo"}`.
 4. Si no: INSERT/UPSERT solicitud `pendiente` y devuelve `{"resultado":"solicitud","solicitud_id":...}`.
 
-**Guards anti-spam (migraciones `solicitud_mensaje_anti_spam` y `solicitud_mensaje_cooldown_2_dias`, 2026-06-28):** antes de ejecutar la lógica principal, la RPC evalúa dos controles adicionales; ambos lanzan `RAISE EXCEPTION` (P0001 → 400) con los mensajes exactos indicados:
+**Guards anti-spam:** antes de ejecutar la lógica principal, la RPC evalúa dos controles adicionales; ambos lanzan `RAISE EXCEPTION` (P0001 → 400) con los mensajes exactos indicados:
 
 | Guard | Condición | Mensaje P0001 |
 |---|---|---|
@@ -669,7 +733,7 @@ SECURITY DEFINER, `set search_path = public, pg_temp`. Misma postura de grants.
 
 ---
 
-### 3.15 RAG por publicación — chat sobre el PDF (migraciones `rag_publicacion_pgvector`, `rag_publicacion_harden_advisors`)
+### 3.15 RAG por publicación — chat sobre el PDF
 
 Extensión **aditiva** aprobada explícitamente. Habilita indexar el PDF de una publicación en chunks con embeddings y responder preguntas grounded (título + resumen + fragmentos recuperados). No modifica ninguna tabla, RLS, RPC, vista ni policy existentes.
 
@@ -722,9 +786,7 @@ Modelo built-in `gte-small` (384 dims), invocado con `functions.invoke('embed', 
 
 `lib/rag/{config,pdf,embed}.ts` (extracción/troceo de PDF con `unpdf`, llamada a la Edge Function) + route handlers `POST /api/publicaciones/[id]/index` (autor-only, idempotente por hash) y `POST /api/publicaciones/[id]/chat` (logueado, `generateText` con `claude-haiku-4-5` vía `@ai-sdk/anthropic`). Ver `Vitrina_Especificaciones_APIs.md` para el contrato completo. Serialización pgvector: los embeddings se envían a PostgREST como texto (`JSON.stringify(vector)`, ej. `"[0.1,0.2,...]"`), nunca como array JS crudo (PostgREST lo serializaría como literal de array de Postgres `{...}` e invalidaría el cast a `vector(384)`).
 
-Post-migración: `get_advisors(type:security)` sin RLS-disabled en las 2 tablas nuevas; verificado.
-
-### 3.16 Rate limit del chat RAG (migraciones `rag_rate_limit`, `rag_rate_limit_revoke_anon`)
+### 3.16 Rate limit del chat RAG
 
 15 preguntas por hora **por cuenta** en `POST /api/publicaciones/[id]/chat`, para acotar costo/abuso.
 
@@ -734,11 +796,11 @@ Una fila por usuario: `usuario_id uuid PK → usuario(id) ON DELETE CASCADE`, `v
 
 #### RPC `consumir_cuota_rag()`
 
-`SECURITY DEFINER` (mismo modelo que `es_admin`/`aceptar_solicitud`; **no** es `service_role`), `search_path` fijo. Único camino de mutación del contador. Atómica (row lock): si la ventana venció reinicia y permite; si `conteo >= 15` deniega; si no, incrementa y permite. Identifica al llamante con `auth.uid()` (null → `P0001 'No autorizado'`). Retorna `(permitido boolean, restantes int, reinicia_en timestamptz)`. `EXECUTE` revocado de `anon`, otorgado a `authenticated`. La ruta `/chat` la llama tras validar y antes del trabajo caro; `!permitido` → 429 `rate_limited`. Verificado: 15 permitidas + la 16 denegada; anon auto-bloqueado.
+`SECURITY DEFINER` (mismo modelo que `es_admin`/`aceptar_solicitud`; **no** es `service_role`), `search_path` fijo. Único camino de mutación del contador. Atómica (row lock): si la ventana venció reinicia y permite; si `conteo >= 15` deniega; si no, incrementa y permite. Identifica al llamante con `auth.uid()` (null → `P0001 'No autorizado'`). Retorna `(permitido boolean, restantes int, reinicia_en timestamptz)`. `EXECUTE` revocado de `anon`, otorgado a `authenticated`. La ruta `/chat` la llama tras validar y antes del trabajo caro; `!permitido` → 429 `rate_limited`.
 
 ---
 
-### 3.17 Búsqueda del buscador — FTS + trigram (migraciones `search_fts_publicacion`, `search_unaccent_trigram`, `search_usuarios_word_similarity`)
+### 3.17 Búsqueda del buscador — FTS + trigram
 
 Mejora del buscador: publicaciones pasan de `ilike` sobre **solo `titulo`** a **full-text search en español** sobre `titulo` + `resumen` (ranking, stemming, prefijo, multi-palabra, **accent-insensitive**); usuarios pasan de `ilike` sobre `nombre` a **búsqueda trigram typo-tolerante y accent-insensitive**. **Sin capa semántica/RAG** (elegido explícitamente; el híbrido queda como mejora futura). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes.
 
@@ -754,11 +816,11 @@ Columna generada **STORED**: `setweight(to_tsvector('spanish', f_unaccent(coales
 
 Índice GIN de expresión `usuario_nombre_trgm_idx` sobre `f_unaccent(lower(nombre))` con `extensions.gin_trgm_ops` (soporta `LIKE` y `%`/`<%`). RPC `buscar_usuarios(p_q, p_limit=6, p_offset=0)` `language sql stable` **SECURITY INVOKER** (`usuario` es públicamente legible vía `lectura_publica`), `set search_path=''`. Normaliza `f_unaccent(lower(trim(p_q)))`; filtra `nombre_norm LIKE '%q%'` **OR** `q <% nombre_norm` (word_similarity, matchea una palabra del nombre → typo-tolerante); ordena por `word_similarity DESC, nombre ASC`. Solo expone `(id, nombre, institucion, carrera, total bigint)` — nunca `rol`/`email`.
 
-Ambas con `EXECUTE` a `anon`+`authenticated` (búsqueda pública; **no** depende de la edge `embed` ni de JWT). Las consume `lib/data/buscar.ts` (`buscarPublicaciones`/`buscarUsuarios` → dropdown, página `/buscar`, "Ver más"). Verificado: publicaciones match solo-en-resumen + prefijo (`tribut`→"tributaria") + acento (`tradicion`→"tradición") + bloqueada oculta a `anon`; usuarios acento (`perez`→"Pérez") + typo (`cristofer`→"Cristopher"). Cero advisors nuevos. Nota: el typo tiene el límite del umbral `word_similarity` (0.6): una sustitución en palabra corta (`garzia`→"Garcia") puede no matchear.
+Ambas con `EXECUTE` a `anon`+`authenticated` (búsqueda pública; **no** depende de la edge `embed` ni de JWT). Las consume `lib/data/buscar.ts` (`buscarPublicaciones`/`buscarUsuarios` → dropdown, página `/buscar`, "Ver más"). El typo tiene el límite del umbral `word_similarity` (0.6): una sustitución en palabra corta (`garzia`→"Garcia") puede no matchear.
 
 ---
 
-### 3.18 Búsqueda semántica híbrida (migración `rag_busqueda_hibrida`)
+### 3.18 Búsqueda semántica híbrida
 
 Capa **semántica** encima del FTS del §3.17: embebe la consulta (edge `embed`, gte-small 384) y recupera publicaciones por similitud coseno sobre `publicacion_chunk` (los chunks del chat RAG, HNSW `vector_cosine_ops`), **fusionando** con el FTS vía **RRF**. Es **retrieval, sin generación LLM**. Solo en la página `/buscar` (SSR) y **solo para logueados** (la edge tiene `verify_jwt`); anónimo → FTS. Cambio ADITIVO, aprobado; sin tocar tablas/columnas/RLS/RPC existentes.
 
@@ -768,19 +830,19 @@ Capa **semántica** encima del FTS del §3.17: embebe la consulta (edge `embed`,
 
 #### Cobertura de indexado — auto-index + backfill admin
 
-Para que la búsqueda semántica tenga qué buscar: **auto-index** de todo PDF al publicar (`PublicarForm` ya no tiene el checkbox opt-in; corre bajo el JWT del autor, RLS `chunk_insert`/`rag_write`). **Backfill** de PDFs existentes vía `POST /api/admin/rag/backfill` (secuencial, idempotente por sha256), habilitado por policies admin ADITIVAS `chunk_admin_write` (publicacion_chunk) y `rag_admin_write` (publicacion_rag) — `FOR ALL to authenticated using es_admin() with check es_admin()`, espejo de `admin_elimina`; el admin indexa PDFs ajenos bajo **su JWT** (RLS, no `service_role`). Pipeline compartido en `lib/rag/indexer.ts`. Verificado: backfill llevó la cobertura de 1 → 14 publicaciones (198 chunks); E2E `pruebas de software móvil` → el PDF "MAIA App" aparece para el usuario logueado (semántico) y **no** para el anónimo (FTS). Cero advisors nuevos.
+Para que la búsqueda semántica tenga qué buscar: **auto-index** de todo PDF al publicar (sin checkbox opt-in; corre bajo el JWT del autor, RLS `chunk_insert`/`rag_write`). **Backfill** de PDFs existentes vía `POST /api/admin/rag/backfill` (secuencial, idempotente por sha256), habilitado por policies admin ADITIVAS `chunk_admin_write` (publicacion_chunk) y `rag_admin_write` (publicacion_rag) — `FOR ALL to authenticated using es_admin() with check es_admin()`, espejo de `admin_elimina`; el admin indexa PDFs ajenos bajo **su JWT** (RLS, no `service_role`). Pipeline compartido en `lib/rag/indexer.ts`.
 
 ---
 
-### 3.19 Columna `ciudad` en `usuario` (migraciones `add_ciudad_to_usuario`, `grant_usuario_ciudad_column_privileges`)
+### 3.19 Columna `ciudad` en `usuario`
 
 Campo de texto libre y opcional: `ciudad text NULL, CHECK (char_length(ciudad) <= 50)` — mismo patrón que `institucion`/`carrera`. Sin RLS nueva (cubierta por las políticas existentes de `usuario`: lectura pública, escritura solo del propio dueño). Se edita en `/perfil/ajustes` (mismo formulario que institución/carrera, sin pantalla nueva) vía `PATCH /api/perfil`. Expuesta en `GET /api/auth/me`, `lib/data/perfil.ts::getPerfil` y renderizada en `PerfilView` cuando está presente. Cambio ADITIVO, aprobado explícitamente. Ver `Vitrina_Especificaciones_APIs.md` §4.1.
 
-> **Incidente corregido (2026-07-09) — footgun de grants por columna.** `add_ciudad_to_usuario` agregó la columna pero **no** otorgó privilegios a nivel de columna (`GRANT SELECT/UPDATE (ciudad) ...`), a diferencia de `institucion`/`carrera` que sí los tienen. Esta tabla usa grants **por columna**, no por tabla completa (ver el patrón de `harden_usuario_rol_email`/`restrict_usuario_update_grants`), así que agregar una columna con `ALTER TABLE ADD COLUMN` **no** le da SELECT/UPDATE automáticamente a `anon`/`authenticated` — falta un `GRANT` explícito en la misma migración. Sin ese grant, cualquier `select(...)` que incluya la columna falla completo con `permission denied for column ciudad` (el privilegio de columna bloquea el `SELECT` entero, no solo esa columna). Síntoma real observado: `getPerfil()` seleccionaba `ciudad` → la query fallaba → `app/(main)/perfil/page.tsx` hacía `if (!perfil) redirect('/login')` **sin mirar `error`**, disfrazando el permission-denied de "sesión expirada" para cualquier usuario, sin relación con si tenía sesión válida o no. Corregido con la migración `grant_usuario_ciudad_column_privileges`: `grant select (ciudad) on usuario to anon, authenticated; grant update (ciudad) on usuario to authenticated;`. **Regla para toda columna nueva en `usuario`:** agregar el `GRANT` de columna en la misma migración que el `ALTER TABLE`, y verificar contra `information_schema.column_privileges` antes de dar el cambio por terminado.
+> **Regla para toda columna nueva en `usuario` — footgun de grants por columna.** Esta tabla usa grants **por columna**, no por tabla completa (ver el patrón de `harden_usuario_rol_email`/`restrict_usuario_update_grants`): `institucion`/`carrera`/`ciudad` tienen `GRANT SELECT (columna) ... TO anon, authenticated` + `GRANT UPDATE (columna) ... TO authenticated` explícitos. Agregar una columna con `ALTER TABLE ADD COLUMN` **no** le da SELECT/UPDATE automáticamente a `anon`/`authenticated` — falta un `GRANT` explícito. Sin ese grant, cualquier `select(...)` que incluya la columna falla completo con `permission denied for column <col>` (el privilegio de columna bloquea el `SELECT` entero, no solo esa columna). **Regla:** agregar el `GRANT` de columna en la misma migración que el `ALTER TABLE`, y verificar contra `information_schema.column_privileges` antes de dar el cambio por terminado.
 
 ---
 
-### 3.20 Colecciones (migración `create_colecciones_tables`)
+### 3.20 Colecciones
 
 Permiten a cualquier usuario agrupar publicaciones (propias o ajenas) en listas curadas con visibilidad configurable — análogo a `guardado` (§3.11) pero con metadata (título/descripción) y agrupación en vez de un flag por publicación. Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes.
 
@@ -809,30 +871,23 @@ Sin RPC nuevas: todo el CRUD pasa por operaciones directas protegidas por estas 
 
 Endpoints en `Vitrina_Especificaciones_APIs.md` §19. UI: `/perfil/colecciones` (gestión propia: crear/editar/borrar, componente `ColeccionCard`), `/coleccion/[id]` (vista pública — `getColeccion` usa `.maybeSingle()` así que una colección privada ajena resuelve a `null` → `notFound()`, nunca un 403 que confirme su existencia), botón "Agregar a colección" en `/publicacion/[id]` (componente `AgregarAColeccionButton`, permite crear una colección nueva inline).
 
-Verificado contra el proyecto real vía MCP `supabase`: tablas y políticas desplegadas coinciden con lo anterior (1 fila de prueba en cada tabla). Cero advisors nuevos.
+---
+
+### 3.20b Columna `archivo_thumbnail_url` en `publicacion` — miniatura de PDF en el feed
+
+`archivo_thumbnail_url text NULL`, aditiva. `publicacion` usa GRANT de tabla completo (no grants por columna como `usuario` — ver footgun §3.19), así que no hizo falta un `GRANT` adicional. Guarda la URL pública (Storage, bucket `publicaciones`) de una miniatura JPEG de la página 1 de un PDF, generada **client-side** (`pdfjs-dist`, ver `lib/pdf/generateThumbnail.ts`) en el momento de publicar/editar y subida junto al archivo principal. `NULL` para publicaciones cuyo archivo es una imagen (JPG/PNG — la propia imagen es la miniatura, no hace falta esta columna) o para PDFs publicados antes de este cambio y aún no re-guardados (limitación aceptada, sin backfill server-side). Las vistas `feed_publicaciones` y `feed_trending` se recrearon (`security_invoker=true` preservado) agregando esta columna al final de su lista de columnas (restricción de Postgres: no se puede reordenar columnas con `CREATE OR REPLACE VIEW`). Ver `Vitrina_Especificaciones_APIs.md` (payloads de `POST/PATCH /api/publicaciones`) y `Vitrina_Pantallas_Componentes.md` (miniatura en `PublicacionCard`).
 
 ---
 
 ### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado`, RPC resolutora transaccional y backend del panel admin de envío masivo (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `create_correo_admin_table`, `create_resolver_destinatarios_correo_rpc`)
 
-**PR1+PR2+PR4a de una cadena de PRs** (base de esquema + Edge Function transaccional + esquema/RLS/RPC/Edge Function del panel admin). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes. Con esta fase (4a) el esquema y las RPC quedan **completos**; solo falta la fase 4b (rutas Next.js + UI del panel admin, sin cambios de esquema).
-
-> **Nota de rama (2026-07-10):** esta sección se extendió en `feat/notif-email-admin-backend` (base `feat/notif-email-edge-fn`, que trae PR1+PR2), que **no** incluye el fix de privacidad R1 aplicado en la rama independiente `feat/notif-email-perfil-ui` (PR3: revocación de `SELECT (notif_email_habilitado)` para `authenticated` + RPC `mi_notif_email_habilitado()`) — ver el historial de commits/PR de esa rama para el detalle completo. Al integrar la pila de PRs (`stacked-to-main`), esta sección tendrá un conflicto de merge con la versión de PR3 sobre el mismo §3.21; se debe reconciliar a mano conservando **ambas** correcciones (la de PR3 sobre la columna + las subsecciones nuevas de PR4a abajo).
-### 3.21 Notificaciones por correo (Resend) — columna `notif_email_habilitado` + RPC resolutora transaccional (migraciones `add_notif_email_habilitado_to_usuario`, `create_resolver_destinatario_notificacion_rpc`, `fix_resolver_destinatario_notificacion_secret_store`, `revoke_select_notif_email_habilitado_add_self_rpc`)
-
-**PR1+PR3 de una cadena de PRs** (base de esquema + toggle de perfil). Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá. Sección **en construcción**: se extiende en fases siguientes con el Edge Function transaccional + webhooks (`enviar-notificacion-email`, Fase 2) y el panel admin de envío masivo (`correo_admin` + `resolver_destinatarios_correo` + `enviar-correo-masivo`, Fases 4a/4b).
+Sistema completo de notificaciones por correo: notificaciones transaccionales (webhooks) y panel admin de envío masivo. Cambio ADITIVO, aprobado explícitamente; sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá.
 
 #### Columna `usuario.notif_email_habilitado`
 
-`boolean NOT NULL DEFAULT true` — preferencia de notificaciones por correo, modelo opt-out (todo usuario empieza suscrito). `UPDATE` sigue otorgado a `authenticated` (`grant update (notif_email_habilitado) on usuario to authenticated;`) — seguro porque la policy `editar_propio` (`USING`/`WITH CHECK auth.uid() = id`) es **row-scoped**, así que un usuario solo puede escribir su propia fila.
+`boolean NOT NULL DEFAULT true` — preferencia de notificaciones por correo, modelo opt-out (todo usuario empieza suscrito). `UPDATE` está otorgado a `authenticated` (`grant update (notif_email_habilitado) on usuario to authenticated;`) — seguro porque la policy `editar_propio` (`USING`/`WITH CHECK auth.uid() = id`) es **row-scoped**, así que un usuario solo puede escribir su propia fila. Sin embargo, `usuario` no tiene `SELECT` de columna para ningún rol (ni `anon` ni `authenticated`) sobre `notif_email_habilitado`.
 
-> **Corrección (2026-07-10, hallazgo de `review-risk` verificado en vivo) — `GRANT SELECT` sobre esta columna a `authenticated` era una fuga de privacidad, NO estaba protegido por RLS.** El diseño original de PR1 (`grant select, update (notif_email_habilitado) on usuario to authenticated;`) asumía que RLS acotaba la lectura a la fila propia, igual que la protección de escritura. **Falso**: la policy de SELECT de `usuario` es `lectura_publica USING (true)` — pública para **todas** las filas y **todos** los roles (es la policy que permite ver perfiles de otros usuarios en `/usuario/[id]`). RLS filtra **filas**, no columnas; el `GRANT SELECT` de columna es *role-wide*, no *row-scoped*. Resultado real: cualquier usuario `authenticated` podía leer `notif_email_habilitado` de **cualquier otro usuario** vía `.from('usuario').select('notif_email_habilitado').eq('id', '<uuid-ajeno>')` — verificado en vivo contra la BD. Esta es la clase de error inversa al footgun de `ciudad` (§3.19: ahí faltaba el grant y todo el SELECT fallaba; acá el grant estaba de más y exponía datos privados de terceros).
->
-> **Fix (migración `revoke_select_notif_email_habilitado_add_self_rpc`):** `revoke select (notif_email_habilitado) on usuario from authenticated;` (columna ya no legible por PostgREST directo, ni siquiera de la fila propia) + nueva RPC self-scoped `mi_notif_email_habilitado()` (ver abajo) como único camino de lectura. `UPDATE` no se tocó — sigue siendo seguro por ser row-scoped vía RLS.
->
-> **Regla para cualquier futura columna "privada" de `usuario` (o de cualquier tabla con policy de SELECT pública/no row-scoped):** un `GRANT SELECT` de columna a un rol NO hereda automáticamente el row-scoping de otras policies de esa tabla. Si la tabla tiene una policy de lectura pública (`USING (true)`) como `usuario.lectura_publica`, la única forma de exponer una columna privada "propia únicamente" es (a) una RPC `SECURITY DEFINER` self-scoped que derive el id de `auth.uid()` internamente (patrón de `mi_notif_email_habilitado()`), nunca (b) un `GRANT SELECT` de columna liso — ese último expone la columna a todas las filas visibles por la policy existente, no solo a la fila del llamante.
-
-Verificado contra `information_schema.column_privileges` tras el fix: `authenticated` conserva `UPDATE`, ya no aparece `SELECT` para esa columna en ningún rol.
+> **Regla: un `GRANT SELECT` de columna a un rol NO hereda el row-scoping de otras policies de esa tabla.** Si la tabla tiene una policy de lectura pública (`USING (true)`) — como `usuario.lectura_publica`, que permite ver perfiles de otros usuarios en `/usuario/[id]` — un `GRANT SELECT` de columna liso expone esa columna a **todas** las filas visibles por esa policy, no solo a la fila del llamante (RLS filtra filas, el grant de columna es *role-wide*). La única forma de exponer una columna privada "propia únicamente" en esas condiciones es una RPC `SECURITY DEFINER` self-scoped que derive el id de `auth.uid()` internamente (patrón de `mi_notif_email_habilitado()` abajo), nunca un `GRANT SELECT` de columna directo.
 
 #### RPC `mi_notif_email_habilitado()` — lectura self-scoped, sin parámetros
 
@@ -844,44 +899,47 @@ language sql security definer set search_path = '' as $$
 $$;
 ```
 
-`SECURITY DEFINER`, **sin parámetros** — deriva el `id` de `auth.uid()` dentro del cuerpo, así que estructuralmente **no puede** leer la preferencia de otro usuario (a diferencia de recibir un `p_usuario_id` y confiar en que el llamante no lo falsifique). `revoke all ... from public; grant execute ... to authenticated;` (NO `anon` — requiere sesión). Reemplaza el `.select('notif_email_habilitado')` directo en `lib/data/perfil.ts` (`getPreferenciasNotificacion`), `app/api/auth/me/route.ts` y `app/api/perfil/route.ts` (el `RETURNING` de la fila tras el `PATCH` también requiere `SELECT` sobre la columna devuelta, así que también se movió a esta RPC).
+`SECURITY DEFINER`, **sin parámetros** — deriva el `id` de `auth.uid()` dentro del cuerpo, así que estructuralmente **no puede** leer la preferencia de otro usuario (a diferencia de recibir un `p_usuario_id` y confiar en que el llamante no lo falsifique). `revoke all ... from public; grant execute ... to authenticated;` (NO `anon` — requiere sesión). Es el único camino de lectura de la preferencia propia: la usan `lib/data/perfil.ts` (`getPreferenciasNotificacion`), `app/api/auth/me/route.ts` y `app/api/perfil/route.ts` (el `RETURNING` de la fila tras el `PATCH` también requiere `SELECT` sobre la columna devuelta, así que también pasa por esta RPC).
 
 #### RPC `resolver_destinatario_notificacion(p_secret text, p_usuario_id uuid)`
 
 `SECURITY DEFINER`, `set search_path = ''`. Igual que `consumir_cuota_rag`/`aceptar_solicitud`, usa el bypass de owner para leer `usuario.email` — columna sin `SELECT` para ningún rol vía PostgREST (§7.3). Se invoca desde el Edge Function del webhook transaccional (sin JWT de usuario, solo la `anon key`), así que el control de acceso **no** es `es_admin()` sino un secreto compartido: si `p_secret` no coincide con el valor almacenado, `RAISE EXCEPTION 'No autorizado'` (P0001 → 400 vía `handleError`). Si coincide, retorna `(email text, notif_email_habilitado boolean)` para el `usuario_id` pedido. `revoke all ... from public; grant execute ... to anon, authenticated;` (el webhook llama sin sesión, de ahí el grant a `anon`).
 
-> **Nota (2026-07-10) — `ALTER DATABASE ... SET` / `current_setting('app.settings.*')` NO es viable en Supabase hosted.** El diseño original de esta RPC planeaba guardar el secreto con `alter database postgres set app.settings.notif_webhook_secret = '<valor>'` y leerlo con `current_setting('app.settings.notif_webhook_secret', true)` — patrón estándar en Postgres self-hosted. En Supabase hosted el rol `postgres` **no tiene superusuario real**; ese `ALTER DATABASE` falla con `permission denied to set parameter`. Corregido en la migración `fix_resolver_destinatario_notificacion_secret_store`: se creó un schema `private` (sin grants a `public`/`anon`/`authenticated`) con la tabla `private.notif_config(key text primary key, value text)`, y la RPC compara `p_secret <> (select value from private.notif_config where key = 'webhook_secret')` en vez de `current_setting(...)`. **Regla para cualquier secreto futuro a nivel de base de datos en este proyecto:** guardarlo en una tabla de un schema privado sin grants a roles de PostgREST — **nunca** `ALTER DATABASE SET` / `current_setting('app.settings.*')`, no disponible en este entorno hosted.
+> **El secreto vive en una tabla de un schema `private`, nunca en `ALTER DATABASE SET` / `current_setting('app.settings.*')`.** En Supabase hosted el rol `postgres` no tiene superusuario real: `ALTER DATABASE ... SET` falla con `permission denied to set parameter`, así que el patrón estándar de Postgres self-hosted (guardar config con `alter database ... set app.settings.*` y leerla con `current_setting(...)`) no es viable ahí. El schema `private` (sin grants a `public`/`anon`/`authenticated`) tiene la tabla `private.notif_config(key text primary key, value text)`, y la RPC compara `p_secret <> (select value from private.notif_config where key = 'webhook_secret')` en vez de `current_setting(...)`. **Regla para cualquier secreto futuro a nivel de base de datos en este proyecto:** guardarlo en una tabla de un schema privado sin grants a roles de PostgREST — **nunca** `ALTER DATABASE SET` / `current_setting('app.settings.*')`, no disponible en este entorno hosted.
 
-Verificado vía MCP `supabase`: secreto correcto → retorna la fila `{email, notif_email_habilitado}` de un usuario real; secreto incorrecto/ausente → `P0001 No autorizado`. Advisors: solo el WARN `security_definer_function_executable` esperado para esta clase de RPC (mismo que `aceptar_solicitud`/`consumir_cuota_rag`), nada nuevo.
+#### Edge Function `enviar-notificacion-email`
 
-#### Edge Function `enviar-notificacion-email` (Fase 2, PR2)
-
-`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, desviación deliberada D9 respecto al precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})`, wrapper HTML compartido con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija).
+`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, a diferencia del precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})`, wrapper HTML compartido con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija). El wrapper incluye un botón fijo "Visitar Vitrina" → `https://esvitrina.com` (hardcodeado en `email-template.ts`, no viene de `NEXT_PUBLIC_SITE_URL` — las Edge Functions corren en Deno, fuera de la app Next.js, así que esa env var no es alcanzable ahí).
 
 Variables de entorno: `NOTIF_WEBHOOK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NOTIF_FROM_EMAIL`.
 
 Flujo:
 1. Header `x-webhook-secret` ≠ `NOTIF_WEBHOOK_SECRET` (o ausente) → **401**, antes de parsear el body.
 2. Parsea el payload nativo del webhook `{type, table, record, old_record?, schema}`.
-3. Enruta vía `resolveRecipient`: `solicitud_mensaje` INSERT → destinatario `record.receptor_id`, plantilla "nueva solicitud de mensaje"; `solicitud_revista` UPDATE con `record.estado==='aceptada'` **y** `old_record?.estado !== 'aceptada'` → destinatario `record.solicitante_id`, plantilla "tu obra fue aceptada en la revista" (el guard de `old_record` evita reenvíos si se vuelve a guardar una fila ya aceptada); cualquier otro caso → **204** (ignorado, no es error).
+3. Enruta vía `resolveRecipient`: `solicitud_mensaje` INSERT → destinatario `record.receptor_id`, plantilla "nueva solicitud de mensaje"; `solicitud_revista` UPDATE con `record.estado==='aceptada'` **y** `old_record?.estado !== 'aceptada'` → destinatario `record.solicitante_id`, plantilla "tu obra fue aceptada en la revista" (el guard de `old_record` evita reenvíos si se vuelve a guardar una fila ya aceptada); `solicitud_revista` UPDATE con `record.estado==='rechazada'` **y** `old_record?.estado !== 'rechazada'` → mismo destinatario, plantilla "tu obra no fue aceptada en una revista" (sin chequear `notif_app_revista` — ver asimetría de gate en §3.21/§3.23); `notificacion` INSERT con `record.tipo==='recordatorio_cierre_revista'` → destinatario `record.usuario_id`, plantilla "la ventana de postulación cierra pronto" (cualquier otro `tipo` en este mismo webhook → ignorado, evita duplicar emails); cualquier otro caso → **204** (ignorado, no es error).
 4. Cliente Supabase **anon** (`createClient(SUPABASE_URL, SUPABASE_ANON_KEY)`) — no `service_role` — llama `rpc('resolver_destinatario_notificacion', {p_secret: NOTIF_WEBHOOK_SECRET, p_usuario_id})`.
 5. Sin fila, o `notif_email_habilitado=false`, o sin `email` → **204** (omitido: usuario no encontrado / opt-out / sin correo, no es un error). Error real de la RPC → **500**.
 6. Arma el HTML vía `renderEmail(...)` y envía con Resend (`npm:resend`, import Deno) `emails.send({from: NOTIF_FROM_EMAIL, to: email, subject, html})`. Error de Resend → **500** con su mensaje; éxito → **200**.
 
-**Footgun de build:** el entrypoint Deno (`index.ts`) usa globals (`Deno.serve`, `Deno.env`) y specifiers `npm:`/imports con extensión `.ts` que `tsc` (targeted a Node) no puede resolver. Se excluyó explícitamente en `tsconfig.json` (`exclude: ["supabase/functions/**/index.ts"]`) — los siblings planos (`route-predicate.ts`, `email-template.ts`) **no** están excluidos y sí se type-checan/lintean normalmente. ESLint (`eslint-config-next/typescript`) no requirió una exclusión equivalente: no lanza error de "parserOptions.project" sobre `index.ts` aun estando fuera del programa de `tsc` — verificado explícitamente antes de decidir no tocar `eslint.config.mjs`.
+**Footgun de build:** el entrypoint Deno (`index.ts`) usa globals (`Deno.serve`, `Deno.env`) y specifiers `npm:`/imports con extensión `.ts` que `tsc` (targeted a Node) no puede resolver. Se excluyó explícitamente en `tsconfig.json` (`exclude: ["supabase/functions/**/index.ts"]`) — los siblings planos (`route-predicate.ts`, `email-template.ts`) **no** están excluidos y sí se type-checan/lintean normalmente. ESLint (`eslint-config-next/typescript`) no requiere una exclusión equivalente: no lanza error de "parserOptions.project" sobre `index.ts` aun estando fuera del programa de `tsc`.
 
-#### Webhooks del dashboard (runbook operativo, Fase 2 — NO es DDL de migración, decisión D7)
+#### Webhooks del dashboard (runbook operativo — NO es DDL de migración)
 
 Se configuran manualmente en el dashboard de Supabase (Database → Webhooks), no vía `apply_migration` — evita incrustar el valor del secreto en una definición de trigger versionada y usa la UI soportada con reintentos/observabilidad. Dos webhooks:
 
 | Webhook | Tabla | Evento | Header | Destino |
 |---|---|---|---|---|
 | Nueva solicitud de mensaje | `solicitud_mensaje` | INSERT | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
-| Solicitud de revista aceptada | `solicitud_revista` | UPDATE | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+| Solicitud de revista aceptada/rechazada | `solicitud_revista` | UPDATE | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+| Notificación in-app nueva (recordatorio de cierre) | `notificacion` | INSERT | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
 
-El mismo secreto compartido vive en tres lugares (ver nota de §3.21 arriba sobre `private.notif_config`): (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC). **Pendiente de ejecución** — creación de los 2 webhooks y despliegue de la función (`mcp__supabase__deploy_edge_function` + secretos) quedan fuera del alcance de este `sdd-apply` (sin acceso a herramientas MCP de Supabase en esta sesión); código listo y commiteado, runbook documentado para quien despliegue.
+El webhook de `solicitud_revista` UPDATE ya existía para `aceptada` (fila 2) — la migración de seguimiento `notif_rechazo_recordatorio_revista` (§3.23) **reutiliza el mismo webhook** para `rechazada`, sin crear uno nuevo: `route-predicate.ts` agrega una rama (`estado==='rechazada' && oldEstado!=='rechazada'` → plantilla `solicitud_revista_rechazada`) al predicate existente. El webhook de `notificacion` INSERT (fila 3) sí es **nuevo**, configurado manualmente en el dashboard (Database → Webhooks) como runbook operativo — dispara para **toda** inserción en `notificacion` (likes, comentarios, aceptada, etc.), y `route-predicate.ts` filtra por `record.tipo`, devolviendo plantilla únicamente cuando `tipo==='recordatorio_cierre_revista'` y `null` para cualquier otro tipo (evita duplicar el email de `aceptada`/otros, que ya tienen su propio riel).
 
-#### Tabla `correo_admin` (Fase 4a, PR4a)
+**Asimetría del gate de email entre rechazo y recordatorio (ver también §3.23):** el rechazo usa el mismo riel que `aceptada` — el webhook de UPDATE dispara siempre que ocurre el UPDATE, así que el único gate real del email es `notif_email_habilitado`, evaluado downstream por `resolver_destinatario_notificacion()`, **independiente** de `notif_app_revista`. El recordatorio, en cambio, solo tiene un riel: el INSERT de la fila in-app; como `recordar_cierre_revista()` ya filtra por `notif_app_revista` antes de insertar, ese mismo flag termina cortando también el email como efecto colateral del mecanismo — no es una preferencia de email dedicada.
+
+El mismo secreto compartido vive en tres lugares: (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC).
+
+#### Tabla `correo_admin`
 
 Historial de envíos masivos de correo hechos por administradores. RLS gateada por `es_admin()`, mismo patrón que `chunk_admin_write`/`rag_admin_write` (§3.18):
 
@@ -895,7 +953,7 @@ Historial de envíos masivos de correo hechos por administradores. RLS gateada p
 | `cantidad_destinatarios` | `int not null default 0` | — | Cuántos resolvió la RPC |
 | `cantidad_enviados` | `int not null default 0` | — | Cuántos confirmó Resend |
 | `cantidad_fallidos` | `int not null default 0` | — | Cuántos fallaron en Resend |
-| `estado` | `text not null default 'pendiente'` | `check (estado in ('pendiente','completado','fallido'))` | Lo actualiza el Route Handler tras invocar `enviar-correo-masivo` (Fase 4b) |
+| `estado` | `text not null default 'pendiente'` | `check (estado in ('pendiente','completado','fallido'))` | Lo actualiza el Route Handler tras invocar `enviar-correo-masivo` |
 | `enviado_en` | `timestamptz not null default now()` | — | Orden del historial (`ORDER BY enviado_en DESC`) |
 
 **RLS habilitado**, tres policies `es_admin()`-gateadas:
@@ -904,13 +962,11 @@ Historial de envíos masivos de correo hechos por administradores. RLS gateada p
 |---|---|---|---|
 | `correo_admin_select` | `SELECT` | `authenticated` | `USING (es_admin())` |
 | `correo_admin_insert` | `INSERT` | `authenticated` | `WITH CHECK (es_admin() and admin_id = auth.uid())` — `admin_id` desde sesión, nunca del body |
-| `correo_admin_update` | `UPDATE` | `authenticated` | `USING/WITH CHECK (es_admin() and admin_id = auth.uid())` — el Route Handler actualiza `cantidad_enviados/cantidad_fallidos/estado` tras invocar la Edge Function, corriendo bajo el JWT del MISMO admin que hizo el INSERT |
-
-> **Corrección (2026-07-10, hallazgo de risk sobre el diff staged de PR4a):** la primera versión de `correo_admin_update` solo exigía `es_admin()`, sin `admin_id = auth.uid()`. Cualquier admin podía reescribir el historial de envío de OTRO admin (asunto, cuerpo, `destinatarios_criterio`, incluso reasignar `admin_id`) — rompía la integridad del audit trail (a diferencia de `correo_admin_insert`, que sí exigía ownership desde el inicio). Corregido antes de aplicar la migración — el SQL de abajo ya incluye el fix, no hizo falta una migración separada porque **ninguna de las migraciones de esta sección se ha aplicado todavía**.
+| `correo_admin_update` | `UPDATE` | `authenticated` | `USING/WITH CHECK (es_admin() and admin_id = auth.uid())` — el Route Handler actualiza `cantidad_enviados/cantidad_fallidos/estado` tras invocar la Edge Function, corriendo bajo el JWT del MISMO admin que hizo el INSERT; sin `admin_id = auth.uid()` cualquier admin podría reescribir el historial de envío de otro admin, rompiendo la integridad del audit trail |
 
 Grant de tabla separado de RLS (RLS filtra filas; el GRANT habilita visibilidad en PostgREST — mismo principio del footgun de §3.19): `grant select, insert, update on correo_admin to authenticated;`.
 
-**SQL completo (migración `create_correo_admin_table`, pendiente de aplicar):**
+**SQL completo:**
 
 ```sql
 create table public.correo_admin (
@@ -942,13 +998,13 @@ create policy correo_admin_update on public.correo_admin
 grant select, insert, update on public.correo_admin to authenticated;
 ```
 
-#### RPC `resolver_destinatarios_correo(p_tipo text, p_ciudad text default null, p_ids uuid[] default null)` (Fase 4a)
+#### RPC `resolver_destinatarios_correo(p_tipo text, p_ciudad text default null, p_ids uuid[] default null)`
 
 `SECURITY DEFINER`, `set search_path = ''`. Mismo bypass de owner que `resolver_destinatario_notificacion` para leer `usuario.email` (columna sin `SELECT` para ningún rol vía PostgREST, §7.3), pero gateada por **rol**, no por secreto: `if not es_admin() then raise exception 'No autorizado'`. Retorna `(id uuid, email text, nombre text)` filtrando SIEMPRE `notif_email_habilitado = true` y `email is not null` — el filtro de opt-out se evalúa **fuera** de la rama de `p_tipo` (`case p_tipo when 'todos' then true when 'ciudad' then u.ciudad = p_ciudad when 'ids' then u.id = any(p_ids) else false end`), así que un admin no puede saltarse el opt-out de un usuario ni eligiéndolo a mano vía `p_ids`.
 
 `revoke all on function ... from public; revoke execute on function ... from anon; grant execute on function ... to authenticated;` — a diferencia de `resolver_destinatario_notificacion` (que sí necesita `anon` porque el webhook llama sin sesión), esta RPC es de uso exclusivo de administradores autenticados: `anon` se revoca **explícitamente**, además del `revoke all from public` (Supabase auto-otorga `EXECUTE` a `anon`/`authenticated`/`service_role` en funciones nuevas; `revoke all from public` por sí solo no retira el grant directo a `anon` — mismo aprendizaje ya aplicado en `rag_rate_limit_revoke_anon`/`mensajeria_directa_revoke_anon`, §7.1).
 
-**SQL completo (migración `create_resolver_destinatarios_correo_rpc`, pendiente de aplicar):**
+**SQL completo:**
 
 ```sql
 create or replace function public.resolver_destinatarios_correo(
@@ -975,43 +1031,384 @@ revoke execute on function public.resolver_destinatarios_correo(text, text, uuid
 grant execute on function public.resolver_destinatarios_correo(text, text, uuid[]) to authenticated;
 ```
 
-Es también la puerta de entrada exclusiva de `enviar-correo-masivo` (ver esa subsección abajo) — la Edge Function llama a esta RPC directamente en vez de recibir destinatarios pre-resueltos, así que un solo `if not es_admin()` sirve como autorización y resolución a la vez.
+Es también la puerta de entrada exclusiva de `enviar-correo-masivo` (ver esa subsección abajo) — la Edge Function llama a esta RPC directamente en vez de recibir destinatarios pre-resueltos, así que un solo `if not es_admin()` sirve como autorización y resolución a la vez. Esta RPC lee `usuario.email`/`notif_email_habilitado` para MÚLTIPLES filas dentro de un cuerpo `SECURITY DEFINER` gateado por `es_admin()` — patrón seguro (admin-gateado, no un `GRANT SELECT` de columna plano expuesto a PostgREST). No agrega ningún grant de columna nuevo: el owner bypassea los grants de columna solo *dentro* del cuerpo de la función, y el único camino de entrada está gateado por `es_admin()`.
 
-**Nota de diseño (no confundir con el bug de PR3):** esta RPC lee `usuario.email`/`notif_email_habilitado` para MÚLTIPLES filas dentro de un cuerpo `SECURITY DEFINER` gateado por `es_admin()` — patrón seguro (admin-gateado, no un `GRANT SELECT` de columna plano expuesto a PostgREST). El bug corregido en PR3 (R1) era un `grant select (columna) ... to authenticated` sobre `usuario` — tabla con RLS de SELECT pública (`lectura_publica USING (true)`) — que dejaba la columna legible por CUALQUIER usuario autenticado vía PostgREST directo. Esta RPC no agrega ningún grant de columna nuevo: el owner bypassea los grants de columna solo *dentro* del cuerpo de la función, y el único camino de entrada está gateado por `es_admin()`.
+#### Edge Function `enviar-correo-masivo`
 
-#### Edge Function `enviar-correo-masivo` (Fase 4a, PR4a)
+`verify_jwt:true` — a diferencia del webhook transaccional, el llamante es el Route Handler de admin (`app/api/admin/correos/route.ts`) vía `admin.functions.invoke('enviar-correo-masivo', {...})`, que reenvía el JWT del admin automáticamente (mismo patrón que `lib/rag/embed.ts`). `verify_jwt:true` solo prueba "hay un usuario autenticado", no "es admin".
 
-`verify_jwt:true` — a diferencia del webhook transaccional, el llamante es el Route Handler de admin (`app/api/admin/correos/route.ts`, Fase 4b) vía `admin.functions.invoke('enviar-correo-masivo', {...})`, que reenvía el JWT del admin automáticamente (mismo patrón que `lib/rag/embed.ts`). `verify_jwt:true` solo prueba "hay un usuario autenticado", no "es admin".
+La función recibe `{asunto, cuerpo, destinatarios_criterio}` (shape de `DestinatariosCriterio`) — **no** una lista de destinatarios pre-resuelta — y ella misma llama internamente a `resolver_destinatarios_correo` con el JWT admin reenviado. Es standalone, alcanzable por `functions.invoke` desde cualquier cuenta admin: si recibiera una lista pre-resuelta, nada forzaría que viniera realmente de `resolver_destinatarios_correo`, así que un admin podría construir `destinatarios` a mano para saltarse el opt-out o enviar a direcciones arbitrarias usando el dominio verificado del proyecto como relay abierto. Al resolver siempre internamente, no existe camino donde la lista venga de fuera de esa RPC, así que el opt-out se aplica siempre; tampoco hace falta un `rpc('es_admin')` separado, la RPC ya gatea internamente.
 
-> **Corrección de contrato (2026-07-10, BLOCKER de risk sobre el diff staged de PR4a):** el diseño original recibía `{asunto, cuerpo, destinatarios: [{id,email,nombre}]}` — una lista **pre-resuelta por el caller** — asumiendo que solo el futuro Route Handler la invocaría. Pero esta función es standalone, alcanzable por `functions.invoke` desde CUALQUIER cuenta admin: nada en ese contrato forzaba que la lista viniera realmente de `resolver_destinatarios_correo`, así que un admin podía construir `destinatarios` a mano para saltarse el opt-out o enviar a direcciones arbitrarias usando el dominio verificado del proyecto como relay abierto. **Fix**: la función ya NO recibe `destinatarios`; recibe `{asunto, cuerpo, destinatarios_criterio}` (shape de `DestinatariosCriterio`) y ELLA MISMA llama a `resolver_destinatarios_correo` con el JWT admin reenviado — no existe camino donde la lista venga de fuera de esa RPC, así que el opt-out se aplica siempre. Consecuencia: ya no hace falta un `rpc('es_admin')` separado, la RPC ya gatea internamente.
+Fuente en `supabase/functions/enviar-correo-masivo/index.ts` (misma naturaleza committed que `enviar-notificacion-email`). Lógica pura en tres siblings Vitest: `validate-payload.ts`, `chunk.ts`, `plain-text-to-html.ts` (ver nota de `cuerpo` abajo).
 
-Fuente en `supabase/functions/enviar-correo-masivo/index.ts` (misma desviación D9 que `enviar-notificacion-email`). Lógica pura en tres siblings Vitest: `validate-payload.ts`, `chunk.ts`, `plain-text-to-html.ts` (ver nota de `cuerpo` abajo).
-
-> **`cuerpo` es texto plano, nunca HTML de confianza (CRITICAL de risk, corregido).** El prompt del producto especifica `cuerpo` como `<textarea>` sin editor de formato. `renderEmail` no escapa `cuerpoHtml` por diseño (correcto para plantillas hardcoded, equivocado para input de admin sin sanitizar — habilitaría XSS en el correo enviado). Fix: `plain-text-to-html.ts` escapa los 5 caracteres HTML-significativos y convierte saltos de línea a `<br>` antes de llegar a `renderEmail`, dentro de esta misma función — no depende de que un futuro Route Handler lo haga bien. Su lógica de escape está duplicada (no importada) desde `_shared/email-template.ts` por un conflicto real entre `tsc` (rechaza imports relativos con extensión `.ts` explícita) y Deno (la exige en runtime) — ver el header de ese archivo.
+> **`cuerpo` es texto plano, nunca HTML de confianza.** El `<textarea>` de admin no tiene editor de formato. `renderEmail` no escapa `cuerpoHtml` por diseño (correcto para plantillas hardcoded, equivocado para input de admin sin sanitizar — habilitaría XSS en el correo enviado). Por eso `plain-text-to-html.ts` escapa los 5 caracteres HTML-significativos y convierte saltos de línea a `<br>` antes de llegar a `renderEmail`, dentro de esta misma función — no depende de que el Route Handler lo haga bien. Su lógica de escape está duplicada (no importada) desde `_shared/email-template.ts` por un conflicto real entre `tsc` (rechaza imports relativos con extensión `.ts` explícita) y Deno (la exige en runtime) — ver el header de ese archivo.
 
 Variables de entorno: `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NOTIF_FROM_EMAIL` (compartidas con `enviar-notificacion-email`; no hace falta `NOTIF_WEBHOOK_SECRET` aquí).
 
-Flujo (revisado): 
+Flujo:
 1. Cliente Supabase con el header `Authorization` reenviado. Sin header → **401**.
 2. Body `{asunto, cuerpo, destinatarios_criterio}` validado por `validate-payload.ts`; inválido → **400**.
 3. `rpc('resolver_destinatarios_correo', {p_tipo, p_ciudad, p_ids})`. `P0001` (no-admin) → **403**; otro error → **500** (log server-side, sin detalle en la respuesta).
 4. Cero destinatarios resueltos → **200** `{enviados:0, fallidos:0, detalles:[]}` — no es error.
-5. Más de `LIMITE_DESTINATARIOS = 500` resueltos → **400**, sin enviar nada (mitigación MVP de resilience — un `tipo:'todos'` sin cota podría dejar `correo_admin.estado` atascado en `'pendiente'` si el runtime mata la función a mitad de un envío; no resuelve el problema de fondo, solo acota el peor caso sin construir colas/checkpointing).
+5. Más de `LIMITE_DESTINATARIOS = 500` resueltos → **400**, sin enviar nada — mitiga que un `tipo:'todos'` sin cota deje `correo_admin.estado` atascado en `'pendiente'` si el runtime mata la función a mitad de un envío; no resuelve el problema de fondo, solo acota el peor caso sin construir colas/checkpointing.
 6. Convierte `cuerpo` a HTML seguro UNA vez (`plain-text-to-html.ts`), divide en lotes de ≤50 (`chunk.ts`) y envía con Resend en paralelo por lote vía `renderEmail({titulo: asunto, cuerpoHtml: cuerpoHtmlSeguro, nombre})`.
-7. Responde **200** `{enviados, fallidos, detalles: {email, error?}[]}`. El Route Handler (Fase 4b) escribe el UPDATE de `correo_admin` con los conteos/`estado` final — `cantidad_destinatarios = enviados + fallidos`, ya no necesita resolver destinatarios por separado antes de invocar (puede seguir llamando a `resolver_destinatarios_correo` aparte solo para el conteo de preview/dry-run, sin enviar nada).
+7. Responde **200** `{enviados, fallidos, detalles: {email, error?}[]}`. El Route Handler escribe el UPDATE de `correo_admin` con los conteos/`estado` final — `cantidad_destinatarios = enviados + fallidos` (puede seguir llamando a `resolver_destinatarios_correo` aparte solo para el conteo de preview/dry-run, sin enviar nada).
 
-**Nota de superficie de error:** gateada por `verify_jwt:true` + el `es_admin()` interno de la RPC — solo un admin autenticado ve la respuesta, por eso `detalles[].error` incluye el mensaje de Resend por destinatario (diagnóstico); excepciones no estructuradas devuelven un mensaje genérico, detalle real solo en `console.error`. Válido tras el fix de contrato: con la lista de destinatarios ahora imposible de manipular desde fuera de la RPC, este passthrough ya no habilita saltarse el opt-out.
+**Nota de superficie de error:** gateada por `verify_jwt:true` + el `es_admin()` interno de la RPC — solo un admin autenticado ve la respuesta, por eso `detalles[].error` incluye el mensaje de Resend por destinatario (diagnóstico); excepciones no estructuradas devuelven un mensaje genérico, detalle real solo en `console.error`. Con la lista de destinatarios imposible de manipular desde fuera de la RPC, este passthrough no habilita saltarse el opt-out.
 
-#### Pendiente (fase siguiente)
+#### Rutas Next.js y UI del panel admin
 
-Rutas Next.js y UI del panel admin (`/api/admin/correos`, `/api/admin/correos/[id]`, `/api/admin/correos/contar`, `/admin/correos`) — Fase 4b, base de esta rama (`feat/notif-email-admin-backend`), sin cambios de esquema adicionales. El toggle de `/perfil/ajustes` (Fase 3) se implementó en la rama independiente `feat/notif-email-perfil-ui` — ver esa rama para el detalle, incluido el fix de privacidad R1 que esta sección **todavía no refleja** por no formar parte del árbol de commits de PR4a (ver nota de rama al inicio de §3.21).
-#### Toggle en `/perfil/ajustes` (Fase 3, PR3)
+`GET/POST /api/admin/correos`, `GET /api/admin/correos/[id]`, `POST /api/admin/correos/contar`, pantalla `/admin/correos` — sin cambios de esquema adicionales, puro consumo de lo documentado arriba (tabla `correo_admin`, RPC `resolver_destinatarios_correo`, Edge Function `enviar-correo-masivo`). Detalle de endpoints en `Vitrina_Especificaciones_APIs.md` §21; detalle de pantalla/componentes en `Vitrina_Pantallas_Componentes.md` (feature "Panel admin de correos masivos"). El envío es **síncrono** dentro del propio Route Handler (la Edge Function ya responde con el resultado final) — no hay job async ni `tracking_id`.
+
+La UI del form expone destinatarios `todos` / `ids` / `sin_publicacion` (no `ciudad` — decisión explícita); el tipo `DestinatariosCriterio` y la RPC siguen soportando `ciudad` a nivel de contrato para uso directo de la API.
+
+**`{tipo:'sin_publicacion'}` — extensión sin cambio de esquema.** Es una variante de `DestinatariosCriterio` que la RPC `resolver_destinatarios_correo` **no conoce**: el Route Handler (`app/api/admin/correos/route.ts` y `.../contar/route.ts`) la resuelve ANTES de tocar la RPC/Edge Function, vía `resolverIdsSinPublicacion` (`lib/data/correos.ts`) — un `SELECT usuario.id` + `SELECT publicacion.autor_id` bajo el JWT del admin (ambas columnas públicas por RLS, sin RPC nueva ni `service_role`) y una diferencia en JS. La lista resultante se envía como `{tipo:'ids', valor}` solo a la RPC/Edge Function; `correo_admin.destinatarios_criterio` guarda el criterio original `sin_publicacion` (columna `jsonb`, esquema sin cambios — acepta cualquier forma). El opt-out `notif_email_habilitado` lo sigue aplicando `resolver_destinatarios_correo` sobre esos ids, igual que con un `ids` armado a mano.
+
+#### Toggle en `/perfil/ajustes`
 
 `PATCH /api/perfil` acepta `notif_email_habilitado: boolean` y lo persiste con el `UPDATE` normal (row-scoped por `editar_propio`); la respuesta y `GET /api/auth/me` obtienen el valor actual vía `mi_notif_email_habilitado()`, no vía `.select()` directo (ver arriba). UI: `components/ui/Toggle.tsx` (`role="switch"`) + `components/perfil/NotificacionesForm.tsx`.
 
-#### Pendiente (fases siguientes)
+---
 
-Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud_mensaje` INSERT, `solicitud_revista` UPDATE→aceptada) — Fase 2. Panel admin de envío masivo (`correo_admin`, `resolver_destinatarios_correo`, `enviar-correo-masivo`) — Fases 4a/4b.
+### 3.22 Vista de tendencias y conteo por área
+
+> Estos objetos son **estrictamente aditivos**: no modifican tablas, RLS, policies, ni RPC existentes. Solo agregan una vista y una función nuevas.
+
+#### Vista `feed_trending` (ADDITIVE)
+
+Vista con `security_invoker = true` construida sobre `feed_publicaciones` (que ya filtra `bloqueada = false` y hereda RLS). Añade una columna `score` de tiempo-decaimiento estilo Hacker News.
+
+```sql
+create or replace view public.feed_trending
+with (security_invoker = true) as
+select
+  fp.*,
+  (fp.likes + fp.comentarios)::numeric
+    / power(
+        (extract(epoch from (now() - fp.creado_en)) / 3600.0) + 2.0,
+        1.6
+      ) as score
+from public.feed_publicaciones fp;
+
+grant select on public.feed_trending to anon, authenticated;
+```
+
+- `security_invoker = true` → hereda la visibilidad de `feed_publicaciones`; publicaciones bloqueadas no aparecen.
+- Fórmula: `(likes + comentarios) / (horas_desde_creacion + 2)^1.6`. El `+2` evita spikes de publicaciones nuevas con 0 horas.
+- El `GRANT SELECT` es obligatorio y separado de RLS: sin él la Data API no expone la vista a `anon`/`authenticated`.
+- La columna `score` es interna. El data layer (`lib/data/trending.ts`) selecciona columnas explícitas y **nunca expone `score` al cliente**.
+- A alto volumen: considerar vista materializada refrescada por `pg_cron` — no implementado en MVP.
+
+#### RPC `get_area_counts()` (ADDITIVE)
+
+Cuenta publicaciones distintas (no bloqueadas) por área de conocimiento de tag.
+
+```sql
+create or replace function public.get_area_counts()
+returns table(area text, count bigint)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select t.area, count(distinct pt.publicacion_id) as count
+  from public.tag t
+  join public.publicacion_tag pt on pt.tag_id = t.id
+  join public.publicacion p on p.id = pt.publicacion_id
+  where p.bloqueada = false
+  group by t.area;
+$$;
+
+revoke all on function public.get_area_counts() from public;
+grant execute on function public.get_area_counts() to anon, authenticated;
+```
+
+- `SECURITY INVOKER` (nunca DEFINER para omitir RLS — regla invariante del proyecto).
+- `set search_path = ''` y calificación completa de objetos — hardening Supabase.
+- `revoke all from public` + `grant execute to anon, authenticated` — explicit tight grant.
+- `count(distinct pt.publicacion_id)` → una publicación con varios tags en el mismo área cuenta una sola vez.
+- Consumida por `lib/data/areas.ts` → `getAreaCounts()`, `getAreasConMinimo(min)`, `countForArea(area)`.
+
+---
+
+### 3.23 Notificaciones in-app — tabla `notificacion`, 5 columnas `notif_app_*` en `usuario`, 10 triggers `SECURITY DEFINER` y RPC `mis_preferencias_notif_app()` (migraciones `notificaciones_app`, `notificaciones_app_harden_advisors`, `notificaciones_app_harden_trigger_fn_execute`, `notif_rechazo_recordatorio_revista`)
+
+> Cambio ADITIVO, aprobado explícitamente: tabla nueva `notificacion`, 5 columnas nuevas en `usuario`, 9 triggers y 2 funciones nuevas (1 RPC + 1 helper) en la migración base. Sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá. **Verificado EN VIVO contra el proyecto `fdfbyhjwnbteccagulxb` vía el MCP `supabase`** (no es una lectura de la migración a ciegas): esquema, índices, policies, grants de columna, `EXECUTE` de las 10 funciones y el job de `pg_cron` confirmados con `execute_sql`/`get_advisors` contra la base real, incluidas las 2 migraciones de endurecimiento de seguimiento (`get_advisors` limpio de hallazgos de `notificaciones_app` tras aplicarlas). La migración de seguimiento `notif_rechazo_recordatorio_revista` (ver subsección dedicada más abajo) suma +2 tipos, +1 trigger, +1 función cron y +1 índice de idempotencia — ese conteo ya está reflejado en el título de esta sección.
+
+Campanita + dropdown + página `/notificaciones` (`Vitrina_Pantallas_Componentes.md` §18) sobre un sistema de notificaciones in-app para 8 eventos: `comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`, `obra_rechazada_revista`, `recordatorio_cierre_revista`. La tabla `notificacion` la escriben **exclusivamente** triggers/funciones `SECURITY DEFINER` (el owner `postgres` bypassea RLS, mismo patrón que `handle_new_user`/`bloquear_cambio_rol`) — **cero `service_role`**.
+
+#### Tabla `notificacion`
+
+```sql
+create table public.notificacion (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid not null references public.usuario(id) on delete cascade,       -- destinatario
+  tipo text not null check (tipo in ('comentario_nueva','comentario_respuesta',
+    'obra_aceptada_revista','nuevo_seguidor','solicitud_mensaje','obra_likeada',
+    'obra_rechazada_revista','recordatorio_cierre_revista')),  -- últimos 2 sumados por notif_rechazo_recordatorio_revista
+  usuario_relacionado_id uuid references public.usuario(id) on delete set null,    -- actor
+  publicacion_relacionada_id uuid references public.publicacion(id) on delete cascade,
+  comentario_relacionado_id uuid references public.comentario(id) on delete cascade,
+  descripcion text not null,
+  enlace text,
+  contador int not null default 1,
+  leida boolean not null default false,
+  leida_en timestamptz,
+  creada_en timestamptz not null default now()
+);
+create index notificacion_usuario_idx on public.notificacion (usuario_id);
+create index notificacion_usuario_leida_idx on public.notificacion (usuario_id, leida);
+create index notificacion_creada_idx on public.notificacion (creada_en desc);
+```
+
+3 índices base (`usuario_id`; `usuario_id, leida`; `creada_en desc`) más **4 índices únicos parciales**, uno por tipo agregable (ver "Agregación" abajo):
+
+```sql
+create unique index notificacion_like_agg_uniq on public.notificacion (usuario_id, publicacion_relacionada_id)
+  where tipo='obra_likeada' and leida=false;
+create unique index notificacion_comnueva_agg_uniq on public.notificacion (usuario_id, publicacion_relacionada_id)
+  where tipo='comentario_nueva' and leida=false;
+create unique index notificacion_comresp_agg_uniq on public.notificacion (usuario_id, comentario_relacionado_id)
+  where tipo='comentario_respuesta' and leida=false;
+create unique index notificacion_seguidor_agg_uniq on public.notificacion (usuario_id)
+  where tipo='nuevo_seguidor' and leida=false;
+```
+
+`obra_likeada` y `comentario_nueva` comparten la misma clave `(usuario_id, publicacion_relacionada_id)` pero el predicado `WHERE tipo=...` los resuelve a **índices arbitrarios distintos** — sin colisión posible entre ambos tipos.
+
+Un **5º índice único parcial**, `notificacion_recordatorio_uniq`, se suma en la migración de seguimiento `notif_rechazo_recordatorio_revista` — no es de agregación (no participa de ningún `ON CONFLICT DO UPDATE contador+1`), sino de **idempotencia mensual** del recordatorio de cierre. Ver la subsección dedicada más abajo.
+
+#### RLS: 3 policies, sin policy de INSERT (deliberado)
+
+```sql
+alter table public.notificacion enable row level security;
+
+create policy notif_select on public.notificacion for select to authenticated using (usuario_id = auth.uid());
+create policy notif_update on public.notificacion for update to authenticated
+  using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
+create policy notif_delete on public.notificacion for delete to authenticated using (usuario_id = auth.uid());
+```
+
+Solo `SELECT`/`UPDATE`/`DELETE`, todas row-scoped a `usuario_id = auth.uid()` (cada quien ve/marca-leído/borra únicamente sus propias notificaciones). **No existe policy de INSERT** — decisión deliberada, no un olvido: los 9 triggers que escriben la tabla son `SECURITY DEFINER` y corren como su owner (`postgres`), que **bypassea RLS por completo**; ningún cliente autenticado necesita insertar una fila directamente, así que no hay policy que darle. Con RLS habilitada y sin policy de INSERT aplicable, el motor de RLS **deniega por defecto** cualquier intento de INSERT de `anon`/`authenticated` (el `WITH CHECK` implícito es `false` cuando no hay policy que aplique) — este es el candado real.
+
+> **Precisión sobre el GRANT de tabla (verificado en vivo, matiza el diseño original):** al igual que en `mensaje`/`correo_admin`, el esquema `public` tiene privilegios por defecto (`ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO anon, authenticated`) que se aplican a **toda** tabla nueva — confirmado vía `pg_default_acl`. Esto significa que `anon`/`authenticated` sí retienen `INSERT`/`SELECT`/`DELETE` a nivel de ACL de tabla sobre `notificacion` (`relacl` idéntico byte a byte al de `mensaje`: `ardDxtm`), pese a que la migración nunca emitió un `GRANT INSERT` explícito ni un `REVOKE INSERT` explícito. El candado real para INSERT **no es el GRANT, es la RLS**: sin policy de INSERT, ninguna fila pasa el `WITH CHECK`, así que el `INSERT` de un cliente falla igual con `new row violates row-level security policy` aunque el `GRANT` lo permita en el papel. Mismo patrón exacto que `mensaje` (cuyo único camino de INSERT es la RPC `enviar_mensaje`, también owner-bypass). Documentado así para que quede claro que "sin grant de INSERT" en el diseño original era una simplificación — la fuente de verdad es RLS, no el ACL.
+
+#### Grant de columna para UPDATE — mismo blocker que `mensaje` (§7.1b)
+
+```sql
+grant select, delete on public.notificacion to authenticated;
+revoke update on public.notificacion from anon, authenticated;
+grant update (leida, leida_en) on public.notificacion to authenticated;
+```
+
+**Este fue un blocker real encontrado por una revisión de seguridad durante el diseño, documentado sin rodeos:** la policy `notif_update` restringe *filas* (`usuario_id = auth.uid()`), no *columnas*. Sin el `revoke`+`grant (columna)` de arriba, un usuario autenticado podría hacer `PATCH` sobre **cualquier** columna de su propia fila vía PostgREST — incluido `tipo`, `descripcion`, `contador` o `usuario_relacionado_id` — falsificando el contenido de sus propias notificaciones. Es exactamente el mismo aprendizaje que **§7.1b** documentó para `mensaje` (`mensaje_update_column_grant_leido`): `REVOKE UPDATE` de tabla completa + `GRANT UPDATE (columna)` específica es obligatorio para que una policy de fila no termine exponiendo todas las columnas. Verificado en vivo: `has_column_privilege('authenticated', 'notificacion', 'leida', 'UPDATE')` → `true`; `has_column_privilege('authenticated', 'notificacion', 'tipo', 'UPDATE')` → `false`; `has_table_privilege('authenticated', 'notificacion', 'UPDATE')` (a nivel de tabla completa) → `false`. `leida`/`leida_en` son las únicas columnas mutables por el cliente — es la única mutación real que expone la API (marcar como leída).
+
+#### 5 columnas `notif_app_*` en `usuario` — preferencias por tipo
+
+```sql
+alter table public.usuario
+  add column notif_app_comentarios boolean not null default true,
+  add column notif_app_seguidores  boolean not null default true,
+  add column notif_app_revista     boolean not null default true,
+  add column notif_app_mensajes    boolean not null default true,
+  add column notif_app_likes       boolean not null default true;
+grant update (notif_app_comentarios) on public.usuario to authenticated;
+grant update (notif_app_seguidores)  on public.usuario to authenticated;
+grant update (notif_app_revista)     on public.usuario to authenticated;
+grant update (notif_app_mensajes)    on public.usuario to authenticated;
+grant update (notif_app_likes)       on public.usuario to authenticated;
+-- SIN GRANT SELECT en ninguna de las 5 — ver razón abajo.
+```
+
+Modelo opt-out (default `true`, como `notif_email_habilitado`). `UPDATE` de columna es seguro porque `editar_propio` (`USING`/`WITH CHECK auth.uid() = id`) es row-scoped. **Deliberadamente sin `GRANT SELECT`** — ni siquiera de columna — sobre ninguna de las 5: `usuario` tiene una policy de lectura pública (`lectura_publica`, `USING (true)`, para que `/usuario/[id]` funcione), y **§3.21 ya demostró** que un `GRANT SELECT` de columna es *role-wide*, no row-scoped — no hereda el filtrado de filas de otras policies. Si estas 5 columnas tuvieran `SELECT` de columna, cualquier usuario podría leer las preferencias de notificación de **cualquier otro** usuario visible por `lectura_publica` (fuga de privacidad entre cuentas, misma clase de bug que se corrigió para `notif_email_habilitado` en `fix_notif_email_habilitado_column_leak`). Único camino de lectura: la RPC self-scoped de abajo.
+
+#### RPC `mis_preferencias_notif_app()` — lectura self-scoped, sin parámetros
+
+```sql
+create or replace function public.mis_preferencias_notif_app()
+returns table (notif_app_comentarios boolean, notif_app_seguidores boolean,
+  notif_app_revista boolean, notif_app_mensajes boolean, notif_app_likes boolean)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select notif_app_comentarios, notif_app_seguidores, notif_app_revista,
+         notif_app_mensajes, notif_app_likes from public.usuario where id = auth.uid();
+$$;
+revoke execute on function public.mis_preferencias_notif_app() from anon;
+grant execute on function public.mis_preferencias_notif_app() to authenticated;
+```
+
+`SECURITY DEFINER`, sin parámetros — deriva `auth.uid()` internamente, así que estructuralmente no puede leer la fila de otro usuario. Mismo patrón exacto que `mi_notif_email_habilitado()` (§3.21). `EXECUTE` a `anon` deliberadamente NO otorgado (requiere sesión); verificado en vivo con `has_function_privilege`: `anon` → `false`, `authenticated` → `true`. La usa `lib/data/perfil.ts` → `getPreferenciasNotifApp()` (`.rpc('mis_preferencias_notif_app').single()`).
+
+#### Helper `notif_desc_agg(p_tipo text, p_n int)` — pluralización compartida
+
+```sql
+create or replace function public.notif_desc_agg(p_tipo text, p_n int) returns text
+language sql immutable set search_path = public, pg_temp as $$
+  select case p_tipo
+    when 'obra_likeada' then case when p_n=1 then 'A alguien le gustó tu obra'
+      else 'A '||p_n||' personas les gustó tu obra' end
+    when 'comentario_nueva' then case when p_n=1 then 'Comentaron tu obra'
+      else p_n||' comentarios nuevos en tu obra' end
+    when 'comentario_respuesta' then case when p_n=1 then 'Respondieron tu comentario'
+      else p_n||' respuestas nuevas a tu comentario' end
+    when 'nuevo_seguidor' then case when p_n=1 then 'Tienes un nuevo seguidor'
+      else p_n||' personas nuevas te siguen' end
+  end;
+$$;
+```
+
+`IMMUTABLE`, sin `SECURITY DEFINER` (no necesita bypass, no toca tablas). Genera el texto singular/plural de `descripcion` para los 4 tipos agregables; lo llaman tanto los triggers de INSERT (al agregar, `contador+1`) como los de DELETE (al decrementar) para que la copia se mantenga consistente en ambas direcciones. El cliente **nunca** re-deriva la pluralización — `NotificationItem` renderiza `descripcion` tal cual llega de la BD.
+
+#### 10 triggers, 9 funciones de trigger — INSERT-side (7) y DELETE-side (3)
+
+Los 6 triggers de INSERT de la migración base crean/agregan la notificación en el momento del evento; los 3 triggers de DELETE (Decisiones A/B del diseño, REV 3) decrementan o borran la fila agregada cuando el usuario deshace la acción origen (unlike, borrar comentario, dejar de seguir). Los tipos `solicitud_mensaje`, `obra_aceptada_revista` y `obra_rechazada_revista` (este último sumado por `notif_rechazo_recordatorio_revista`) son de baja frecuencia/alta señal y **no** tienen contraparte de deshacer — quedan sin agregar (`contador` siempre 1) y sin trigger de DELETE.
+
+| # | Trigger | Tabla | Evento | Función | Tipo generado | Agrega |
+|---|---|---|---|---|---|---|
+| 1 | `trg_notif_comentario` | `comentario` | AFTER INSERT | `notif_comentario()` | `comentario_nueva` (si `responde_a is null`) o `comentario_respuesta` (si no) | Sí |
+| 2 | `trg_notif_obra_aceptada` | `solicitud_revista` | AFTER UPDATE | `notif_obra_aceptada()` | `obra_aceptada_revista` | No |
+| 3 | `trg_notif_nuevo_seguidor` | `seguidor` | AFTER INSERT | `notif_nuevo_seguidor()` | `nuevo_seguidor` | Sí |
+| 4 | `trg_notif_solicitud_mensaje` | `solicitud_mensaje` | AFTER INSERT | `notif_solicitud_mensaje()` | `solicitud_mensaje` | No |
+| 5 | `trg_notif_obra_likeada` | `"like"` | AFTER INSERT | `notif_obra_likeada()` | `obra_likeada` | Sí |
+| 6 | `trg_notif_obra_likeada_del` | `"like"` | AFTER DELETE | `notif_obra_likeada_del()` | decrementa/borra `obra_likeada` | — |
+| 7 | `trg_notif_comentario_del` | `comentario` | AFTER DELETE | `notif_comentario_del()` | decrementa/borra `comentario_nueva`/`comentario_respuesta` (branch por `OLD.responde_a`) | — |
+| 8 | `trg_notif_nuevo_seguidor_del` | `seguidor` | AFTER DELETE | `notif_nuevo_seguidor_del()` | decrementa/borra `nuevo_seguidor` | — |
+| 9 | `trg_notif_obra_rechazada` | `solicitud_revista` | AFTER UPDATE | `notif_obra_rechazada()` | `obra_rechazada_revista` | No |
+
+Todas las 9 funciones de trigger son `SECURITY DEFINER`, `set search_path = public, pg_temp`, y cada una respeta la preferencia `notif_app_*` correspondiente del destinatario **en el INSERT** (`if not (select notif_app_x from usuario where id=v_dest) then return NEW/OLD; end if` — si la preferencia está apagada, no se crea la notificación). Cada trigger evita auto-notificación (`if v_autor = NEW.usuario_id then return NEW`, etc. — nadie recibe una notificación de su propia acción sobre su propio contenido).
+
+`trg_notif_obra_rechazada` (fila 9) es el **segundo** trigger AFTER UPDATE sobre `solicitud_revista`, en paralelo a `trg_notif_obra_aceptada` — condición `NEW.estado='rechazada' and OLD.estado is distinct from NEW.estado`, sin mirar `revisor_id`: cubre TANTO el rechazo humano (`rechazar_solicitud`, `revisor_id` set) COMO el descarte automático de la rotación mensual (`publicar_revista_mensual()`, `revisor_id` NULL), porque ambos caminos setean `estado='rechazada'` sobre la misma fila. `descripcion = coalesce(NEW.respuesta, 'Tu obra no fue aceptada en la revista')` — refleja el motivo escrito por el admin cuando existe, sin usar `revista_id` como fuente de contenido (no hay columna en `notificacion` para guardarlo, mismo criterio que `obra_aceptada_revista`). No es un décimo trigger de "cron" — el recordatorio de cierre (ver subsección siguiente) NO es un trigger, es una función invocada directamente por `pg_cron`.
+
+**Agregación (INSERT-side, 4 tipos):** cada uno hace `INSERT ... ON CONFLICT (claves) WHERE <predicado del índice parcial> DO UPDATE SET contador = notificacion.contador + 1, usuario_relacionado_id = excluded.usuario_relacionado_id, descripcion = notif_desc_agg(tipo, contador+1)`. Mientras exista una fila **sin leer** para esa clave, N eventos nuevos actualizan la misma fila (`contador` sube, `descripcion` se repluraliza, `usuario_relacionado_id` se actualiza al actor más reciente). `creada_en` **no** se toca en el `DO UPDATE` (agregación silenciosa, no reordena el feed de notificaciones).
+
+**"Marcar como leída" resetea la agregación — es el comportamiento INTENCIONAL**, no un bug: el predicado de cada índice único parcial incluye `leida=false`, así que en cuanto una fila se marca leída deja de matchear el índice y el siguiente evento del mismo tipo/clave crea una fila **nueva** en vez de seguir sumando sobre la ya leída. Es la semántica esperada: leer "vacía" el contador visualmente, y la siguiente tanda de actividad arranca su propio contador desde 1.
+
+**Decremento simétrico (DELETE-side, 3 triggers, 4 tipos cubiertos incluyendo el de INSERT #5):** cada uno bloquea la fila agregada sin leer que matchea (`... for update`), y si `contador > 1` decrementa + repluraliza; si `contador <= 1` **borra la fila** (no queda nada que notificar); si no encuentra fila (ya estaba leída, o el evento predata la feature) **no-op**. Ningún trigger de DELETE re-chequea `notif_app_*`: si la fila existe debe mantenerse precisa; si la preferencia estaba apagada nunca se creó la fila, así que el decremento no encuentra nada y no-opea solo.
+
+> **Imprecisión cosmética ACEPTADA (decisión explícita del diseño, no un descuido):** en el decremento, `usuario_relacionado_id` **no se rebobina** al penúltimo actor — queda con el valor que tenía (el último actor antes de la acción deshecha). Postgres no tiene forma barata de saber "quién fue el penúltimo" sin bookkeeping adicional (historial completo de actores por fila agregada), y el costo de implementarlo no se justificó para un campo puramente cosmético (el avatar/nombre que se muestra junto al contador). Aceptado tal cual.
+
+**Cascade-safety (por qué `comentario_nueva` ancla `NULL` y `comentario_respuesta` ancla el padre):** `notificacion.comentario_relacionado_id references comentario on delete cascade`. Para `comentario_nueva` el ancla de agregación es la **publicación** (todos los comentarios de nivel raíz de una publicación agregan en la misma fila), así que esa fila agregada guarda `comentario_relacionado_id = NULL` — si guardara el id de un comentario cualquiera, borrar **ese** comentario específico haría cascade-delete de toda la fila agregada, perdiendo el conteo de los demás. El conteo lo mantiene únicamente el trigger de decremento. Para `comentario_respuesta` el ancla **sí** es el comentario padre (`comentario_relacionado_id = OLD.responde_a`), y eso es correcto: borrar el padre debe cascade-borrar toda la agregación de respuestas (el hilo entero desapareció, tiene sentido que sus notificaciones también); borrar una respuesta individual (no referenciada por ningún FK) la maneja el trigger de decremento.
+
+#### Realtime
+
+```sql
+alter publication supabase_realtime add table public.notificacion;
+```
+
+Extiende el canal Realtime **ya existente** `nav:notificaciones:${sessionId}` en `NavClient.tsx` (no se abre un segundo `supabase.channel(...)`) con un handler `{event:'*', schema:'public', table:'notificacion', filter:'usuario_id=eq.${sessionId}'}` que dispara `refetchNotifCount()`. Un solo handler `*` cubre INSERT agregando, UPDATE de contador, UPDATE de marcar-leído y DELETE de decremento — todos deben refrescar el badge.
+
+#### `pg_cron` — retención de 90 días
+
+```sql
+select cron.schedule('notificaciones-cleanup', '30 8 * * *',  -- diario, 02:30 UTC-6
+  $$ delete from public.notificacion where leida = true and creada_en < now() - interval '90 days'; $$);
+```
+
+Mismo patrón que `revista-mensual` (§9). Solo borra notificaciones **ya leídas** con más de 90 días — las no leídas se conservan indefinidamente sin importar su antigüedad. Verificado en vivo (`select * from cron.job where jobname like '%notif%'`): job activo, `schedule = '30 8 * * *'`.
+
+#### Endurecimiento posterior — 2 migraciones de seguimiento (aplicadas en vivo el mismo día)
+
+La migración base (`notificaciones_app`) se aplicó, y una revisión de `get_advisors` encontró 2 hallazgos que se corrigieron con migraciones adicionales, **también aplicadas en vivo y verificadas**:
+
+1. **`notificaciones_app_harden_advisors`** — fix de `search_path` en `notif_desc_agg` (no lo traía desde la migración base). Verificado: `pg_proc.proconfig` para las 10 funciones (8 triggers + `notif_desc_agg` + `mis_preferencias_notif_app`) muestra `search_path=public, pg_temp` en las 10, sin excepción.
+2. **`notificaciones_app_harden_trigger_fn_execute`** — revoca `EXECUTE` de `anon`/`authenticated` en las **8 funciones de trigger** (no en `notif_desc_agg` ni en la RPC, que sí deben ser invocables). Necesaria porque este proyecto tiene `ALTER DEFAULT PRIVILEGES` que otorga `EXECUTE` a `anon`/`authenticated`/`service_role` en toda función nueva por defecto — un `revoke ... from public` solo no alcanza para retirar el grant directo a esos roles (mismo aprendizaje ya aplicado en `rag_rate_limit_revoke_anon`/`mensajeria_directa_revoke_anon`/`resolver_destinatarios_correo`, §7.1). Verificado con `has_function_privilege`: las 8 funciones de trigger → `anon: false, authenticated: false` para las dos; `mis_preferencias_notif_app` → `anon: false, authenticated: true` (Decisión 1); `notif_desc_agg` → `anon: true, authenticated: true` (helper puro, sin objeción).
+
+`get_advisors(type: 'security')` quedó limpio de hallazgos propios de `notificaciones_app` tras ambas migraciones — los únicos WARN restantes en el proyecto son los ya documentados en §7.1 (RPC de negocio flagueadas por el mismo patrón "autenticado puede invocar, el control real es interno").
+
+#### Rechazo y recordatorio de cierre — migración de seguimiento `notif_rechazo_recordatorio_revista`
+
+> Cambio ADITIVO, aprobado explícitamente: +2 tipos en el CHECK, +1 trigger/función de rechazo, +1 función/cron de recordatorio, +1 índice de idempotencia. Aplicado vía `mcp__supabase__apply_migration` contra el proyecto `fdfbyhjwnbteccagulxb`.
+
+**Rechazo (`obra_rechazada_revista`):**
+
+```sql
+create or replace function public.notif_obra_rechazada() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if NEW.estado='rechazada' and OLD.estado is distinct from NEW.estado
+     and (select notif_app_revista from public.usuario where id = NEW.solicitante_id) then
+    insert into public.notificacion (usuario_id, tipo, publicacion_relacionada_id, descripcion, enlace)
+    values (NEW.solicitante_id,'obra_rechazada_revista',NEW.publicacion_id,
+      coalesce(NEW.respuesta, 'Tu obra no fue aceptada en la revista'),'/publicacion/'||NEW.publicacion_id);
+  end if;
+  return NEW;
+end; $$;
+create trigger trg_notif_obra_rechazada after update on public.solicitud_revista
+  for each row execute function public.notif_obra_rechazada();
+```
+
+Ver la fila 9 de la tabla de triggers arriba para el detalle de cobertura (rechazo humano + descarte automático) y la fuente de `descripcion`.
+
+**Recordatorio de cierre (`recordatorio_cierre_revista`) — índice de idempotencia:**
+
+```sql
+create unique index notificacion_recordatorio_uniq on public.notificacion (usuario_id, date_trunc('month', creada_en, 'UTC'))
+  where tipo='recordatorio_cierre_revista';
+```
+
+Dedup por `(usuario_id, mes calendario en UTC)`, **NO** por estado de lectura (a diferencia del patrón de agregación de `nuevo_seguidor` etc.): si el recordatorio es mensual y recurrente, dedupear por "no leído" bloquearía en silencio todos los recordatorios de los meses siguientes para cualquier usuario que deje uno sin leer (`ON CONFLICT DO NOTHING` los descartaría sin error). Usa **obligatoriamente** la variante de `date_trunc` de **3 argumentos** (`date_trunc('month', creada_en, 'UTC')`, con zona horaria explícita) — verificado en vivo contra `pg_proc.provolatile`: la variante de 2 argumentos (`date_trunc('month', creada_en)`, `timestamptz`) es `STABLE`, no `IMMUTABLE` (depende del `TimeZone` de sesión), y Postgres **rechaza** crear un índice con una expresión no-`IMMUTABLE` (`functions in index expression must be marked IMMUTABLE`). El corte de "mes calendario" queda fijado en UTC explícito e intencional, sin depender del `TimeZone` de sesión.
+
+**Función + cron:**
+
+```sql
+create or replace function public.recordar_cierre_revista() returns void
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_revista_id uuid;
+begin
+  select id into v_revista_id from public.revista where estado='borrador' limit 1;
+  if v_revista_id is null then return; end if;              -- idempotente si no hay borrador
+  insert into public.notificacion (usuario_id, tipo, descripcion, enlace)
+  select distinct s.solicitante_id,'recordatorio_cierre_revista',
+    'La ventana de postulación cierra pronto','/perfil'
+  from public.solicitud_revista s
+  join public.usuario u on u.id = s.solicitante_id
+  where s.revista_id = v_revista_id and s.estado='pendiente' and u.notif_app_revista = true
+  on conflict (usuario_id, date_trunc('month', creada_en, 'UTC')) where tipo='recordatorio_cierre_revista' do nothing;
+end $$;
+
+select cron.schedule('revista-recordatorio-cierre', '0 19 22 * *',  -- día 22, 13:00 UTC-6 = 19:00 UTC
+  $$ select public.recordar_cierre_revista(); $$);
+```
+
+`recordar_cierre_revista()` NO es un trigger — es una función `SECURITY DEFINER` invocada directamente por `pg_cron` (mismo mecanismo que `publicar_revista_mensual()`, §9), el **primer** cron de este proyecto que alimenta un webhook externo (los otros 2 crons, `revista-mensual` y `notificaciones-cleanup`, son SQL puro sin efecto downstream). Inserta **una** fila por usuario con al menos 1 solicitud `pendiente` en la revista activa (`estado='borrador'`), filtrando `u.notif_app_revista = true` **antes** del INSERT — si está apagado, no se inserta fila para ese usuario (ver asimetría de gating más abajo). Enlace fijo `/perfil` (ahí vive `SolicitudesHistorial`, la vista de "mis solicitudes" del usuario).
+
+**Hardening en dos pasos (mismo patrón que `notificaciones_app_harden_trigger_fn_execute`), aplicado a ambas funciones nuevas:**
+
+```sql
+revoke execute on function public.notif_obra_rechazada() from public;
+revoke execute on function public.notif_obra_rechazada() from anon, authenticated;
+
+revoke execute on function public.recordar_cierre_revista() from public;
+revoke execute on function public.recordar_cierre_revista() from anon, authenticated;
+```
+
+`revoke ... from public` por sí solo NO alcanza en este proyecto (`ALTER DEFAULT PRIVILEGES` ya le otorga `EXECUTE` directo a `anon`/`authenticated` en toda función nueva) — hace falta el segundo `revoke` explícito a esos 2 roles, mismo aprendizaje que §7.1/§3.23 (base).
+
+**Asimetría de gating de email (rechazo vs. recordatorio) — intencional, no uniformizar:**
+
+| Tipo | Gate del in-app | Gate del email |
+|---|---|---|
+| `obra_rechazada_revista` | `notif_app_revista` (en el trigger, antes del INSERT) | **Solo** `notif_email_habilitado` — el email va por el webhook de `solicitud_revista` UPDATE ya existente (§3.21), que dispara SIEMPRE que hay UPDATE, independiente de si se insertó o no la fila in-app. `notif_app_revista=false` NO corta el email. |
+| `recordatorio_cierre_revista` | `notif_app_revista` (en `recordar_cierre_revista()`, antes del INSERT) | También queda cortado por `notif_app_revista`, como **efecto colateral** del mecanismo: el único riel del email es el webhook nuevo sobre el INSERT de `notificacion` (§3.21); si `notif_app_revista=false` nunca se inserta la fila, así que el webhook nunca dispara. No es una preferencia de email real por tipo (no existe una columna dedicada; agregarla queda fuera de alcance). |
+
+Ver §3.21 para el detalle del webhook nuevo y el flujo completo de `route-predicate.ts`.
+
+**Deuda aceptada (MVP, sin arreglar en esta ronda):** el dedupe `(usuario_id, mes calendario UTC)` asume como máximo 1 ciclo de revista por mes calendario. `publicar_revista_mensual()` tiene un camino de recuperación manual (§9.3) que en teoría podría producir una segunda rotación dentro del mismo mes; si `recordar_cierre_revista()` se invocara manualmente una segunda vez ese mismo mes para el nuevo ciclo, un usuario que ya tenga fila de ese mes sería saltado en silencio por `ON CONFLICT DO NOTHING`. Requiere 2 reinvocaciones manuales fuera del flujo automático normal (el cron corre una sola vez al mes) — no alcanzable por el uso normal documentado. Sin columna `revista_id` en `notificacion` para desambiguar.
+
+#### Endpoints y UI
+
+6 endpoints en `Vitrina_Especificaciones_APIs.md` §22; 5 toggles `notif_app_*` + protección de ruta en `Vitrina_Pantallas_Componentes.md` (`/perfil/ajustes` §3.4.1, `/notificaciones` §18). `proxy.ts` protege `/notificaciones` (redirect a `/login` sin sesión, mismo prefijo que `/perfil`/`/publicar`/`/mensajes`).
+
+---
+
+### 3.24 Columna `chat_habilitado` en `publicacion` — chat RAG opcional por publicación
+
+```sql
+alter table public.publicacion add column chat_habilitado boolean not null default true;
+update public.publicacion set chat_habilitado = false where id = '5072d255-5cdf-459e-9da8-eac16a8e430c';
+alter table public.publicacion alter column chat_habilitado set default false;
+```
+
+Cambio ADITIVO, aprobado explícitamente. El fast-fill inicial con `default true` backfillea todas las filas existentes como habilitadas (el chat ya funcionaba para ellas antes de este cambio); la única excepción es la publicación `5072d255-5cdf-459e-9da8-eac16a8e430c`, apagada explícitamente. El tercer `ALTER COLUMN ... SET DEFAULT false` deja las publicaciones **nuevas** desactivadas por defecto — el autor la enciende explícitamente desde el formulario de publicar/editar (toggle gateado por `tienePdf`, ver `Vitrina_Pantallas_Componentes.md`). `publicacion` usa GRANT de tabla completo (no por columna, a diferencia de `usuario` — ver footgun §3.19), así que no hizo falta un `GRANT` adicional, mismo precedente que `bloqueada` (§3.10) y `archivo_thumbnail_url` (§3.20b). Sin cambios en RLS: la policy `editar_propio` (UPDATE) ya cubre cualquier columna de la fila propia del autor. El indexado de PDFs (embeddings, `lib/rag/indexer.ts`) sigue siendo **incondicional** — corre siempre, independientemente de este flag. El endpoint `/api/publicaciones/[id]/chat` valida `chat_habilitado` inmediatamente después de resolver la publicación y **antes** de invocar `consumir_cuota_rag()`, para que una publicación con el chat apagado no consuma cuota horaria del usuario ni llame al LLM.
 
 ---
 
@@ -1024,7 +1421,7 @@ Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud
 | `rechazar_solicitud(p_solicitud_id, p_respuesta)` | RPC (SECURITY DEFINER) | Marca la solicitud como rechazada con respuesta opcional. Verifica internamente `rol = 'administrador'` |
 | `publicar_revista_mensual()` | Función (SECURITY DEFINER) | **Rotación mensual.** Publica la revista en `borrador`, descarta sus solicitudes pendientes (las marca `rechazada`) y crea el borrador del mes siguiente. La invoca `pg_cron` el día 1 de cada mes a las 13:00 UTC-6 (ver §9). Idempotente: si no hay borrador, no hace nada |
 | `es_admin()` | Función (SECURITY DEFINER) | Auxiliar booleana: indica si `auth.uid()` tiene `rol = 'administrador'`. Usada por las políticas de `solicitud_revista` y por las RPC |
-| `feed_publicaciones` | Vista (`security_invoker`) | Feed con conteos de likes y comentarios resueltos en una sola consulta; respeta las RLS de las tablas base. Recreada para exponer `obra_autor_externo`/`url_externa` (atribución de recomendaciones), preservando `security_invoker=true`. Recreada nuevamente con `WHERE bloqueada=false` para excluir publicaciones bloqueadas (sin cambiar columnas) |
+| `feed_publicaciones` | Vista (`security_invoker`) | Feed con conteos de likes y comentarios resueltos en una sola consulta; respeta las RLS de las tablas base. Recreada para exponer `obra_autor_externo`/`url_externa` (atribución de recomendaciones), preservando `security_invoker=true`. Recreada nuevamente con `WHERE bloqueada=false` para excluir publicaciones bloqueadas (sin cambiar columnas). Recreada de nuevo (junto con `feed_trending`) para exponer `archivo_thumbnail_url` — ver §3.20b |
 | `bloquear_publicacion(p_reporte_id, p_respuesta?)` | RPC (SECURITY DEFINER) | Marca reporte `revisado` + `publicacion.bloqueada=true` atómicamente. Verifica `es_admin()`. Ver §3.10 |
 | `descartar_reporte(p_reporte_id)` | RPC (SECURITY DEFINER) | Marca reporte `descartado`; no toca `publicacion.bloqueada`. Verifica `es_admin()`. Ver §3.10 |
 | `retirar_articulo(p_revista_id, p_publicacion_id, p_motivo?)` | RPC (SECURITY DEFINER) | **Atómico:** borra el `revista_articulo` **y** marca su `solicitud_revista` como `retirada` (solo si estaba `aceptada`), con `respuesta` derivada del `p_motivo`. Verifica `es_admin()`. La invoca `DELETE /api/revistas/[id]/articulos` |
@@ -1043,6 +1440,15 @@ Edge Function `enviar-notificacion-email` + 2 webhooks del dashboard (`solicitud
 | `resolver_destinatario_notificacion(p_secret, p_usuario_id)` | RPC (SECURITY DEFINER) | **Notificaciones transaccionales.** Resuelve `email` + `notif_email_habilitado` de un usuario para el Edge Function del webhook (sin JWT); gateada por un secreto comparado contra `private.notif_config` (no `current_setting`, ver nota en §3.21). `EXECUTE` a `anon`+`authenticated` (el webhook llama sin sesión). Ver §3.21 |
 | `resolver_destinatarios_correo(p_tipo, p_ciudad?, p_ids?)` | RPC (SECURITY DEFINER) | **Panel admin de envío masivo.** Resuelve `id`+`email`+`nombre` de múltiples usuarios según `p_tipo` (`todos`/`ciudad`/`ids`), filtrando SIEMPRE `notif_email_habilitado=true` (incluso en `ids`, hand-picked). Gateada por `es_admin()` (P0001 `No autorizado` si no). `EXECUTE` solo `authenticated` (`anon` revocado explícitamente). Ver §3.21 |
 | `mi_notif_email_habilitado()` | RPC (SECURITY DEFINER) | **Lectura self-scoped de la preferencia propia.** Sin parámetros — deriva `auth.uid()` internamente, único camino de lectura tras revocarse `SELECT` de columna a `authenticated` (fue una fuga de privacidad entre usuarios, no protegida por RLS — ver §3.21). `EXECUTE` solo a `authenticated`. Ver §3.21 |
+| `mis_preferencias_notif_app()` | RPC (SECURITY DEFINER) | **Lectura self-scoped de las 5 preferencias `notif_app_*`.** Sin parámetros — deriva `auth.uid()` internamente; único camino de lectura, las 5 columnas no tienen `GRANT SELECT` (mismo riesgo de fuga que `notif_email_habilitado`). `EXECUTE` solo a `authenticated`. Ver §3.23 |
+| `notif_desc_agg(p_tipo, p_n)` | Función (IMMUTABLE) | Pluralización compartida de la `descripcion` de notificaciones agregadas; la llaman los 6 triggers de agregación (INSERT y DELETE). Sin `SECURITY DEFINER`, no toca tablas. Ver §3.23 |
+| `notif_comentario()` / `notif_comentario_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `comentario` → crea o decrementa `comentario_nueva`/`comentario_respuesta` (branch por `responde_a`), agregando vía índice único parcial. `EXECUTE` revocado de `anon`/`authenticated` (solo invocables como trigger). Ver §3.23 |
+| `notif_obra_aceptada()` | Trigger (SECURITY DEFINER) | UPDATE en `solicitud_revista` (`estado→'aceptada'`) → crea `obra_aceptada_revista` (sin agregar). Ver §3.23 |
+| `notif_nuevo_seguidor()` / `notif_nuevo_seguidor_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `seguidor` → crea o decrementa `nuevo_seguidor`, agregando por `usuario_id`. Ver §3.23 |
+| `notif_solicitud_mensaje()` | Trigger (SECURITY DEFINER) | INSERT en `solicitud_mensaje` → crea `solicitud_mensaje` (sin agregar). Ver §3.23 |
+| `notif_obra_likeada()` / `notif_obra_likeada_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `"like"` → crea o decrementa `obra_likeada`, agregando por `(usuario_id, publicacion_relacionada_id)`. Ver §3.23 |
+| `notif_obra_rechazada()` | Trigger (SECURITY DEFINER) | UPDATE en `solicitud_revista` (`estado→'rechazada'`, cualquier origen: humano o descarte automático) → crea `obra_rechazada_revista` (sin agregar). Ver §3.23 |
+| `recordar_cierre_revista()` | Función (SECURITY DEFINER), invocada por `pg_cron` | **No es trigger.** Día 22 de cada mes: inserta un `recordatorio_cierre_revista` por usuario con solicitudes `pendiente` en la revista activa, dedupe mensual vía `notificacion_recordatorio_uniq`. Ver §3.23 y §9 |
 | Bucket `publicaciones` | Storage | Lectura pública; subir/editar/borrar restringido a la carpeta `{user_id}/...` de cada usuario |
 
 ---
@@ -1171,7 +1577,7 @@ await supabase.rpc('rechazar_solicitud', {
 - **2 revistas:** "Ciencia y Territorio" (vol. 1, `publicada`) y una edición de prueba (vol. 99, `borrador`). La edición en borrador es la **única** revista activa, garantizado por el índice único parcial.
 - **5 solicitudes** en distintos estados (pendiente, aceptada, rechazada).
 
-> Los conteos crecen con las pruebas manuales — los números de arriba son el **seed original**, no el estado actual. Snapshot en vivo (2026-06-24): **32 publicaciones, 3 revistas (1 en `borrador`), 6 solicitudes, 19 usuarios**. Lo relevante para la integridad del esquema es que exista **exactamente una revista en `borrador`** en todo momento (verificado: 1).
+> Los conteos crecen con las pruebas manuales — los números de arriba son el **seed original**, no el estado actual. Lo relevante para la integridad del esquema es que exista **exactamente una revista en `borrador`** en todo momento.
 
 ### Promover a un administrador
 
@@ -1200,7 +1606,7 @@ where id in (
 
 > 📋 **Auditoría de seguridad standalone:** ver `auditorias/SECURITY_AUDIT.md` (foto puntual; no es un spec vivo de este doc).
 
-> **Estado verificado contra la BD viva el 2026-06-18** (auditoría read-only vía MCP `supabase`; ver `SECURITY_AUDIT.md` en la raíz para el informe completo con evidencia). Esta sección reemplaza la redacción anterior, que describía un estado que **ya no coincide** con la realidad de los grants. La postura general es **sólida**: sin hallazgos Críticos ni Altos.
+> Postura general **sólida**: sin hallazgos Críticos ni Altos (auditoría read-only vía MCP `supabase`; ver `SECURITY_AUDIT.md` en la raíz para el informe completo con evidencia).
 
 ### 7.1 Funciones `SECURITY DEFINER` expuestas en la API
 
@@ -1216,7 +1622,7 @@ Estado real de los `EXECUTE` (de `information_schema.role_routine_grants`):
 | `descartar_reporte(uuid)` | `authenticated, postgres, service_role` | Flagueada |
 | `retirar_articulo(uuid, uuid, text)` | `authenticated, postgres, service_role` | Flagueada |
 | `es_admin()` | `anon, authenticated, postgres, service_role` | EXECUTE para `anon` **requerido** — ver abajo. **NO revocar de `anon`/`authenticated`.** |
-| `enviar_mensaje(uuid, text)` | `authenticated, postgres, service_role` | Flagueada (WARN); excepción documentada e intencional — el control real es la validación interna (sesión + mutualidad). `EXECUTE` revocado de `public` y `anon` (migración `mensajeria_directa_revoke_anon`). Ver §3.13 |
+| `enviar_mensaje(uuid, text)` | `authenticated, postgres, service_role` | Flagueada (WARN); excepción documentada e intencional — el control real es la validación interna (sesión + mutualidad). `EXECUTE` revocado de `public` y `anon`. Ver §3.13 |
 | `se_siguen(uuid, uuid)` | `authenticated, postgres, service_role` (INVOKER) | SECURITY INVOKER — sin ambient authority. Solo la invoca `enviar_mensaje` internamente. El advisor no la marca como DEFINER porque no lo es. Ver §3.13 |
 | `enviar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); excepción documentada e intencional — el control real es la validación interna (sesión + anti-self). `EXECUTE` revocado de `public` y `anon` (misma postura §7.1). Ver §3.14 |
 | `aceptar_solicitud_mensaje(uuid)` | `authenticated, postgres, service_role` | Flagueada (WARN); valida internamente que el llamante sea el receptor. Ver §3.14 |
@@ -1224,14 +1630,17 @@ Estado real de los `EXECUTE` (de `information_schema.role_routine_grants`):
 | `resolver_destinatario_notificacion(text, uuid)` | `anon, authenticated, postgres, service_role` | Flagueada (WARN); misma clase, pero el control real **no** es `es_admin()` — es un secreto compartido comparado contra `private.notif_config` (el webhook llama sin JWT, solo `anon key`). `EXECUTE` a `anon` es intencional. Ver §3.21 |
 | `resolver_destinatarios_correo(text, text, uuid[])` | `authenticated, postgres, service_role` | Flagueada (WARN); misma clase que las RPC de negocio — el control real es `es_admin()` internamente. `EXECUTE` revocado de `public` **y** `anon` explícitamente (funciones nuevas auto-otorgan a `anon` además de `public`; el `revoke all from public` solo no basta). Ver §3.21 |
 | `mi_notif_email_habilitado()` | `authenticated, postgres, service_role` | Flagueada (WARN); mismo patrón, pero sin parámetros — deriva el `usuario_id` de `auth.uid()` internamente, así que estructuralmente no puede leer la fila de otro usuario (a diferencia de `resolver_destinatario_notificacion`, que recibe `p_usuario_id` explícito pero está gateada por secreto). `EXECUTE` a `anon` deliberadamente NO otorgado — requiere sesión. Ver §3.21 |
+| `mis_preferencias_notif_app()` | `authenticated, postgres, service_role` | Flagueada (WARN); mismo patrón que `mi_notif_email_habilitado()` — sin parámetros, deriva `auth.uid()` internamente. `EXECUTE` a `anon` NO otorgado. Ver §3.23 |
 
-El advisor `authenticated_security_definer_function_executable` (WARN) marca las cinco RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
+Las **8 funciones de trigger** de `notificacion` (`notif_comentario`, `notif_comentario_del`, `notif_obra_aceptada`, `notif_nuevo_seguidor`, `notif_nuevo_seguidor_del`, `notif_solicitud_mensaje`, `notif_obra_likeada`, `notif_obra_likeada_del`) son `SECURITY DEFINER` pero **no aparecen en este advisor**: `EXECUTE` fue revocado explícitamente de `anon` y `authenticated` en la migración de endurecimiento `notificaciones_app_harden_trigger_fn_execute` (el advisor solo flaguea funciones invocables vía `/rest/v1/rpc/…`; una función solo alcanzable como disparador de trigger, sin `EXECUTE` para ningún rol de PostgREST, no es una RPC expuesta). Verificado en vivo con `has_function_privilege`. Ver §3.23.
+
+El advisor `authenticated_security_definer_function_executable` (WARN) marca las RPC de negocio porque un usuario autenticado puede llamarlas vía `/rest/v1/rpc/…`. **No es un bypass:** cada RPC de negocio valida `IF NOT public.es_admin() THEN RAISE EXCEPTION 'No autorizado'` internamente, así que un autenticado no-admin recibe `No autorizado` (P0001 → 400).
 
 **Trampa importante (no la ignores):** el admin **es** un usuario `authenticated` y, como este proyecto NO usa `service_role`, las rutas de admin invocan estas RPC con el **JWT del propio admin**. Revocar `EXECUTE … from authenticated` sobre las cinco RPC de negocio **rompería los endpoints de admin**.
 
-> **Corrección (2026-06-18) — la afirmación previa de que revocar `es_admin()` de `authenticated` era "seguro y sin regresión" es FALSA.** Las expresiones de policy RLS se evalúan en contexto del **rol que llama**, no del owner; el ACL de `EXECUTE` se chequea contra ese rol (`SECURITY DEFINER` solo cambia los privilegios *dentro* del cuerpo, no quién puede invocarla). Como la policy RESTRICTIVE `publicacion_oculta_bloqueadas` y las policies de `solicitud_revista` llaman a `es_admin()` en cada operación, **todo rol cubierto por esas policies necesita `EXECUTE` sobre `es_admin()`**:
-> - `anon` lo necesita para leer `publicacion`/`feed_publicaciones`. Sin el grant, un visitante sin sesión recibe `permission denied for function es_admin (42501)` y **el feed devuelve cero filas**. Aplicado en migración `grant_execute_es_admin_to_anon` (2026-06-18).
-> - `authenticated` lo necesita por la misma razón. **El `revoke execute on function public.es_admin() from authenticated` del borrador de hardening NO debe aplicarse** — reintroduciría exactamente este bug para los usuarios logueados.
+> **Revocar `EXECUTE` de `es_admin()` sobre `anon` o `authenticated` rompería el feed.** Las expresiones de policy RLS se evalúan en contexto del **rol que llama**, no del owner; el ACL de `EXECUTE` se chequea contra ese rol (`SECURITY DEFINER` solo cambia los privilegios *dentro* del cuerpo, no quién puede invocarla). Como la policy RESTRICTIVE `publicacion_oculta_bloqueadas` y las policies de `solicitud_revista` llaman a `es_admin()` en cada operación, **todo rol cubierto por esas policies necesita `EXECUTE` sobre `es_admin()`**:
+> - `anon` lo necesita para leer `publicacion`/`feed_publicaciones`. Sin el grant, un visitante sin sesión recibe `permission denied for function es_admin (42501)` y **el feed devuelve cero filas**.
+> - `authenticated` lo necesita por la misma razón. **No revocar `execute on function public.es_admin() from authenticated`** — reintroduciría exactamente este bug para los usuarios logueados.
 
 Las cinco RPC de negocio (`aceptar_solicitud`, `rechazar_solicitud`, `bloquear_publicacion`, `descartar_reporte`, `retirar_articulo`) **conservan** el grant a `authenticated`: excepción documentada e intencional (el control real es el `es_admin()` interno). Sacarlas de `authenticated` exigiría un rol Postgres `admin` dedicado + claim JWT — fuera del alcance actual.
 
@@ -1239,7 +1648,7 @@ Las cinco RPC de negocio (`aceptar_solicitud`, `rechazar_solicitud`, `bloquear_p
 
 > **Una policy RLS de UPDATE no limita qué columnas se pueden modificar.** La policy restringe las *filas* que el rol puede actualizar (vía `USING`/`WITH CHECK`), pero si el rol conserva el grant de UPDATE sobre la tabla completa, puede alterar cualquier columna de esas filas vía PostgREST. Para permitir editar únicamente un campo (p. ej. un flag como `leido`) es necesario, además de la policy de fila, **revocar el UPDATE de tabla y hacer `GRANT UPDATE (columna)` al rol**. Sin ese paso, la protección de filas no protege columnas.
 >
-> **Aplicado a `mensaje` (migración `mensaje_update_column_grant_leido`, 2026-06-28):** `REVOKE UPDATE ON public.mensaje FROM anon, authenticated` + `GRANT UPDATE (leido) ON public.mensaje TO authenticated`. El grant de columna prevalece sobre el revoke de tabla para esa columna específica; `enviar_mensaje` (SECURITY DEFINER, owner) no se ve afectado.
+> **Aplicado a `mensaje`:** `REVOKE UPDATE ON public.mensaje FROM anon, authenticated` + `GRANT UPDATE (leido) ON public.mensaje TO authenticated`. El grant de columna prevalece sobre el revoke de tabla para esa columna específica; `enviar_mensaje` (SECURITY DEFINER, owner) no se ve afectado.
 
 ### 7.2 Protección de contraseñas filtradas (Auth) — **pendiente real**
 
@@ -1264,8 +1673,8 @@ Sigue desactivada la verificación contra HaveIBeenPwned (advisor `auth_leaked_p
 ## 8. Notas operativas
 
 - **Límites del plan free:** 500 MB de base de datos, 1 GB de Storage, 50 000 usuarios activos al mes. Suficiente para el MVP.
-- **Pausa por inactividad:** en el plan free el proyecto se pausa tras un período sin uso; más de 90 días pausado lo vuelve irrecuperable. ⚠️ El job de `pg_cron` ahora corre **una vez al mes** (antes semanal), por lo que aporta mucha menos actividad para mantener el proyecto vivo; conviene asegurar actividad adicional y realizar respaldos.
-- **Migraciones:** el esquema se aplicó como migraciones (`esquema_inicial`, `logica_negocio`, `rls_politicas`, `almacenamiento`); el ciclo de revista como `revista_semanal` y luego `revista_mensual_en_lugar_de_semanal` (cadencia mensual, ver §3.5–§3.6 y §9); la mensajería directa como `mensajeria_directa` (tablas + RLS + RPC + vista + Realtime), `mensajeria_directa_revoke_anon` (revoca EXECUTE de `enviar_mensaje` para public/anon) y `mensajeria_directa_fix_no_leidos` (recrea `bandeja_conversaciones` con el filtro `emisor_id <> auth.uid()` en el conteo de no leídos); las solicitudes de mensaje como `solicitudes_mensaje` (tabla `solicitud_mensaje` + RLS `solicitud_mensaje_lectura` + 3 RPC SECURITY DEFINER: `enviar_solicitud_mensaje`, `aceptar_solicitud_mensaje`, `rechazar_solicitud_mensaje` — puramente aditiva, ver §3.14); `mensaje_replica_identity_full` (`ALTER TABLE mensaje REPLICA IDENTITY FULL` — requerido para que Realtime entregue eventos UPDATE filtrados por `conversacion_id`, ver §3.13 Realtime); **`mensaje_update_column_grant_leido`** (2026-06-28 — revoca UPDATE de tabla en `mensaje` para `anon`/`authenticated` y otorga `GRANT UPDATE (leido)` a `authenticated` para limitar la surface de UPDATE a la única columna que los participantes deben poder modificar, ver §3.13 y §7.1b); **`solicitud_mensaje_anti_spam`** (2026-06-28 — añade guard de rate limit ≤ 20 solicitudes/hora dentro de `enviar_solicitud_mensaje`, ver §3.14); **`solicitud_mensaje_cooldown_2_dias`** (2026-06-28 — añade guard de cooldown 48 h tras rechazo dentro de `enviar_solicitud_mensaje`, ver §3.14). Los datos de prueba se cargaron con SQL directo (no como migración).
+- **Pausa por inactividad:** en el plan free el proyecto se pausa tras un período sin uso; más de 90 días pausado lo vuelve irrecuperable. El job de `pg_cron` corre **una vez al mes**, por lo que aporta poca actividad para mantener el proyecto vivo; conviene asegurar actividad adicional y realizar respaldos.
+- Los datos de prueba se cargaron con SQL directo (no como migración).
 
 ---
 
@@ -1314,155 +1723,30 @@ select cron.unschedule('revista-mensual');
 
 > Como `publicar_revista_mensual()` es idempotente respecto a "hay borrador o no", un disparo manual de recuperación no genera ediciones duplicadas: si el job ya rotó, simplemente publicaría el borrador recién creado. Ejecútalo manualmente solo si confirmas en `cron.job_run_details` que la corrida automática falló.
 
----
+### 9.4 Limpieza de notificaciones leídas (`notificaciones-cleanup`, §3.23)
 
-### 3.7 Tabla `usuario_link` (Feature 1 — enlaces de perfil)
-
-Migración aplicada como `links_perfil` vía Supabase MCP. Puramente aditiva: no modifica ninguna tabla, RLS, RPC, vista ni policy existente.
-
-**Columnas:**
-
-| Columna | Tipo | Restricciones | Notas |
-|---|---|---|---|
-| `id` | `uuid` | `primary key default gen_random_uuid()` | — |
-| `usuario_id` | `uuid not null` | `references usuario(id) on delete cascade` | Propietario del enlace |
-| `etiqueta` | `text not null` | — | Texto visible del enlace; máx. 50 chars (validado en servidor) |
-| `url` | `text not null` | — | URL https-only (validado en servidor) |
-| `orden` | `int not null` | `default 0` | Posición de visualización (0-indexed) |
-| `creado_en` | `timestamptz not null` | `default now()` | — |
-
-**RLS habilitado.** Dos políticas:
-
-| Policy | FOR | TO | USING | WITH CHECK |
-|---|---|---|---|---|
-| `links_lectura_publica` | `SELECT` | all roles (incl. anon) | `true` | — |
-| `links_gestiona_propio` | `ALL` | `authenticated` | `usuario_id = auth.uid()` | `usuario_id = auth.uid()` |
-
-- La política de lectura permite a visitantes anónimos ver los enlaces en `/usuario/[id]` (vía SSR usando el cliente anon).
-- La política `FOR ALL` a `authenticated` cubre INSERT, UPDATE y DELETE. Los handlers nunca leen `usuario_id` del body — siempre de `supabase.auth.getUser()`.
-- Sin RPC, sin §7.1 revoke/grant (no hay funciones SECURITY DEFINER en esta feature).
-- Los cascades de `usuario(id) on delete cascade` limpian los enlaces cuando se borra el usuario.
-
-**Orden de visualización:** `order('orden').order('creado_en')` — sin empates incluso si dos filas tienen el mismo `orden`.
-
-**Límite:** máx. 10 por usuario. Aplicado server-side en `POST /api/perfil/links` con un count previo al insert; no hay constraint de BD (soft cap, race condition aceptado en MVP).
-
----
-
-### 3.8 Tabla `seguidor` (Feature 3 — grafo social)
-
-Migración aplicada como `seguidores` vía Supabase MCP (ref `fdfbyhjwnbteccagulxb`). Puramente aditiva. Representa un grafo dirigido: si A sigue a B existe la fila `(A, B)`.
-
-**Columnas:**
-
-| Columna | Tipo | Restricciones | Notas |
-|---|---|---|---|
-| `seguidor_id` | `uuid not null` | `references usuario(id) on delete cascade` | El que sigue |
-| `seguido_id` | `uuid not null` | `references usuario(id) on delete cascade` | El que es seguido |
-| `creado_en` | `timestamptz not null` | `default now()` | — |
-
-**Restricciones:** `primary key (seguidor_id, seguido_id)` (unicidad + índice) · `check (seguidor_id <> seguido_id)` (error 23514 si se intenta auto-follow por BD, aunque la capa Next lo previene antes).
-
-**FK constraint names (verificados):** `seguidor_seguidor_id_fkey` (sobre `seguidor_id`) · `seguidor_seguido_id_fkey` (sobre `seguido_id`). Estos nombres son necesarios para los hints de PostgREST en `lib/data/seguidores.ts` porque la tabla tiene dos FK a `usuario`.
-
-**ON DELETE CASCADE** en ambas FK: borrar un usuario elimina todos sus edges como seguidor y como seguido.
-
-**RLS habilitado.** Tres políticas:
-
-| Policy | FOR | TO | USING / WITH CHECK |
-|---|---|---|---|
-| `seguidor_lectura` | `SELECT` | todos (incl. anon) | `using (true)` — counts son públicos |
-| `seguidor_sigue` | `INSERT` | `authenticated` | `with check (seguidor_id = auth.uid())` |
-| `seguidor_deja_de_seguir` | `DELETE` | `authenticated` | `using (seguidor_id = auth.uid())` |
-
-**handleError:** el error 23514 (check_violation — auto-follow a nivel BD) se mapea a **400** `validation_error`. La capa Next pre-chequea `seguido_id !== user.id` antes del insert, por lo que 23514 es défense en profundidad.
-
-### 3.9 Vista `perfil_contadores` (Feature 3)
-
-Vista con `security_invoker = true` que devuelve conteos por usuario en una sola consulta. Diseño análogo a `feed_publicaciones`.
+Job diario e independiente del ciclo de revista, mismo mecanismo `pg_cron`:
 
 ```sql
-create view perfil_contadores
-with (security_invoker = true) as
-select
-  u.id                       as usuario_id,
-  coalesce(sg.total, 0)      as n_seguidores,
-  coalesce(sd.total, 0)      as n_seguidos,
-  coalesce(p.total, 0)       as n_publicaciones
-from usuario u
-left join (select seguido_id,  count(*) total from seguidor   group by seguido_id)  sg on sg.seguido_id  = u.id
-left join (select seguidor_id, count(*) total from seguidor   group by seguidor_id) sd on sd.seguidor_id = u.id
-left join (select autor_id,    count(*) total from publicacion group by autor_id)   p  on p.autor_id     = u.id;
+-- Diario, 02:30 UTC-6 == 08:30 UTC
+select cron.schedule('notificaciones-cleanup', '30 8 * * *',
+  $$ delete from public.notificacion where leida = true and creada_en < now() - interval '90 days'; $$);
 ```
 
-- `n_seguidores` = usuarios que siguen a u (agrupado por `seguido_id`).
-- `n_seguidos` = usuarios a quienes u sigue (agrupado por `seguidor_id`).
-- `n_publicaciones` respeta la RLS de `publicacion` (security_invoker → corre con el JWT del llamante).
-- COALESCE garantiza 0 para usuarios sin actividad.
-- Sin policies propias (hereda RLS de las tablas base via `security_invoker`).
-- Consultada en `lib/data/seguidores.ts` → `getConteos(usuarioId)` con `.maybeSingle()`.
+Borra únicamente notificaciones **ya leídas** con más de 90 días — las no leídas nunca se borran automáticamente, sin importar su antigüedad. Verificado en vivo (`select * from cron.job where jobname like '%notif%'`): job activo con ese schedule exacto.
+
+### 9.5 Recordatorio de cierre de postulación (`revista-recordatorio-cierre`, §3.23)
+
+Día 22 de cada mes, mismo mapeo UTC-6→UTC que `revista-mensual` (día 22 = 3 días antes del cierre día 25, confirmado por el cambio hermano `revista-ventana-postulacion`):
+
+```sql
+-- Día 22 de cada mes, 13:00 UTC-6 == 19:00 UTC
+select cron.schedule('revista-recordatorio-cierre', '0 19 22 * *',
+  $$ select public.recordar_cierre_revista(); $$);
+```
+
+**Precedente nuevo:** es el **primer** job de `pg_cron` en este proyecto cuyo INSERT alimenta un webhook externo (Database Webhook sobre `notificacion` INSERT → Edge Function `enviar-notificacion-email`, §3.21) — `revista-mensual` y `notificaciones-cleanup` son SQL puro, sin efecto downstream. `recordar_cierre_revista()` es idempotente por diseño doble: si no hay revista `borrador` no hace nada (igual que `publicar_revista_mensual()`), y el índice `notificacion_recordatorio_uniq` (§3.23) impide más de 1 fila por usuario por mes calendario UTC aunque el job se reinvoque manualmente el mismo día.
 
 ---
 
-## Objetos ADITIVOS — tendencias-areas-ctas (Junio 2026)
-
-> Estos objetos son **estrictamente aditivos**: no modifican tablas, RLS, policies, ni RPC existentes. Solo agregan una vista y una función nuevas.
-
-### Vista `feed_trending` (ADDITIVE)
-
-Vista con `security_invoker = true` construida sobre `feed_publicaciones` (que ya filtra `bloqueada = false` y hereda RLS). Añade una columna `score` de tiempo-decaimiento estilo Hacker News.
-
-```sql
-create or replace view public.feed_trending
-with (security_invoker = true) as
-select
-  fp.*,
-  (fp.likes + fp.comentarios)::numeric
-    / power(
-        (extract(epoch from (now() - fp.creado_en)) / 3600.0) + 2.0,
-        1.6
-      ) as score
-from public.feed_publicaciones fp;
-
-grant select on public.feed_trending to anon, authenticated;
-```
-
-- `security_invoker = true` → hereda la visibilidad de `feed_publicaciones`; publicaciones bloqueadas no aparecen.
-- Fórmula: `(likes + comentarios) / (horas_desde_creacion + 2)^1.6`. El `+2` evita spikes de publicaciones nuevas con 0 horas.
-- El `GRANT SELECT` es obligatorio y separado de RLS: sin él la Data API no expone la vista a `anon`/`authenticated`.
-- La columna `score` es interna. El data layer (`lib/data/trending.ts`) selecciona columnas explícitas y **nunca expone `score` al cliente**.
-- A alto volumen: considerar vista materializada refrescada por `pg_cron` — no implementado en MVP.
-
-### RPC `get_area_counts()` (ADDITIVE)
-
-Cuenta publicaciones distintas (no bloqueadas) por área de conocimiento de tag.
-
-```sql
-create or replace function public.get_area_counts()
-returns table(area text, count bigint)
-language sql
-stable
-security invoker
-set search_path = ''
-as $$
-  select t.area, count(distinct pt.publicacion_id) as count
-  from public.tag t
-  join public.publicacion_tag pt on pt.tag_id = t.id
-  join public.publicacion p on p.id = pt.publicacion_id
-  where p.bloqueada = false
-  group by t.area;
-$$;
-
-revoke all on function public.get_area_counts() from public;
-grant execute on function public.get_area_counts() to anon, authenticated;
-```
-
-- `SECURITY INVOKER` (nunca DEFINER para omitir RLS — regla invariante del proyecto).
-- `set search_path = ''` y calificación completa de objetos — hardening Supabase.
-- `revoke all from public` + `grant execute to anon, authenticated` — explicit tight grant.
-- `count(distinct pt.publicacion_id)` → una publicación con varios tags en el mismo área cuenta una sola vez.
-- Consumida por `lib/data/areas.ts` → `getAreaCounts()`, `getAreasConMinimo(min)`, `countForArea(area)`.
-
----
-
-*Vitrina · Especificaciones de BD y Conexión al Backend v1.1 · Junio 2026*
+*Vitrina · Especificaciones de BD y Conexión al Backend*

@@ -10,9 +10,17 @@ export default async function RevistasPage() {
   if (!revistas || revistas.length === 0) {
     return (
       <div className="animate-page">
-        <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight mb-8">
-          Revistas
-        </h1>
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight">
+            Revistas
+          </h1>
+          <Link
+            href="/revistas/calendario"
+            className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm text-text-muted hover:text-text hover:border-text transition-colors"
+          >
+            Calendario
+          </Link>
+        </div>
         <EmptyState
           title="Sin revistas publicadas"
           description="Todavía no hay revistas publicadas. Vuelve pronto."
@@ -23,13 +31,21 @@ export default async function RevistasPage() {
 
   return (
     <div className="animate-page">
-      <div className="mb-8">
-        <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight">
-          Revistas
-        </h1>
-        <p className="mt-2 text-sm text-text-muted">
-          Ediciones mensuales de la comunidad.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight">
+            Revistas
+          </h1>
+          <p className="mt-2 text-sm text-text-muted">
+            Ediciones mensuales de la comunidad.
+          </p>
+        </div>
+        <Link
+          href="/revistas/calendario"
+          className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm text-text-muted hover:text-text hover:border-text transition-colors"
+        >
+          Calendario
+        </Link>
       </div>
 
       <ul className="animate-stagger grid grid-cols-1 md:grid-cols-2 gap-6 list-none p-0">

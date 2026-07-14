@@ -1,7 +1,11 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getPerfil, getPreferenciasNotificacion } from '@/lib/data/perfil'
+import {
+  getPerfil,
+  getPreferenciasNotifApp,
+  getPreferenciasNotificacion,
+} from '@/lib/data/perfil'
 import { getLinksUsuario } from '@/lib/data/links'
 import PerfilEditForm from '@/components/perfil/PerfilEditForm'
 import ChangePasswordForm from '@/components/perfil/ChangePasswordForm'
@@ -30,6 +34,7 @@ export default async function AjustesPage() {
 
   const { data: links } = await getLinksUsuario(user.id)
   const { data: notifEmailHabilitado, error: notifError } = await getPreferenciasNotificacion()
+  const { data: preferenciasApp, error: notifAppError } = await getPreferenciasNotifApp()
 
   if (notifError) {
     // Never default a privacy preference to `true` on a failed read — that
@@ -37,6 +42,12 @@ export default async function AjustesPage() {
     // failure instead of guessing (matches usuario/[id]/page.tsx's
     // if (error) return <ErrorState/> convention for getPerfil).
     console.error('[perfil/ajustes] getPreferenciasNotificacion', notifError)
+  }
+
+  if (notifAppError) {
+    // Same rationale as notifError above — the 5 notif_app_* booleans are
+    // equally privacy-sensitive (BD §3.23); never default them on failure.
+    console.error('[perfil/ajustes] getPreferenciasNotifApp', notifAppError)
   }
 
   return (
@@ -82,13 +93,16 @@ export default async function AjustesPage() {
         aria-label="Notificaciones"
         className="border border-border rounded-lg p-6 bg-surface"
       >
-        {notifError || notifEmailHabilitado === null ? (
+        {notifError || notifEmailHabilitado === null || notifAppError || !preferenciasApp ? (
           <ErrorState
             title="No se pudo cargar tu preferencia de notificaciones"
             description="Intenta de nuevo más tarde."
           />
         ) : (
-          <NotificacionesForm perfil={{ notif_email_habilitado: notifEmailHabilitado }} />
+          <NotificacionesForm
+            perfil={{ notif_email_habilitado: notifEmailHabilitado }}
+            preferenciasApp={preferenciasApp}
+          />
         )}
       </section>
 

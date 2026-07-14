@@ -5,6 +5,7 @@ import { getMisPublicaciones } from '@/lib/data/publicaciones'
 import { getMisSolicitudes } from '@/lib/data/solicitudes'
 import { getLinksUsuario } from '@/lib/data/links'
 import { getConteos } from '@/lib/data/seguidores'
+import { getEstadoVentanaPostulacion } from '@/lib/utils/revistaCiclo'
 import Link from 'next/link'
 import PerfilView from '@/components/perfil/PerfilView'
 import PerfilStats from '@/components/perfil/PerfilStats'
@@ -47,6 +48,7 @@ export default async function PerfilPage() {
   ])
 
   const sols: SolicitudConDetalle[] = (solicitudes ?? []) as SolicitudConDetalle[]
+  const estadoVentana = getEstadoVentanaPostulacion()
 
   const pubs: PublicacionCardData[] = (publicaciones ?? []).map((p) => ({
     id: p.id,
@@ -56,6 +58,8 @@ export default async function PerfilPage() {
     nombre_autor: perfil.nombre,
     autor_id: perfil.id,
     creado_en: p.creado_en,
+    archivo_url: p.archivo_url,
+    archivo_thumbnail_url: p.archivo_thumbnail_url,
   }))
 
   return (
@@ -115,7 +119,7 @@ export default async function PerfilPage() {
           </h2>
         </summary>
         <div className="mt-6">
-          <SolicitudesHistorial solicitudes={sols} />
+          <SolicitudesHistorial solicitudes={sols} estadoVentana={estadoVentana} />
         </div>
       </details>
 

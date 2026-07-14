@@ -39,6 +39,13 @@ describe('renderEmail', () => {
     expect(html).toContain('<html')
   })
 
+  it('includes a button linking to esvitrina.com', () => {
+    const html = renderEmail({ titulo: 'Aviso', cuerpoHtml: '<p>Contenido.</p>' })
+
+    expect(html).toContain('href="https://esvitrina.com"')
+    expect(html).toContain('Visitar Vitrina')
+  })
+
   it('never includes an unsubscribe footer (locked MVP decision)', () => {
     const html = renderEmail({ titulo: 'Aviso', cuerpoHtml: '<p>Contenido.</p>' })
 

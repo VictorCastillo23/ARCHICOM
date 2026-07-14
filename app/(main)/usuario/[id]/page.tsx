@@ -84,6 +84,8 @@ export default async function UsuarioPage({ params }: UsuarioPageProps) {
     nombre_autor: perfil.nombre,
     autor_id: pub.autor_id,
     creado_en: pub.creado_en,
+    archivo_url: pub.archivo_url,
+    archivo_thumbnail_url: pub.archivo_thumbnail_url,
   }))
 
   return (

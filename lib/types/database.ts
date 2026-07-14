@@ -69,11 +69,14 @@ export type Publicacion = {
   resumen: string
   tipo: TipoPublicacion
   archivo_url?: string
+  /** Client-generated JPEG thumbnail of a PDF's page 1, uploaded to Storage. Null for images (the image itself is the thumbnail) or PDFs not yet re-saved since this feature shipped. */
+  archivo_thumbnail_url?: string | null
   autor_id: string
   obra_autor_externo?: string | null
   url_externa?: string | null
   creado_en: string
   bloqueada: boolean
+  chat_habilitado: boolean
 }
 
 export type Tag = {
@@ -144,7 +147,7 @@ export type ColeccionPublicacion = {
   publicacion_id: string
   orden: number
   agregado_en: string
-  publicacion?: Pick<Publicacion, 'id' | 'titulo' | 'resumen' | 'tipo'> & {
+  publicacion?: Pick<Publicacion, 'id' | 'titulo' | 'resumen' | 'tipo' | 'archivo_url' | 'archivo_thumbnail_url'> & {
     usuario?: Pick<Usuario, 'id' | 'nombre'>
   }
 }
@@ -220,6 +223,8 @@ export type PublicacionCardData = {
   nombre_autor: string
   autor_id?: string
   creado_en?: string
+  archivo_url?: string
+  archivo_thumbnail_url?: string | null
 }
 
 export type UsuarioCardData = {
@@ -235,6 +240,7 @@ export type FeedPublicacion = {
   resumen: string
   tipo: TipoPublicacion
   archivo_url?: string
+  archivo_thumbnail_url?: string | null
   autor_id: string
   autor_nombre: string
   obra_autor_externo?: string | null
@@ -359,6 +365,13 @@ export type DestinatariosCriterio =
   | { tipo: 'todos' }
   | { tipo: 'ciudad'; valor: string }
   | { tipo: 'ids'; valor: string[] }
+  // Resolved server-side (Route Handler) into { tipo: 'ids', valor } before it
+  // ever reaches resolver_destinatarios_correo / enviar-correo-masivo — the
+  // RPC has no concept of "no publications", so it never sees this variant.
+  | { tipo: 'sin_publicacion' }
+
+/** Shape of a resolved recipient row — matches resolver_destinatarios_correo's RETURNS TABLE. */
+export type DestinatarioResuelto = { id: string; email: string; nombre: string }
 
 /** Reconciled against design's DDL (M3) — supersedes an earlier spec draft's 'enviado'|'error'. */
 export type EstadoCorreoAdmin = 'pendiente' | 'completado' | 'fallido'
@@ -379,4 +392,57 @@ export type CorreoAdmin = {
 export type CorreoAdminDetalle = CorreoAdmin & {
   /** null if the sending admin's account was later deleted (admin_id ON DELETE SET NULL). */
   admin: Pick<Usuario, 'id' | 'nombre'> | null
+}
+
+// Notificaciones DTOs (notificaciones-app)
+
+export type TipoNotificacion =
+  | 'comentario_nueva'
+  | 'comentario_respuesta'
+  | 'obra_aceptada_revista'
+  | 'nuevo_seguidor'
+  | 'solicitud_mensaje'
+  | 'obra_likeada'
+  | 'obra_rechazada_revista'
+  | 'recordatorio_cierre_revista'
+
+export type Notificacion = {
+  id: string
+  usuario_id: string
+  tipo: TipoNotificacion
+  /** The actor who triggered the notification (liker, commenter, follower...). */
+  usuario_relacionado_id: string | null
+  publicacion_relacionada_id: string | null
+  /** For `comentario_respuesta`, the parent (root) comment — the cascade anchor. Always null for `comentario_nueva` (see BD §3.23). */
+  comentario_relacionado_id: string | null
+  descripcion: string
+  enlace: string | null
+  /** Aggregation count for the 4 aggregating types (obra_likeada, comentario_nueva, comentario_respuesta, nuevo_seguidor); always 1 for the other 2. */
+  contador: number
+  leida: boolean
+  leida_en: string | null
+  creada_en: string
+}
+
+/**
+ * Shape returned by RPC `mis_preferencias_notif_app()` — these 5 columns have
+ * NO SELECT grant (private, unlike public profile fields); only readable via
+ * this self-scoped SECURITY DEFINER RPC. See BD §3.23.
+ */
+export type PreferenciasNotifApp = {
+  notif_app_comentarios: boolean
+  notif_app_seguidores: boolean
+  notif_app_revista: boolean
+  notif_app_mensajes: boolean
+  notif_app_likes: boolean
+}
+
+/**
+ * `Notificacion` + the actor's public identity, embedded via the
+ * `usuario_relacionado_id` FK for UI display (bell dropdown / page / detail
+ * modal). Null for `obra_aceptada_revista`, which has no actor. Not embedded
+ * by every consumer of `Notificacion` — only `getNotificaciones` selects it.
+ */
+export type NotificacionConActor = Notificacion & {
+  usuario_relacionado: Pick<Usuario, 'id' | 'nombre'> | null
 }

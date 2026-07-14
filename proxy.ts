@@ -37,8 +37,9 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Protect /perfil, /publicar and the publication edit route — redirect to
-  // /login without session. The public detail page (/publicacion/[id]) stays open.
+  // Protect /perfil, /publicar, /notificaciones and the publication edit route
+  // — redirect to /login without session. The public detail page
+  // (/publicacion/[id]) stays open.
   const isEditarPublicacion =
     pathname.startsWith('/publicacion/') && pathname.endsWith('/editar')
   if (
@@ -46,6 +47,7 @@ export async function proxy(request: NextRequest) {
     (pathname.startsWith('/perfil') ||
       pathname.startsWith('/publicar') ||
       pathname.startsWith('/mensajes') ||
+      pathname.startsWith('/notificaciones') ||
       isEditarPublicacion)
   ) {
     return NextResponse.redirect(new URL('/login', request.url))

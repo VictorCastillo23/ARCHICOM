@@ -4,6 +4,13 @@
 // enviar-correo-masivo). No unsubscribe footer — locked MVP decision
 // (notif_email_habilitado is the sole opt-out, see design D-notif-email).
 
+// Fixed production domain — hardcoded (not an env var) to match how the rest
+// of the codebase already treats it as a constant (README.md's live badge,
+// the "contacto@esvitrina.com" mailto in /sobre-nosotros). Edge Functions run
+// on Deno, outside the Next.js app, so NEXT_PUBLIC_SITE_URL isn't reachable
+// here even if we wanted to parametrize it.
+const SITE_URL = 'https://esvitrina.com'
+
 export type RenderEmailParams = {
   titulo: string
   cuerpoHtml: string
@@ -43,10 +50,10 @@ export function renderEmail({ titulo, cuerpoHtml, nombre }: RenderEmailParams): 
   </head>
   <body style="margin:0;padding:24px;background-color:#f5f5f5;font-family:sans-serif;color:#1a1a1a;">
     <div style="max-width:560px;margin:0 auto;background-color:#ffffff;border-radius:8px;padding:32px;">
-      <h1 style="font-size:20px;margin:0 0 16px;">${tituloSeguro}</h1>
       <p style="margin:0 0 16px;">${saludo}</p>
       <div>${cuerpoHtml}</div>
-      <hr style="margin-top:32px;border:none;border-top:1px solid #e5e5e5;" />
+      <p style="margin:24px 0 0;"><a href="${SITE_URL}" style="color:#1a6b5e;">Visitar Vitrina</a></p>
+      <hr style="margin-top:16px;border:none;border-top:1px solid #e5e5e5;" />
       <p style="font-size:12px;color:#737373;margin-top:16px;">Vitrina — portafolio digital académico</p>
     </div>
   </body>

@@ -30,13 +30,15 @@ export async function PATCH(request: NextRequest, ctx: Context) {
   if (!user) return unauthorized()
 
   const body = await request.json().catch(() => ({}))
-  const { titulo, resumen, tipo, archivo_url, obra_autor_externo, url_externa } = body as {
+  const { titulo, resumen, tipo, archivo_url, archivo_thumbnail_url, obra_autor_externo, url_externa, chat_habilitado } = body as {
     titulo?: string
     resumen?: string
     tipo?: string
     archivo_url?: string
+    archivo_thumbnail_url?: string | null
     obra_autor_externo?: string | null
     url_externa?: string | null
+    chat_habilitado?: boolean
   }
 
   if (titulo !== undefined && (typeof titulo !== 'string' || titulo.length > 150))
@@ -46,6 +48,10 @@ export async function PATCH(request: NextRequest, ctx: Context) {
 
   if (tipo !== undefined && !TIPOS_PUBLICACION.includes(tipo as TipoPublicacion)) {
     return validationError('tipo inválido')
+  }
+
+  if (chat_habilitado !== undefined && typeof chat_habilitado !== 'boolean') {
+    return validationError('chat_habilitado debe ser boolean')
   }
 
   // Empty string is not a valid url_externa — use null to clear it (aligns with POST).
@@ -88,13 +94,15 @@ export async function PATCH(request: NextRequest, ctx: Context) {
     }
   }
 
-  const updates: Record<string, string | null | undefined> = {}
+  const updates: Record<string, string | boolean | null | undefined> = {}
   if (titulo !== undefined) updates.titulo = titulo
   if (resumen !== undefined) updates.resumen = resumen
   if (tipo !== undefined) updates.tipo = tipo
   if (archivo_url !== undefined) updates.archivo_url = archivo_url
+  if (archivo_thumbnail_url !== undefined) updates.archivo_thumbnail_url = archivo_thumbnail_url
   if (obra_autor_externo !== undefined) updates.obra_autor_externo = obra_autor_externo
   if (url_externa !== undefined) updates.url_externa = url_externa
+  if (chat_habilitado !== undefined) updates.chat_habilitado = chat_habilitado
 
   const { data, error } = await supabase
     .from('publicacion')
@@ -124,10 +132,10 @@ export async function DELETE(_req: NextRequest, ctx: Context) {
 
   if (!user) return unauthorized()
 
-  // Read the file URL before deleting the row, to clean up Storage afterwards.
+  // Read the file URLs before deleting the row, to clean up Storage afterwards.
   const { data: current } = await supabase
     .from('publicacion')
-    .select('archivo_url')
+    .select('archivo_url, archivo_thumbnail_url')
     .eq('id', id)
     .maybeSingle()
 
@@ -142,6 +150,7 @@ export async function DELETE(_req: NextRequest, ctx: Context) {
   // can't remove the file (bucket RLS is folder-scoped, no service_role) → it stays
   // orphaned (known limitation). Never fails the delete.
   if (current?.archivo_url) await removeOwnStorageObject(supabase, current.archivo_url)
+  if (current?.archivo_thumbnail_url) await removeOwnStorageObject(supabase, current.archivo_thumbnail_url)
 
   return jsonOk(null)
 }

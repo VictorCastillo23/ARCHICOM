@@ -8,13 +8,23 @@
   ├── (main)          → con Nav + Footer
   │   ├── /                    Feed principal
   │   ├── /publicacion/[id]    Detalle de publicación
+  │   ├── /publicacion/[id]/editar  Editar publicación (autor) ← requiere sesión
   │   ├── /publicar            Nueva publicación  ← requiere sesión
   │   ├── /perfil              Mi perfil (vitrina) ← requiere sesión
   │   ├── /perfil/ajustes      Ajustes de cuenta   ← requiere sesión
+  │   ├── /perfil/guardados    Mis guardados (privado) ← requiere sesión
+  │   ├── /perfil/colecciones  Mis colecciones (privado) ← requiere sesión
+  │   ├── /coleccion/[id]      Detalle de colección (pública o del dueño; RLS filtra visibilidad)
   │   ├── /usuario/[id]        Perfil público
+  │   ├── /usuario/[id]/seguidores  Listado de seguidores/seguidos
   │   ├── /buscar              Resultados de búsqueda global (?q=)
   │   ├── /revistas            Catálogo de revistas
   │   ├── /revistas/[id]       Detalle de revista
+  │   ├── /revistas/calendario Calendario editorial (ciclo mensual + edición activa)
+  │   ├── /areas               Catálogo de áreas de conocimiento
+  │   ├── /area/[slug]         Publicaciones por área
+  │   ├── /sobre-nosotros      Página institucional (misión, visión, contacto)
+  │   ├── /terminos            Términos de Servicio
   │   ├── /mensajes            Bandeja de conversaciones ← requiere sesión
   │   ├── /mensajes/[conversacionId]  Hilo de mensajes  ← requiere sesión
   │   └── /mensajes/nuevo      Nueva conversación        ← requiere sesión (?u=)
@@ -24,9 +34,8 @@
       ├── /admin/revistas      Listado + gestión de revistas
       ├── /admin/revistas/[id] Editor de una revista
       ├── /admin/tags          Catálogo de tags
-      └── /admin/reportes      Moderación de publicaciones reportadas
-
-  > Nota: este árbol es el esqueleto inicial. Rutas añadidas después (cada una documentada en su sección): `/sobre-nosotros`, `/terminos`, `/areas`, `/area/[slug]`, `/publicacion/[id]/editar`, `/perfil/guardados`, `/usuario/[id]/seguidores`.
+      ├── /admin/reportes      Moderación de publicaciones reportadas
+      └── /admin/correos       Envío de correos masivos a usuarios
 
   ---
 
@@ -37,7 +46,7 @@
   [Anónimo]
     → / (feed, solo lectura)
     → /publicacion/[id] (solo lectura, sin like/comentar)
-    → /revistas + /revistas/[id]
+    → /revistas + /revistas/[id] + /revistas/calendario
     → /usuario/[id]
     → /login → /signup
 
@@ -72,7 +81,7 @@
     - Si hay sesión: enlace a /perfil + botón Logout
     - Si no hay sesión: enlace a /login
   - NavClient.tsx — parte interactiva de la Nav. Responsive:
-    - **Desktop (≥ md):** links inline (`hidden md:flex`) — SearchBox + Revistas/Perfil/Publicar (+Admin) + Salir, o Iniciar sesión / Crear cuenta sin sesión.
+    - **Desktop (≥ md):** links inline (`hidden md:flex`) — SearchBox + Revistas/Perfil/Publicar (+Admin) + Salir, o Revistas/Iniciar sesión/Crear cuenta sin sesión. El link a `/revistas/calendario` NO vive en el nav — es un botón dentro de la página `/revistas` (ver §3.9).
     - **Móvil (< md):** botón hamburguesa que abre `MobileMenu` (`md:hidden`).
     - Los links se derivan una vez de la sesión (rol-aware) y se reusan en ambos.
     - SearchBox — combobox de búsqueda global (ver §3.x abajo); en el drawer va con `fullWidth`.
@@ -134,6 +143,7 @@
 
   Componentes adicionales en la home (NO listados arriba):
   - **HeroBanner** (`components/feed/HeroBanner.tsx`) — banner de conversión; se renderiza **solo para anónimos** (`!isAuthenticated`), encima de todo.
+  - **VentanaRevistaBanner** (`components/feed/VentanaRevistaBanner.tsx`) — banner de postulación a revista, entre HeroBanner y TrendingSection. Ver §12.
   - **TrendingSection** — sección "Tendencias" encima del feed, solo sin filtros (`!area && !tipo`).
 
   Comportamiento:
@@ -144,6 +154,16 @@
     por request). La selección y la paginación siguen siendo por creado_en + range;
     solo se baraja el orden visual dentro de la página.
   - **Límite por página: 24 publicaciones** (`const LIMIT = 24` en `app/(main)/page.tsx`)
+  - **Miniatura de archivo en PublicacionCard** (`components/feed/PublicacionCard.tsx`): si la
+    publicación tiene `archivo_url`, la card muestra una miniatura arriba del título (bleed hasta el
+    borde de la Card, `aspect-[4/3]`, `object-cover`). Imagen (JPG/PNG) → la propia `archivo_url` es
+    la miniatura. PDF con `archivo_thumbnail_url` (generada client-side al publicar/editar, ver
+    Vitrina_Especificaciones_APIs.md §4.2) → se usa esa URL. PDF sin `archivo_thumbnail_url`
+    (publicado antes de este cambio, o el render client-side falló) → ícono genérico de documento
+    (SVG inline). Sin `archivo_url` (recomendación o publicación solo-enlace) → sin miniatura, card
+    igual que antes. `<img>` crudo (no `next/image`): mismo patrón que
+    `components/publicacion/ArchivoVistaPrevia.tsx` para URLs de Storage — `next/image` requeriría
+    `images.remotePatterns` para el host de Supabase, no configurado en `next.config.ts`.
 
   ---
   3.2 Detalle de Publicación — /publicacion/[id]
@@ -217,6 +237,7 @@
   Comportamiento condicional:
   - Sin sesión: el toggle de LikeButton redirige a /login al hacer click (el corazón no queda "deshabilitado" visualmente); ComentarioForm oculto, SolicitarRevistaButton oculto; aparece aviso "Iniciá sesión para comentar" con link a /login. GuardarButton **NO** se deshabilita: al hacer click redirige a /login (punto de conversión, igual que SeguirButton).
   - Con sesión, pero NO es el autor: todo habilitado excepto SolicitarRevistaButton (solo el autor puede postular su obra)
+  - Con sesión, autor, revista activa, pero ventana de postulación cerrada (día 1, o día 26 en adelante, hora `America/Mexico_City`): SolicitarRevistaButton reemplaza el botón "Postular a {titulo}" por un texto explicativo ("Las postulaciones a la edición de este mes están cerradas. Reabren el día 2 del próximo mes.") — no se intenta el POST. Ver §12 (VentanaRevistaBanner) y `lib/utils/revistaCiclo.ts`.
   - Con sesión y ES el autor:
     - Si no hay solicitud previa para la edición activa → botón "Postular a la revista de este mes" (POST /api/solicitudes con el revista_id de la edición en borrador)
     - Si ya postuló → muestra el estado (pendiente / aceptada / rechazada) en lugar del botón; si fue rechazada en una edición anterior, puede volver a postular en la edición activa
@@ -264,16 +285,30 @@
   - **Con PDF (nuevo o ya adjunto)** → en **cada guardado** (crear o editar título/resumen/PDF) se
     (re)indexa **automáticamente** (llamada a `POST /api/publicaciones/[id]/index`) para mantener el
     chat RAG **y** la búsqueda semántica al día. La ruta es idempotente por sha256, así que una
-    edición de solo metadatos es un no-op barato; un PDF reemplazado se reindexa. Ya **no hay checkbox
-    opt-in ni botón manual**. Es **best-effort y silencioso**: si falla, **reintenta hasta 3 veces**
-    (1,5 s entre intentos) y si igual no lo logra, **no muestra ningún error** (re-editar reintenta;
-    el backfill admin es el fallback). Muestra "Preparando el documento…" durante el proceso.
+    edición de solo metadatos es un no-op barato; un PDF reemplazado se reindexa. El auto-indexado
+    es **automático** (sin checkbox opt-in ni botón manual) y **best-effort y silencioso**: si falla,
+    **reintenta hasta 3 veces** (1,5 s entre intentos) y si igual no lo logra, **no muestra ningún
+    error** (re-editar reintenta; el backfill admin es el fallback). Muestra "Preparando el
+    documento…" durante el proceso.
+  - **Con PDF (nuevo o ya adjunto)** → además aparece un toggle "Activar chat sobre el documento"
+    (`chat_habilitado`, componente `Toggle`, gateado por `tienePdf`, **apagado por defecto** en
+    creación). Independiente del auto-indexado de arriba: el indexado siempre corre; este toggle
+    solo controla si `ChatRAGWidget` queda disponible en el detalle de la publicación (ver §14). Se
+    envía siempre de forma explícita en el payload (`crearPublicacion`/`editarPublicacion`), nunca
+    omitido, para poder apagarlo y no solo encenderlo.
 
   Flujo:
   1. El usuario elige primero el tipo en el TipoPicker; recién entonces se muestra el resto del form.
   2. Se completan los campos (adaptados a la categoría del tipo).
   3. Si hay archivo, se sube a Supabase Storage → se obtiene archivo_url.
-  4. POST /api/publicaciones con los datos + URL (incluida la atribución externa cuando aplica).
+  3.5. Si el archivo es PDF: apenas se elige (no en el submit) arranca en paralelo la generación
+     client-side de una miniatura JPEG de la página 1 (`pdfjs-dist`, `lib/pdf/generateThumbnail.ts`,
+     ver ArchivoPreview abajo). Al hacer submit se espera esa generación, se sube la miniatura al
+     mismo bucket (segunda llamada a `POST /api/storage/upload`) y su URL se incluye como
+     `archivo_thumbnail_url`. Si falla el render (PDF corrupto, etc.) o el archivo no es PDF, no se
+     bloquea el publish: sigue sin miniatura (la card muestra el ícono genérico, ver §3.1).
+  4. POST /api/publicaciones con los datos + URL (incluida la atribución externa cuando aplica) +
+     archivo_thumbnail_url cuando se generó.
   5. Se asocian las áreas seleccionadas (POST /api/publicaciones/[id]/tags por cada una);
      cada respuesta se verifica — si alguna falla, la publicación NO se pierde y se muestra un aviso
      con enlace a la publicación creada (en vez de redirigir y arriesgar un duplicado).
@@ -297,6 +332,10 @@
   - Siembra los campos con los valores actuales; el **tipo queda bloqueado** (TipoPicker disabled).
   - El archivo actual se conserva; solo se re-sube si el usuario elige uno nuevo. Se mantiene la regla
     "al menos uno de archivo/enlace" (un archivo ya cargado la satisface).
+  - Al elegir un archivo nuevo, `archivo_thumbnail_url` se recalcula: PDF nuevo → se regenera la
+    miniatura (o se limpia a `null` si el render falla); imagen nueva → se limpia a `null` (la miniatura
+    del PDF anterior ya no aplica). Sin archivo nuevo elegido, la miniatura existente no se toca. La
+    miniatura vieja (si la había) se borra de Storage best-effort cuando se reemplaza.
   - Submit → PATCH /api/publicaciones/[id] (sin enviar `tipo`). Las áreas se actualizan por **diff**:
     POST las nuevas, DELETE (?tag_id=) las quitadas. En éxito redirige al detalle.
   - El botón dice "Guardar cambios" (en creación dice "Publicar").
@@ -320,7 +359,7 @@
   ├────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────┤  
   │ PerfilStats    │ Contadores (pubs, revistas, likes, seguidores)│ getPerfilStats + getConteos                      │  
   ├────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────┤  
-  │ SolicitudesHistorial │ "Mis postulaciones"                     │ getMisSolicitudes                                │  
+  │ SolicitudesHistorial │ "Mis postulaciones"                     │ getMisSolicitudes + estadoVentana (prop única)   │  
   ├────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────┤  
   │ FeedList       │ Lista de publicaciones propias                │ publicaciones del usuario autenticado            │  
   └────────────────┴───────────────────────────────────────────────┴──────────────────────────────────────────────────┘  
@@ -328,7 +367,13 @@
   Secciones:
   1. Cabecera con datos actuales (PerfilView — incluye LinksStrip de solo lectura) + link "Ajustes" → /perfil/ajustes
   2. Stats (PerfilStats)
-  3. "Mis postulaciones" — SolicitudesHistorial
+  3. "Mis postulaciones" — SolicitudesHistorial. Para cada solicitud `pendiente` de la edición en curso
+     (`revista.estado === 'borrador'`) muestra "N días restantes" cuando la ventana está abierta, o un
+     `Badge` "En curación editorial" cuando está cerrada (día 1, o día 26 en adelante) — nunca un número,
+     nunca "0 días restantes". Solicitudes no `pendiente` no muestran este texto. `estadoVentana` se
+     calcula **una sola vez** en `perfil/page.tsx` vía `getEstadoVentanaPostulacion()` y se pasa como
+     prop única — no se enhebra por `getMisSolicitudes`/`SolicitudConDetalle` (el estado de la ventana
+     es global y derivado del tiempo, no un dato por fila).
   4. "Mis publicaciones" — reutiliza FeedList
 
   Nota: los enlaces se **muestran** acá (LinksStrip, read-only) y se **editan** en /perfil/ajustes.
@@ -351,7 +396,8 @@
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
   │ LinksEditor        │ Gestionar enlaces (alta/edición/orden/borrado)│ getLinksUsuario → POST/PATCH/DELETE /api/perfil/links* │  
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
-  │ NotificacionesForm │ Alternar notificaciones por correo (Toggle)   │ getPreferenciasNotificacion → notif_email_habilitado → PATCH /api/perfil │  
+  │ NotificacionesForm │ Alternar notificaciones por correo + 5 tipos  │ getPreferenciasNotificacion + getPreferenciasNotifApp → PATCH /api/perfil │  
+  │                    │ de notificación in-app (Toggle ×6)            │ + PATCH /api/usuario/preferencias-notificaciones (§22)                    │  
   ├────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────┤  
   │ ChangePasswordForm │ Cambiar contraseña (actual + nueva + confirmar)│ POST /api/auth/change-password               │  
   └────────────────────┴───────────────────────────────────────────────┴──────────────────────────────────────────────┘  
@@ -360,9 +406,16 @@
   1. Cabecera: "Ajustes de cuenta" + link "← Volver al perfil"
   2. Editar perfil (PerfilEditForm)
   3. Mis enlaces (LinksEditor)
-  4. Notificaciones (NotificacionesForm) — Toggle (`components/ui/Toggle.tsx`, `role="switch"` +
-     `aria-checked`, distinto del `aria-pressed` de ThemeToggle) que persiste `notif_email_habilitado`
-     vía PATCH /api/perfil en cada cambio (optimistic update con rollback si falla).
+  4. Notificaciones (NotificacionesForm) — 6 Toggles (`components/ui/Toggle.tsx`, `role="switch"` +
+     `aria-checked`, distinto del `aria-pressed` de ThemeToggle), cada uno con optimistic update +
+     rollback si falla, independiente de los demás (un `loadingKey` por fila, no un loading global):
+     el primero persiste `notif_email_habilitado` vía PATCH /api/perfil; los 5 siguientes
+     (`notif_app_comentarios`, `notif_app_seguidores`, `notif_app_revista`, `notif_app_mensajes`,
+     `notif_app_likes` — separados por un `border-t`, sección "Notificaciones dentro de la app")
+     persisten vía PATCH /api/usuario/preferencias-notificaciones (§22), un booleano por request.
+     Valores iniciales SSR: `getPreferenciasNotificacion()` (RPC `mi_notif_email_habilitado`) y
+     `getPreferenciasNotifApp()` (RPC `mis_preferencias_notif_app()`, §3.23) — ambos son el único
+     camino de lectura porque estas columnas no tienen GRANT SELECT (ver BD §3.23).
   5. Seguridad — cambio de contraseña (ChangePasswordForm). La confirmación se valida en el cliente;
      el backend re-verifica la contraseña actual antes de actualizar. POST a `/api/auth/change-password`.
 
@@ -429,7 +482,7 @@
   - **Link a /revistas/[id]** en el título — `revista.titulo`.
   - **EmptyState** "Sin revistas publicadas" si no hay ninguna.
 
-  > ⚠️ **No existe "Nombre del editor" ni "Descripción":** `revista.editor_id` se eliminó en v1.1 (cualquier admin cura cualquier edición) y `revista.descripcion` **no existe en el esquema** (verificado en la BD viva). El campo `descripcion?` del DTO y el `{revista.descripcion && …}` de ambos pages eran código muerto y **fueron removidos** (2026-06-24). Agregar descripción de revista requeriría una migración aditiva aprobada.
+  > ⚠️ **No existe "Nombre del editor" ni "Descripción":** `revista.editor_id` no existe en el esquema (cualquier admin cura cualquier edición) y `revista.descripcion` tampoco existe (verificado en la BD viva). Ni el catálogo ni el detalle de revista muestran editor ni descripción. Agregar descripción de revista requeriría una migración aditiva aprobada.
 
   ---
   3.8 Detalle de Revista — /revistas/[id]
@@ -440,6 +493,20 @@
   - Cabecera: badge "Publicada" + volumen (`Vol. N`) + título. (Sin descripción — ver §3.7.)
   - Lista numerada de artículos (`revista_articulo`), cada uno con título → `/publicacion/[id]` y autor → `/usuario/[id]`; cabecera "Artículos ({n})".
   - `EmptyState` si la edición no tiene artículos.
+
+  ---
+  3.9 Calendario Editorial — /revistas/calendario
+
+  Descripción: Página pública, 100% lectura, sin mutaciones (`app/(main)/revistas/calendario/page.tsx`, Server Component con `export const metadata` estático). Explica el ciclo mensual de revistas y muestra la edición en preparación, si existe.
+
+  Data: `getRevistaActiva()` (`lib/data/revistas.ts`) para la edición en `estado = 'borrador'`; si hay una, `getRevista(id)` para el conteo de obras curadas vía `revista_articulo.length` (no se infiere del `select('*')` de `getRevistaActiva`).
+
+  Contenido:
+  - **Explicador de ciclo:** 3 tarjetas (`Card` + `Badge`) con un array local `CICLO_ETAPAS` (sin fechas ni cómputos por instancia — solo copy genérico: apertura/publicación, postulaciones hasta el día 25, curación del 26 a fin de mes). Siempre se renderiza, sin importar el estado de `getRevistaActiva()`.
+  - **Card "Edición actual":** si hay edición activa → `Badge (tone: info)` "Edición en preparación" + volumen (`Vol. N` o "Volumen pendiente" si `volumen` es null) + título + conteo de obras curadas ("N obras curadas" / "Aún sin obras curadas"). Si no hay edición activa o hay error al leerla → nota `Card` con "No hay ninguna edición abierta en este momento" (estado defensivo, no rompe la página).
+  - **Link a /revistas** (`buttonClasses({ variant: 'secondary' })`) para ver el archivo de ediciones publicadas.
+
+  > No hay "Próxima edición" con fecha estimada ni tabla de próximas ediciones: `estado_revista` solo tiene `borrador`/`publicada`, con un índice único parcial que garantiza como máximo una revista en `borrador` — cualquier fecha futura sería inventada.
 
   ---
   4. Pantallas — Área de Autenticación (auth)
@@ -589,7 +656,7 @@
 
   > **UI presentes en `components/ui/` no listados arriba:** `Modal` (overlay accesible que reusan `ReportarButton` y `ConfirmDeleteModal`), `Spinner` y `PageLoading` (estados de carga).
   >
-  > **Componentes de feature presentes y aún sin documentar en este archivo:** `HeroBanner` (home), `PublicacionesRelacionadas` (detalle), `SolicitudRevistaForm` (`components/revistas/`), `EliminarPublicacionButton` + `ConfirmDeleteModal` (acciones del autor en el detalle), `EliminarRevistaButton` (admin), y los sub-componentes de links `LinkAddForm`/`LinkRow`.
+  > **Componentes de feature presentes y aún sin documentar en este archivo:** `PublicacionesRelacionadas` (detalle), `SolicitudRevistaForm` (`components/revistas/`), `EliminarPublicacionButton` + `ConfirmDeleteModal` (acciones del autor en el detalle), `EliminarRevistaButton` (admin), y los sub-componentes de links `LinkAddForm`/`LinkRow`.
 
   Componentes de búsqueda (components/buscar/, components/usuario/):
 
@@ -625,10 +692,11 @@
     └─ LikeButton           ← POST /api/likes (client component)
     └─ ComentarioList
     └─ ComentarioForm       ← POST /api/comentarios (client component)
-    └─ SolicitarRevistaButton ← POST /api/solicitudes (solo el autor; obra → edición activa)
+    └─ SolicitarRevistaButton ← POST /api/solicitudes (solo el autor; obra → edición activa; deshabilitado
+                                 con explainer inline cuando la ventana de postulación está cerrada)
 
   PerfilPage
-    └─ PerfilView           ← read-only display (now renders LinksStrip)
+    └─ PerfilView           ← read-only display (renderiza LinksStrip)
     └─ PerfilEditForm       ← PATCH /api/perfil (client component)
     └─ LinksEditor          ← POST/PATCH/DELETE /api/perfil/links* (client island)
     └─ FeedList             ← publicaciones propias
@@ -654,7 +722,7 @@
 
   ---
 
-  ## Feature 1 — Links de Perfil (nuevos componentes)
+  ## 8. Enlaces de Perfil
 
   ### LinksStrip  (`components/perfil/LinksStrip.tsx`)
 
@@ -678,7 +746,7 @@
   - **Después de mutaciones:** llama `router.refresh()` para resincronizar el estado SSR.
   - **Usa:** `Button` (variants: secondary para agregar, primary para guardar, ghost para cancelar/editar, danger para eliminar) y `Field` (etiqueta, url inputs).
 
-  ### PerfilView — cambios (Feature 1)
+  ### PerfilView — soporte de enlaces
 
   - Nueva prop opcional: `links?: UsuarioLink[]` (default `[]`).
   - Importa y renderiza `<LinksStrip links={links} />` debajo de los datos de perfil (institución, carrera, email, enlace público).
@@ -686,7 +754,7 @@
 
   ---
 
-  ## Feature 3 — Seguidores (nuevos componentes y páginas)
+  ## 9. Seguidores
 
   ### SeguirButton  (`components/usuario/SeguirButton.tsx`)
 
@@ -699,7 +767,7 @@
   - **Accesibilidad:** `aria-pressed={following}`, `aria-label` dinámico ("Seguir" / "Dejar de seguir").
   - **Visibilidad (decidida en la página, no en el botón):** Solo se renderiza desde `/usuario/[id]/page.tsx` cuando `viewer && viewer.id !== perfil.id`. No aparece en `/perfil` (perfil propio) ni para visitantes anónimos.
 
-  ### PerfilStats — cambios (Feature 3)
+  ### PerfilStats — soporte de seguidores
 
   Nuevas props opcionales: `usuarioId?: string`, `seguidores?: number`, `seguidos?: number`.
 
@@ -722,23 +790,9 @@
   - **generateMetadata:** título "Seguidores de {nombre} — Vitrina".
   - **No pagina en MVP:** carga hasta 50 con `getSeguidores/getSeguidos` directo. El endpoint `GET /api/seguidores` queda disponible para "carga más" futuro.
 
-  ### Navegación actualizada
-
-  ```
-  /usuario/[id]                 Perfil público
-      └── /seguidores           Seguidores / Siguiendo (?tipo=seguidores|seguidos)
-  ```
-
-  El árbol de navegación de §1 se extiende:
-
-  ```
-  ├── /usuario/[id]            Perfil público
-  │   └── /usuario/[id]/seguidores   Listado de seguidores/seguidos
-  ```
-
   ---
 
-  ## Feature — Moderación de Reportes
+  ## 10. Moderación de Reportes
 
   ### ReportarButton (`components/publicacion/ReportarButton.tsx`)
 
@@ -786,7 +840,7 @@
 
   ---
 
-  ## Feature 4 — Guardados (marcadores privados)
+  ## 11. Guardados
 
   ### GuardarButton  (`components/publicacion/GuardarButton.tsx`)
 
@@ -807,15 +861,19 @@
   - **metadata:** título "Mis guardados — Vitrina".
   - **Acceso desde UI:** link "Guardados" en la cabecera de `/perfil` (junto a "Ajustes").
 
-  El árbol de navegación de §1 se extiende:
-
-  ```
-  ├── /perfil/guardados        Mis guardados (privado) ← requiere sesión
-  ```
-
   ---
 
-## Pantallas y componentes aditivos — tendencias-areas-ctas (Junio 2026)
+## 12. Trending, Áreas y CTAs
+
+### VentanaRevistaBanner (`components/feed/VentanaRevistaBanner.tsx`)
+
+- **Tipo:** Server Component (sin `'use client'`).
+- **Props:** `{ revista: { id: string; titulo: string }; diasRestantes: number }` (`diasRestantes` nunca `null` acá — solo se renderiza cuando la ventana está abierta).
+- **Ubicación en UI:** home (`app/(main)/page.tsx`), entre `HeroBanner` y `TrendingSection`.
+- **Condición de render:** solo cuando NO hay filtros activos (`!area && !tipo`) **Y** existe una revista activa (`getRevistaActiva()`) **Y** la ventana de postulación está abierta (`getEstadoVentanaPostulacion().abierta`, días 2–25 `America/Mexico_City`). Si falta cualquiera de las tres condiciones, no se renderiza nada (sin banner, sin error).
+- **Render:** `Badge` "Postulaciones abiertas" + texto con el título de la revista y "quedan N días" (o "queda 1 día"); CTA → `/publicar`.
+- **Estilo:** mismo patrón visual que `HeroBanner` (`rounded-lg bg-surface-muted border border-border`).
+- **No hay countdown ni recomputo en cliente:** el estado se calcula server-side por request; no hay hidratación ni `setInterval`.
 
 ### TrendingSection (`components/feed/TrendingSection.tsx`)
 
@@ -876,7 +934,7 @@
 
 ---
 
-## Feature — Mensajería Directa
+## 13. Mensajería Directa
 
 Mensajería 1-a-1 privada entre usuarios que se siguen mutuamente. Todas las rutas bajo `/mensajes` están protegidas por `proxy.ts` (`pathname.startsWith('/mensajes')` → redirect a `/login` sin sesión). Para el esquema de BD y los endpoints ver `Vitrina_BD_Conexion_Backend.md` §3.13 y `Vitrina_Especificaciones_APIs.md` §14.
 
@@ -892,13 +950,6 @@ Mensajería 1-a-1 privada entre usuarios que se siguen mutuamente. Todas las rut
   - `EmptyState` cuando no hay conversaciones ("No tenés conversaciones", descripción, acción "Explorar perfiles" → `/`). La sección de solicitudes se muestra independientemente de si hay conversaciones.
 - **Metadata:** `{ title: 'Mensajes — Vitrina' }`.
 - **Redirección defensiva:** redirige a `/login` si no hay sesión (la protección real es `proxy.ts`).
-
-El árbol de navegación de §1 se extiende:
-```
-├── /mensajes              Bandeja de conversaciones ← requiere sesión
-├── /mensajes/[conversacionId]  Hilo de mensajes    ← requiere sesión
-└── /mensajes/nuevo        Nueva conversación        ← requiere sesión (?u=<otroId>)
-```
 
 ---
 
@@ -975,7 +1026,7 @@ El árbol de navegación de §1 se extiende:
    return () => { supabase.removeChannel(channel) }  // cleanup
    ```
    - **Deduplicación por id (INSERT):** el emisor recibe su propio INSERT (Realtime echo); si ya está appended optimistamente, se descarta.
-   - **Recibo de lectura en tiempo real (UPDATE):** cuando el receptor marca `leido = true`, el emisor recibe el UPDATE y el tick ✓ pasa a ✓✓ sin recargar. Requiere `REPLICA IDENTITY FULL` en la tabla `mensaje` (migración `mensaje_replica_identity_full`).
+   - **Recibo de lectura en tiempo real (UPDATE):** cuando el receptor marca `leido = true`, el emisor recibe el UPDATE y el tick ✓ pasa a ✓✓ sin recargar. Requiere `REPLICA IDENTITY FULL` en la tabla `mensaje`.
    - **Cleanup:** `supabase.removeChannel(channel)` en el retorno del `useEffect`.
 
 **Envío (optimistic):**
@@ -1039,7 +1090,7 @@ El árbol de navegación de §1 se extiende:
 
 ### Data layer — funciones nuevas en `lib/data/mensajes.ts`
 
-Añadidas en la misma extensión aditiva; el archivo existente ya contenía `getConversaciones`, `getMensajes`, `getConversacionConUsuario`, `getSeSiguenMutuamente` y `getTotalNoLeidos`.
+El archivo ya contiene `getConversaciones`, `getMensajes`, `getConversacionConUsuario`, `getSeSiguenMutuamente` y `getTotalNoLeidos`; las siguientes son adicionales.
 
 | Función | Firma | Descripción |
 |---|---|---|
@@ -1068,7 +1119,7 @@ Añadidas en la misma extensión aditiva; el archivo existente ya contenía `get
 
 ---
 
-## Feature — Compartir enlace
+## 14. Compartir Enlace
 
 ### CompartirButton (`components/ui/CompartirButton.tsx`)
 
@@ -1085,9 +1136,9 @@ Añadidas en la misma extensión aditiva; el archivo existente ya contenía `get
 
 ---
 
-## Feature — Chat RAG sobre el documento (`rag-publicacion`)
+## 15. Chat RAG sobre el Documento
 
-Permite preguntarle al PDF de una publicación: el autor lo "indexa" (extrae texto, lo trocea y genera embeddings) y cualquier usuario logueado puede preguntarle y recibir una respuesta acotada al contenido del documento (grounding estricto — sin invención). Ver `Vitrina_BD_Conexion_Backend.md` §3.15 (esquema) y `Vitrina_Especificaciones_APIs.md` §17-18 (endpoints/DTOs).
+Permite preguntarle al PDF de una publicación: el autor lo "indexa" (extrae texto, lo trocea y genera embeddings) y cualquier usuario logueado puede preguntarle y recibir una respuesta acotada al contenido del documento (grounding estricto — sin invención). Ver excepción documentada `rag-publicacion` en `CLAUDE.md` / `Vitrina_BD_Conexion_Backend.md` §3.15 (esquema) y `Vitrina_Especificaciones_APIs.md` §17-18 (endpoints/DTOs).
 
 ### getEstadoRag (`lib/data/rag.ts`)
 
@@ -1097,7 +1148,7 @@ Permite preguntarle al PDF de una publicación: el autor lo "indexa" (extrae tex
 
 ### Indexado automático (sin botón manual)
 
-El indexado ya **no tiene botón de UI**. Se dispara solo desde `PublicarForm` cuando se sube un **PDF nuevo** (al crear, o al reemplazar el archivo en una edición) — ver §3.1. Las publicaciones existentes se cubren con el backfill admin (`POST /api/admin/rag/backfill`). Se eliminó el componente `IndexarButton`.
+El indexado se dispara automáticamente desde `PublicarForm` cuando se sube un **PDF nuevo** (al crear, o al reemplazar el archivo en una edición) — ver §3.1. No hay botón manual ni componente `IndexarButton`. Las publicaciones existentes se cubren con el backfill admin (`POST /api/admin/rag/backfill`).
 
 ### ChatRAGWidget (`components/publicacion/ChatRAGWidget.tsx`)
 
@@ -1108,19 +1159,208 @@ El indexado ya **no tiene botón de UI**. Se dispara solo desde `PublicarForm` c
   - Lista de burbujas `aria-live="polite"`: pregunta del usuario alineada a la derecha (`bg-primary text-primary-fg rounded-br-sm`), respuesta del asistente a la izquierda (`bg-surface border border-border text-text rounded-bl-sm`) — idéntica paleta a `HiloMensajes`.
   - Estado vacío: **"Preguntá sobre este documento."**
   - Composer: `textarea` + botón enviar (ícono avión/spinner), límite `MAX_PREGUNTA` (500, de `lib/rag/config.ts`) con contador visible cerca del límite, Ctrl+Enter/Cmd+Enter para enviar, deshabilitado mientras `sending` o vacío o sobre el límite.
-  - `handleSend`: agrega la pregunta de forma optimista → `POST /api/publicaciones/{id}/chat` (`{ pregunta }`) → agrega la respuesta (`{ respuesta }`) como burbuja del asistente. **No streaming** (Fase 1). En error (`ApiError`): quita la burbuja optimista, restaura el texto en el composer y muestra banner de error dismissable.
+  - `handleSend`: agrega la pregunta de forma optimista → `POST /api/publicaciones/{id}/chat` (`{ pregunta }`) → agrega la respuesta (`{ respuesta }`) como burbuja del asistente. **No streaming**. En error (`ApiError`): quita la burbuja optimista, restaura el texto en el composer y muestra banner de error dismissable.
 - **Accesibilidad:** lista con `aria-live="polite"`, botón enviar con `aria-label`, spinner `aria-hidden`.
 
 ### Integración en `/publicacion/[id]` (`app/(main)/publicacion/[id]/page.tsx`, modificado)
 
 - `tienePdf = archivo_url` termina en `.pdf` (case-insensitive) — el bloque completo de RAG solo se monta si `tienePdf`.
 - `getEstadoRag(id)` se agrega al `Promise.all` existente (junto a likes/guardado/comentarios) — **no** introduce un request en cascada.
-- Sección **"Pregunta al documento"**, debajo de `ArchivoVistaPrevia` (ya **no** hay botón de indexar):
-  - **Logueado + indexado (`chunks > 0`):** ve `ChatRAGWidget`.
-  - **Logueado + no indexado:** mensaje muted. Al **autor** le dice que el documento se está preparando (el indexado corre solo al subir el PDF); a los demás, "El autor todavía no preparó este documento para preguntas." (sin input — evita una llamada al chat sin fragmentos).
-  - **No logueado:** mensaje con `Link` a `/login` (mismo patrón que la sección de comentarios) — no se monta el widget ni se expone el composer a anónimos, evitando el 401 esperable de `/chat` (solo logueados, guardrail de costo).
+- Sección **"Pregunta al documento"**, debajo de `ArchivoVistaPrevia` (ya **no** hay botón de indexar). Ahora tiene dos bloques hermanos, gateados además por `data.chat_habilitado` (ver `Vitrina_BD_Conexion_Backend.md` §3.24):
+  - **`tienePdf && chat_habilitado`** (el bloque de siempre):
+    - **Logueado + indexado (`chunks > 0`):** ve `ChatRAGWidget`.
+    - **Logueado + no indexado:** mensaje muted. Al **autor** le dice que el documento se está preparando (el indexado corre solo al subir el PDF); a los demás, "El autor todavía no preparó este documento para preguntas." (sin input — evita una llamada al chat sin fragmentos).
+    - **No logueado:** mensaje con `Link` a `/login` (mismo patrón que la sección de comentarios) — no se monta el widget ni se expone el composer a anónimos, evitando el 401 esperable de `/chat` (solo logueados, guardrail de costo).
+  - **`tienePdf && !chat_habilitado && isAuthor`** (bloque nuevo): la sección se **oculta para todos los demás** (nadie más ve rastro de que el PDF existe como chateable); solo el autor ve un hint muted — "El chat sobre este documento está desactivado." — con un `Link` a `/publicacion/[id]/editar` para activarlo.
 
-**Archivos:** `lib/data/rag.ts`, `components/publicacion/ChatRAGWidget.tsx`, `app/(main)/publicacion/[id]/page.tsx` (modificado). El indexado lo dispara `PublicarForm` (auto-index con PDF nuevo).
+**Archivos:** `lib/data/rag.ts`, `components/publicacion/ChatRAGWidget.tsx`, `app/(main)/publicacion/[id]/page.tsx` (modificado). El indexado lo dispara `PublicarForm` (auto-index con PDF nuevo, incondicional respecto a `chat_habilitado`).
+
+---
+
+## 16. Panel Admin de Correos Masivos
+
+Consumen el esquema/RPC/Edge Function ya documentados en `Vitrina_BD_Conexion_Backend.md` §3.21 y los endpoints de `Vitrina_Especificaciones_APIs.md` §21. El toggle de preferencia (`NotificacionesForm`, §3.4.1) es una feature distinta ya documentada arriba.
+
+### getCorreosAdmin (`lib/data/correos.ts`)
+
+- **Tipo:** data-layer SERVER-ONLY, llamado directo desde `app/(admin)/admin/correos/page.tsx` (Server Component). Guard: RLS (`correo_admin_select using es_admin()`) + la protección de `/admin/*` en `proxy.ts` — mismo modelo de confianza que `lib/data/revistas.ts`/`lib/data/tags.ts`, sin `requireAdmin()` explícito (ese helper es de Route Handlers).
+- **Firma:** `getCorreosAdmin({ limit?, offset? }): Promise<{ correos: CorreoAdminDetalle[], hasMore: boolean, error: unknown }>`.
+- **Paginación:** `hasMore = correos.length === limit` (mismo patrón que `getPublicacionPorArea`/`/area/[slug]`), sin `count(*)` separado.
+
+### AdminCorreoForm (`components/admin/AdminCorreoForm.tsx`)
+
+- **Tipo:** Client Component. Campos: `Field` para asunto (≤200) y cuerpo (10-5000, `multiline`), ambos con contador de caracteres vía `helper`. Selector de destinatarios como `role="radiogroup"` de 3 chips (mismo patrón visual que `TipoPicker`): **"Todos los usuarios"** / **"Usuarios específicos"** / **"Usuarios sin publicaciones"** — **sin** opción "por ciudad" (decisión explícita: `usuario.ciudad` es texto libre, no hay lista de municipios en el proyecto; el tipo `DestinatariosCriterio` y la RPC sí soportan `{tipo:'ciudad'}` para uso futuro/API directa).
+- **"Usuarios específicos":** monta `AdminUsuarioMultiSelect`.
+- **"Usuarios sin publicaciones":** arma `{tipo:'sin_publicacion'}` — el conteo real y la resolución a ids concretos los hace el servidor (`resolverIdsSinPublicacion`, `lib/data/correos.ts`), sin lógica de resolución en el cliente. Ver `Vitrina_Especificaciones_APIs.md` §21.
+- **"Ver vista previa":** valida en cliente (mismos límites que `lib/validation/correoAdmin.ts`) → `POST /api/admin/correos/contar` con el criterio construido → abre `AdminCorreoPreview` con el conteo real y la lista de destinatarios resueltos (mismo request, sin fetch extra).
+- **Confirmar (dentro del modal):** `POST /api/admin/correos` → mensaje inline de éxito con el resumen enviados/fallidos (mismo patrón `role="status"`/`role="alert"` que `NotificacionesForm`, sin toasts — el proyecto no usa una librería de toasts) → resetea el form → `router.refresh()` para que el historial SSR se actualice sin recarga completa.
+
+### AdminUsuarioMultiSelect (`components/admin/AdminUsuarioMultiSelect.tsx`)
+
+- **Tipo:** Client Component, fork del esqueleto de debounce/abort/combobox de `components/buscar/SearchBox.tsx` (300 ms, `AbortController`), pero acumulando selección en vez de navegar.
+- **Fetch:** `GET /api/buscar?q=...` (modo autocomplete, sin `tipo`) — toma solo `usuarios` de la respuesta, ya typo-tolerant/accent-insensitive (`buscar_usuarios` RPC).
+- **Props:** `{ selected: UsuarioCardData[], onChange }`. Selección como chips (`Avatar` + nombre + botón `×`); filtra de las sugerencias los usuarios ya elegidos.
+
+### AdminCorreoPreview (`components/admin/AdminCorreoPreview.tsx`)
+
+- **Tipo:** Client Component, wrapper delgado sobre `components/ui/Modal.tsx`. Muestra asunto/cuerpo tal cual se enviarán y "¿Enviar a N usuario(s)? No se puede deshacer.". Si el conteo supera `LIMITE_DESTINATARIOS` (500, espejo del cap de la Edge Function), deshabilita "Confirmar" y muestra el aviso.
+- **Prop `destinatarios: DestinatarioResuelto[]`** (viene de `/contar`, ver `Vitrina_Especificaciones_APIs.md` §21): botón disclosure "Ver lista de destinatarios (N)" (`aria-expanded` + estado local, mismo patrón que `AdminCorreoHistorial`) que despliega una lista con scroll (`nombre` + `email` de cada uno) — no dispara un fetch adicional, usa los datos ya traídos por el conteo.
+
+### AdminCorreoHistorial (`components/admin/AdminCorreoHistorial.tsx`)
+
+- **Tipo:** Client Component. Recibe `correos: CorreoAdminDetalle[]` como prop (ya vienen con el join a `admin` desde `getCorreosAdmin`) — **no** hace un segundo fetch a `GET /api/admin/correos/[id]` para expandir una fila; esa ruta queda disponible para uso directo de la API.
+- **Fila:** asunto, `Badge` de `estado` (`pendiente`=warning, `completado`=success, `fallido`=danger), descripción corta de destinatarios (`"Todos los usuarios"` / `"Ciudad: X"` / `"N usuarios específicos"`), fecha. Click expande in-place (estado local `expandedId`) mostrando cuerpo completo, admin que envió, y los 3 contadores (`cantidad_destinatarios/enviados/fallidos`).
+- Sin resultados → `EmptyState` "Sin envíos todavía".
+
+### `/admin/correos` — Pantalla (`app/(admin)/admin/correos/page.tsx`)
+
+- **Tipo:** Server Component async. `dynamic = 'force-dynamic'` (lee `searchParams.offset`, mismo motivo que `/area/[slug]`). **Metadata:** `{ title: 'Correos' }`.
+- **Estructura:** heading block ("Comunicación" / "Correos") → `AdminCorreoForm` → sección "Historial reciente" (`AdminCorreoHistorial` + `Pagination`, `limit=10`).
+- **Acceso:** protegido por `proxy.ts` (`/admin/*` → `/` si `rol ≠ administrador`), igual que el resto de `/admin/*`.
+
+### Panel de admin (`/admin`) — tile Correos
+
+- **Archivo:** `app/(admin)/admin/page.tsx` (editado). Cuarto tile en la grilla: **"Correos"** → `/admin/correos`, descripción "Envía correos personalizados a los usuarios de la plataforma."
+
+### AdminNav — entrada Correos
+
+- **Archivo:** `components/admin/AdminNav.tsx` (editado). Entrada `{ href: '/admin/correos', label: 'Correos' }` añadida al array `links`, después de "Reportes".
+
+---
+
+## 17. Colecciones
+
+Listas curadas de publicaciones, propias o ajenas, con visibilidad `publica`/`privada` (más rico que Guardados §11, que es un toggle plano sin agrupar). Ownership vía `usuario_id` de sesión; la seguridad real es la RLS de `coleccion`/`coleccion_publicacion`, sin RPC `SECURITY DEFINER`. Endpoints en `Vitrina_Especificaciones_APIs.md` §19, DTOs en §20, esquema en `Vitrina_BD_Conexion_Backend.md` §3.20.
+
+### AgregarAColeccionButton (`components/publicacion/AgregarAColeccionButton.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `publicacionId: string`, `isAuthenticated?: boolean` (default `false`).
+- **Sin sesión:** a diferencia de `GuardarButton`/`SeguirButton` (que se renderizan y redirigen a `/login` al click), este componente hace `if (!isAuthenticated) return null` — no se monta nada. El `router.push('/login')` dentro de `handleOpen` queda como guardia defensiva inalcanzable desde la UI, ya que el botón que lo dispara nunca se renderiza sin sesión.
+- **Al abrir el modal:** `GET /api/colecciones?publicacion_id=${publicacionId}` trae `ColeccionConMembership[]` (todas las colecciones del usuario + `agregada: boolean` por colección) — evita mostrar "Agregar" en colecciones que ya contienen la publicación al reabrir el modal. Se re-fetchea cada vez que `isOpen` pasa a `true` (no cachea entre aperturas).
+- **Estados de carga:** `idle | loading | error`, con `Spinner` mientras carga y botón "Reintentar" en error.
+- **Lista de colecciones existentes:** cada fila muestra título + `Badge` de visibilidad (`info`=pública, `neutral`=privada) + botón "Agregar"/"Agregada" (`disabled` si ya agregada o si esa fila está en `pendingId`, con `loading` mientras la request está en vuelo).
+- **Agregar:** `POST /api/colecciones/{id}/publicaciones` body `{ publicacion_id }`. Un `409` (la publicación ya estaba en la colección) se trata como éxito silencioso — marca la colección como agregada sin mostrar error, no dispara `listErrorMsg`.
+- **Crear colección al vuelo (mismo modal, sin componente aparte):** botón "+ Nueva colección" despliega un form inline con `Field` de título (`maxLength={100}`, requerido) y un `<select>` de visibilidad (`privada` default, `publica`). Submit: `POST /api/colecciones` → inserta la colección nueva al principio de la lista local (`ColeccionConMembership` con `agregada: false`) → inmediatamente `POST /api/colecciones/{nueva.id}/publicaciones` para agregar la publicación actual. Si este segundo POST falla con algo distinto de `409`, el mensaje aclara que "La colección se creó, pero no se pudo agregar la publicación. Intenta desde la lista." (la colección ya quedó creada, no hay rollback).
+- **No hay componente `ColeccionForm` independiente** en el proyecto: la creación vive inline en este modal; la edición vive inline en `ColeccionCard` (ver abajo). Ambos formularios inline comparten los mismos campos (título/descripción/visibilidad) pero están duplicados, no extraídos a un componente compartido.
+- **Sin acción de quitar en este modal** — solo agrega; no hay botón para remover la publicación de una colección desde aquí (ver nota de gap más abajo).
+- **Ubicación:** junto a `GuardarButton` en `/publicacion/[id]`.
+
+### ColeccionCard (`components/perfil/ColeccionCard.tsx`)
+
+- **Tipo:** Client Component, self-contained — mantiene su propio estado local (título/descripción/visibilidad en edición, `isDeleted`) para que la página padre (`/perfil/colecciones`) siga siendo un Server Component puro.
+- **Props:** `{ coleccion: Coleccion }`.
+- **Vista normal:** `Link` a `/coleccion/{id}` con el título, `Badge` de visibilidad, descripción truncada (`line-clamp-2`) si existe, y botones "Editar"/"Eliminar".
+- **Edición inline:** al hacer click en "Editar" cambia a un `<form>` con `Field` de título (`maxLength={100}`, requerido) y descripción (`maxLength={500}`, `multiline`, opcional) + `<select>` de visibilidad. Guardar → `PATCH /api/colecciones/{id}` con los tres campos → actualiza el estado local con la fila devuelta → `router.refresh()`. Validación cliente: título vacío (tras `trim()`) bloquea el submit con mensaje inline.
+- **Eliminar:** botón abre un `Modal` de confirmación (mismo patrón visual que `ConfirmDeleteModal`) con el aviso "Esta acción no se puede deshacer. Las publicaciones que agregaste no se eliminan, solo se quitan de esta colección." Confirmar → `DELETE /api/colecciones/{id}` → ocultamiento optimista inmediato (`setIsDeleted(true)`, la card retorna `null`) + `router.refresh()` para resincronizar la lista SSR.
+
+### /perfil/colecciones (`app/(main)/perfil/colecciones/page.tsx`)
+
+- **Tipo:** Server Component async (SSR). Redirect defensivo a `/login` si no hay `user` (`proxy.ts` ya protege todo `/perfil/*` vía `startsWith`).
+- **Datos:** `getMisColecciones(user.id)` (`lib/data/colecciones.ts`) → **todas** las colecciones del usuario de sesión, cualquier `visibilidad`, ordenadas `creado_en desc`.
+- **Estructura:** breadcrumb "← Mi perfil" (`Link` a `/perfil`), título "Mis colecciones".
+- **Lista vacía:** `EmptyState` — "No creaste ninguna colección" / "Usa el botón Agregar a colección en cualquier publicación para crear la primera." / acción "Explorar publicaciones" → `/`.
+- **Lista con datos:** `<ul aria-label="Tus colecciones">` de `ColeccionCard`, una por colección.
+- **metadata:** `{ title: 'Mis colecciones — Vitrina' }`.
+- **Acceso desde UI:** link "Colecciones" en la cabecera de `/perfil` (`app/(main)/perfil/page.tsx`), entre "Guardados" y "Ajustes" — mismo bloque de botones descrito en §11.
+
+### /coleccion/[id] (`app/(main)/coleccion/[id]/page.tsx`)
+
+- **Tipo:** Server Component async (SSR).
+- **Datos:** `getColeccion(id)` (`lib/data/colecciones.ts`) — trae la colección con sus `coleccion_publicacion` anidados (join a `publicacion` y `publicacion.usuario`), ordenados por `orden asc` en la propia query (`.order('orden', { referencedTable: 'coleccion_publicacion' })`). Usa `.maybeSingle()`: la RLS `coleccion_select` ya filtra a pública-o-dueño, así que una colección privada ajena o inexistente resuelve `null` en vez de tirar un `PGRST116` — la página responde con `notFound()`.
+- **Dueño:** `getPerfil(coleccion.usuario_id)` para mostrar nombre + link a `/usuario/{id}`; si el perfil no resuelve, cae a texto plano "Autor desconocido" (no rompe la página).
+- **Render:** título (`h1`) + `Badge` de visibilidad (`info`=pública, `neutral`=privada) junto al título; descripción opcional debajo; línea "Por {nombre}" (o "Autor desconocido"); sección "Publicaciones (N)" con `FeedList` mapeando cada `coleccion_publicacion.publicacion` a `PublicacionCardData`.
+- **Orden de publicaciones:** ya vienen ordenadas por `orden` desde `getColeccion` — la página las renderiza tal cual, **sin UI de reordenar** en esta versión (comentario explícito en el código: "no reorder UI in this slice").
+- **Detalle de `FeedList`:** la página le pasa solo `publicaciones`, sin `isAuthenticated`/`areaActivo`/`tipoActivo`. Si la colección está vacía, `FeedList` cae en su rama de empty-state "anónimo" genérica (CTA "Crea tu cuenta" → `/signup`) independientemente de si el visitante está logueado, porque el prop no se propaga desde esta pantalla.
+- **`generateMetadata`:** si `getColeccion` devuelve `null` (privada ajena o inexistente), título fijo "Colección no encontrada — Vitrina" — evita filtrar el `titulo` real de una colección privada en la metadata de una request que no pudo leer la fila. Si existe: título `"{titulo} — Vitrina"`, `description` = `descripcion` de la colección o fallback genérico, `alternates.canonical` = `{siteUrl}/coleccion/{id}`. **No hay `opengraph-image.tsx`/`twitter-image.tsx` para colecciones** (a diferencia de `/publicacion/[id]`, que sí genera una imagen OG dinámica con Satori) — el directorio `app/(main)/coleccion/[id]/` solo contiene `page.tsx`; el "OG" de esta pantalla se limita a los meta tags estándar de `generateMetadata`.
+
+### Gaps conocidos (verificados contra el código, sin UI todavía)
+
+- **Quitar una publicación de una colección:** el endpoint `DELETE /api/colecciones/[id]/publicaciones/[pubId]` existe y funciona, pero ningún componente lo invoca — ni en `/coleccion/[id]`, ni en `AgregarAColeccionButton`, ni en ningún otro lugar del árbol de `components/`. Solo es alcanzable llamando la API directo.
+- **Reordenar publicaciones dentro de una colección:** la columna `orden` existe y `getColeccion` ordena por ella, pero no hay ningún control de UI (drag-and-drop, flechas, etc.) que la modifique.
+- **`ColeccionCardData`** (DTO declarado en `lib/types/database.ts`, ver `Vitrina_Especificaciones_APIs.md` §20) **no tiene consumidor**: `ColeccionCard` usa el tipo `Coleccion` directo, no `ColeccionCardData` (que además traería `total_publicaciones`, un dato que ninguna pantalla actual muestra).
+
+---
+
+## 18. Notificaciones In-App
+
+Campanita + dropdown + página completa para las 6 notificaciones auto-generadas (`comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`) — ver excepción documentada `notificaciones-app` en `CLAUDE.md`, esquema/RLS/triggers en `Vitrina_BD_Conexion_Backend.md` §3.23, endpoints en `Vitrina_Especificaciones_APIs.md` §22. Reemplaza/complementa el badge de mensajería (§13): son dos badges distintos (mensajes vs. notificaciones) en la misma barra de nav, sobre el mismo canal Realtime compartido.
+
+### BellIcon (`components/ui/BellIcon.tsx`)
+
+- **Tipo:** presentacional puro (sin `'use client'`, sin estado). SVG inline de campana, mismo patrón que los íconos de `ThemeToggle`/`MobileMenu` (`stroke="currentColor"`, `viewBox="0 0 24 24"`, `aria-hidden="true"` — decorativo, el control padre pone el `aria-label`).
+- **Props:** `className?: string` (default `'w-5 h-5'`).
+
+### NotificationBell (`components/notificaciones/NotificationBell.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `count: number`, `onRead: () => void`.
+- **Comportamiento:** botón con `BellIcon` + badge de conteo (mismo estilo que el badge de `/mensajes` en `NavClient` — círculo `bg-primary`, `9+` cuando supera 9). Controla el estado abierto/cerrado del dropdown; se cierra con click afuera (`pointerdown` fuera del contenedor) o Escape. El `NotificationDropdown` **solo se monta mientras está abierto** — su fetch es perezoso, no dispara ninguna request hasta que el usuario abre la campanita.
+
+### NotificationDropdown (`components/notificaciones/NotificationDropdown.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `onClose: () => void`, `onRead: () => void`.
+- **Sin primitivo `Popover`** en este proyecto — es un `<div>` posicionado en absoluto (`absolute right-0 mt-2`) bajo la campanita, mismo criterio que `MobileMenu` a esta escala.
+- **Datos:** al montarse, `GET /api/notificaciones?limit=8` (vía `apiClient`) — trae las 8 notificaciones más recientes con el actor embebido (`usuario_relacionado`).
+- **"Marcar todas leídas":** botón visible solo si hay alguna no leída en la lista cargada; `POST /api/notificaciones/marcar-todas-leidas` → marca todo local como leído + `onRead()` (refresca el badge del padre).
+- **"Ver todas":** link a `/notificaciones` al pie, cierra el dropdown al navegar. Solo se muestra cuando `total >= 5` (usa el `total` de la respuesta de `GET /api/notificaciones`, no la cantidad de items cargados en el dropdown, que está topeada a 8) — con menos de 5 notificaciones no tiene sentido ofrecer un link a "ver todas".
+- **Estados:** cargando (`"Cargando…"`), error (`role="alert"`), vacío (`role="status"`, `"No tienes notificaciones."`).
+
+### NotificationItem (`components/notificaciones/NotificationItem.tsx`)
+
+- **Tipo:** Client Component (`'use client'`). Compartido por el dropdown y la página `/notificaciones`.
+- **Props:** `notificacion: NotificacionConActor`, `onRead?: (id) => void`, `onNavigate?: () => void`, `onOpenDetail?: (notificacion) => void`.
+- **Renderiza `descripcion` tal cual** — el texto ya viene pluralizado desde el trigger de BD (`notif_desc_agg`); el componente **no re-deriva** el conteo/copy en cliente.
+- **Avatar del actor:** `Avatar` (iniciales) con `usuario_relacionado.nombre` cuando existe; ícono `BellIcon` genérico cuando no (solo `obra_aceptada_revista` no tiene actor).
+- **Click:** es un `<Link href={enlace}>` real (no `router.push` manual) — al hacer click dispara un `POST /leer` **no bloqueante** (fire-and-forget, no espera la respuesta para navegar) y navega; mantiene funcionando Ctrl/Cmd-click y "abrir en pestaña nueva".
+- **`onOpenDetail` (opcional):** agrega un botón "ver detalle" (ícono, `stopPropagation` + `preventDefault`) que abre `NotificationModal` en vez de navegar. Solo se pasa desde la página `/notificaciones` — el dropdown no lo usa (tiene "Ver todas" para eso).
+- **Indicador de no leída:** punto `bg-primary` a la derecha mientras `leida === false`.
+
+### NotificationModal (`components/notificaciones/NotificationModal.tsx`)
+
+- **Tipo:** Client Component (`'use client'`). Reusa `components/ui/Modal.tsx` (focus trap, Escape, scroll-lock ya incluidos).
+- **Props:** `notificacion: NotificacionConActor | null`, `onClose: () => void`, `onRead?: (id) => void`, `onDelete?: (id) => void`.
+- **Contenido:** avatar + nombre del actor (link a `/usuario/{id}`, si hay actor), encabezado con la etiqueta del tipo (`TIPO_NOTIF_META`, `lib/constants/notificaciones.ts`), `descripcion` completa, link al `enlace` contextual ("Ver contenido →"), timestamp formateado (`Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })`).
+- **Acciones:** "Marcar leída" (`POST /leer`, solo si no está leída), "Eliminar" (`DELETE`, `Button variant="danger"` con `loading`), "Cerrar".
+
+### NotificationFilterBar (`components/notificaciones/NotificationFilterBar.tsx`)
+
+- **Tipo:** Server-renderable (sin `'use client'`) — chips de filtro `leidas`/`tipo` como `<Link>`s planos con `aria-current="page"` marcando el activo, mismo criterio "Links server-driven, sin estado cliente" que `Pagination`.
+- **Props:** `leidas?: 'no-leidas'`, `tipo?: TipoNotificacion`.
+- **Fila 1 (estado):** "Todas" / "No leídas".
+- **Fila 2 (tipo):** "Todos los tipos" + un chip por cada `TipoNotificacion` (orden fijo en `TIPOS_NOTIFICACION`).
+
+### NotificationList (`components/notificaciones/NotificationList.tsx`)
+
+- **Tipo:** Client Component (`'use client'`) — wrapper de estado para la página `/notificaciones` (que es un Server Component y no puede tener estado interactivo). Guarda el estado local de la lista (para reflejar leída/eliminada sin refetch) y cuál notificación está seleccionada para el modal.
+- **Props:** `items: NotificacionConActor[]` (SSR inicial).
+- **Vacío:** `EmptyState` — "No tienes notificaciones" / "Cuando alguien interactúe con tu obra o tu perfil, aparecerá aquí."
+- **Con datos:** `<ul>` de `NotificationItem` (con `onOpenDetail`) + `NotificationModal` controlado por el `id` seleccionado.
+
+### /notificaciones (`app/(main)/notificaciones/page.tsx`)
+
+- **Tipo:** Server Component async (SSR). Redirect defensivo a `/login` si no hay `user` (mismo patrón que `/mensajes`; la protección real vía `proxy.ts` queda pendiente — ver nota abajo).
+- **`searchParams`:** `Promise<Record<string,string>>`, `await`eado (Next 16 async API). Lee `leidas` (`'no-leidas'` o ausente = todas) y `tipo` (uno de `TipoNotificacion` o ausente = todos).
+- **Datos:** `getNotificaciones({ filtro, tipo, limit: 20, offset })` (`lib/data/notificaciones.ts`) — SSR directo, no pasa por el Route Handler.
+- **Render:** título, `NotificationFilterBar`, `NotificationList`, `Pagination` (mismo primitivo que `/area/[slug]`).
+- **`loading.tsx`:** skeleton propio (lista + chips), mismo criterio hand-rolled que `perfil/loading.tsx` en vez del `PageLoading` genérico variant `grid` (esto es una lista, no una grilla de cards).
+- **Protección de ruta:** `proxy.ts` incluye `/notificaciones` en los prefijos protegidos (mismo patrón que `/perfil`/`/publicar`/`/mensajes` — redirect a `/login` sin sesión); el redirect defensivo del Server Component de arriba queda como segunda capa, no la única.
+
+### Nav — campanita de notificaciones (extiende §13)
+
+- **`Nav.server.tsx`** (modificado): agrega `getTotalNoLeidas()` (`lib/data/notificaciones.ts`) al mismo `Promise.all` que ya resuelve `unreadCount`; pasa `notifUnreadCount` a `<NavClient>` — mismo criterio de seed inicial que el badge de mensajes.
+- **`NavClient.tsx`** (modificado):
+  - Acepta `notifUnreadCount?: number` (default 0), estado local `notifCount`.
+  - `refetchNotifCount` — `GET /api/notificaciones/sin-leer/count`, lee `total` (no `count`).
+  - **Mismo `useEffect([pathname])`** que ya refresca el badge de mensajes ahora también llama `refetchNotifCount`.
+  - **Mismo canal Realtime** `nav:notificaciones:{sessionId}` (no se abre un canal nuevo) — se le agrega un 4° handler `{ event: '*', schema: 'public', table: 'notificacion', filter: 'usuario_id=eq.{sessionId}' } → refetchNotifCount()`. `*` cubre inserts agregadores, updates de contador/lectura, y deletes de decremento/limpieza en un solo handler.
+  - Renderiza `<NotificationBell count={notifCount} onRead={refetchNotifCount} />` en la barra de nav desktop, junto al botón "Salir"/antes de `ThemeToggle`.
+  - El link `/notificaciones` en `userLinks` está comentado (no aparece en la nav desktop ni en el drawer móvil) — hoy la única entrada a `/notificaciones` es la campanita (dropdown → "Ver todas", visible solo con 5+ notificaciones) o la URL directa.
+
+**Archivos:** `components/ui/BellIcon.tsx`, `components/notificaciones/{NotificationBell,NotificationDropdown,NotificationItem,NotificationModal,NotificationFilterBar,NotificationList}.tsx`, `lib/constants/notificaciones.ts`, `app/(main)/notificaciones/{page,loading}.tsx`, `lib/data/notificaciones.ts` (modificado — agrega el embed `usuario_relacionado` y el filtro `tipo` a `getNotificaciones`), `lib/types/database.ts` (modificado — nuevo tipo `NotificacionConActor`), `components/layout/{Nav.server,NavClient}.tsx` (modificados).
+
+**Preferencias:** los 5 toggles `notif_app_*` viven en `/perfil/ajustes` — ver `NotificacionesForm` (§3.4.1), extendido con una fila `Toggle` por tipo, cada una persistiendo vía PATCH `/api/usuario/preferencias-notificaciones` (§22).
 
 ---
 

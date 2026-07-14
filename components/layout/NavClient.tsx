@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api/client'
 import { createClient } from '@/lib/supabase/client'
 import type { RolUsuario } from '@/lib/types/database'
 import SearchBox from '@/components/buscar/SearchBox'
+import NotificationBell from '@/components/notificaciones/NotificationBell'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu, { type NavLink } from './MobileMenu'
 
@@ -20,15 +21,22 @@ interface NavClientProps {
   session: SessionProp | null
   /** Total unread message count — passed from Nav.server.tsx RSC fetch. */
   unreadCount?: number
+  /** Total unread notification count — passed from Nav.server.tsx RSC fetch. */
+  notifUnreadCount?: number
 }
 
-export default function NavClient({ session, unreadCount = 0 }: NavClientProps) {
+export default function NavClient({
+  session,
+  unreadCount = 0,
+  notifUnreadCount = 0,
+}: NavClientProps) {
   const router = useRouter()
   const pathname = usePathname()
 
   // The RSC nav lives in the persistent layout and doesn't recompute on
   // client-side navigation, so the server `unreadCount` goes stale.
   const [count, setCount] = useState(unreadCount)
+  const [notifCount, setNotifCount] = useState(notifUnreadCount)
   const sessionId = session?.id
 
   const refetchCount = useCallback(() => {
@@ -39,10 +47,20 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
       })
   }, [])
 
-  // Keep the badge fresh on client-side navigation.
+  const refetchNotifCount = useCallback(() => {
+    apiClient<{ total: number }>('/api/notificaciones/sin-leer/count')
+      .then((d) => setNotifCount(d.total))
+      .catch(() => {
+        // Non-critical — keep the last known count
+      })
+  }, [])
+
+  // Keep the badges fresh on client-side navigation.
   useEffect(() => {
-    if (sessionId) refetchCount()
-  }, [pathname, sessionId, refetchCount])
+    if (!sessionId) return
+    refetchCount()
+    refetchNotifCount()
+  }, [pathname, sessionId, refetchCount, refetchNotifCount])
 
   // Live updates — refetch when a message or request touches the current user.
   // RLS (user JWT) scopes delivery to this user's own conversations/requests.
@@ -78,6 +96,19 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
           { event: 'INSERT', schema: 'public', table: 'solicitud_mensaje' },
           () => refetchCount()
         )
+        // 4th handler on the SAME channel (Decision 2, notificaciones-app design —
+        // do NOT open a second `supabase.channel(...)`). `*` covers aggregating
+        // INSERTs, contador-bump/mark-read UPDATEs, and decrement/cleanup DELETEs.
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notificacion',
+            filter: `usuario_id=eq.${sessionId}`,
+          },
+          () => refetchNotifCount()
+        )
         .subscribe()
     }
 
@@ -87,7 +118,7 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
       cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
-  }, [sessionId, refetchCount])
+  }, [sessionId, refetchCount, refetchNotifCount])
 
   async function handleLogout() {
     try {
@@ -102,22 +133,23 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
   // Role-aware links for a signed-in user. Reused by the desktop bar and the mobile drawer.
   const userLinks: NavLink[] = session
     ? [
-        { href: '/revistas', label: 'Revistas' },
-        { href: '/mensajes', label: 'Mensajes' },
-        { href: '/perfil', label: 'Mi Perfil' },
-        { href: '/publicar', label: 'Publicar' },
-        ...(session.rol === 'administrador'
-          ? [{ href: '/admin', label: 'Admin' }]
-          : []),
-      ]
+      { href: '/revistas', label: 'Revistas' },
+      { href: '/mensajes', label: 'Mensajes' },
+      //{ href: '/notificaciones', label: 'Notificaciones' },
+      { href: '/perfil', label: 'Mi Perfil' },
+      { href: '/publicar', label: 'Publicar' },
+      ...(session.rol === 'administrador'
+        ? [{ href: '/admin', label: 'Admin' }]
+        : []),
+    ]
     : []
 
   const mobileLinks: NavLink[] = session
     ? userLinks
     : [
-        { href: '/login', label: 'Iniciar sesión' },
-        { href: '/signup', label: 'Crear cuenta' },
-      ]
+      { href: '/login', label: 'Iniciar sesión' },
+      { href: '/signup', label: 'Crear cuenta' },
+    ]
 
   return (
     <>
@@ -131,6 +163,24 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
         </div>
         {session === null ? (
           <>
+            <Link
+              href="/revistas"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Revistas
+            </Link>
+            <Link
+              href="/login"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Mensajes
+            </Link>
+            <Link
+              href="/login"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Publicar
+            </Link>
             <Link
               href="/login"
               className="text-text-muted hover:text-text transition-colors"
@@ -177,6 +227,7 @@ export default function NavClient({ session, unreadCount = 0 }: NavClientProps) 
             >
               Salir
             </button>
+            <NotificationBell count={notifCount} onRead={refetchNotifCount} />
           </>
         )}
         <ThemeToggle className="shrink-0" />
