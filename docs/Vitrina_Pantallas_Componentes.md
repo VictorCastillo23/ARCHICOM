@@ -20,6 +20,7 @@
   │   ├── /buscar              Resultados de búsqueda global (?q=)
   │   ├── /revistas            Catálogo de revistas
   │   ├── /revistas/[id]       Detalle de revista
+  │   ├── /revistas/calendario Calendario editorial (ciclo mensual + edición activa)
   │   ├── /areas               Catálogo de áreas de conocimiento
   │   ├── /area/[slug]         Publicaciones por área
   │   ├── /sobre-nosotros      Página institucional (misión, visión, contacto)
@@ -45,7 +46,7 @@
   [Anónimo]
     → / (feed, solo lectura)
     → /publicacion/[id] (solo lectura, sin like/comentar)
-    → /revistas + /revistas/[id]
+    → /revistas + /revistas/[id] + /revistas/calendario
     → /usuario/[id]
     → /login → /signup
 
@@ -80,7 +81,7 @@
     - Si hay sesión: enlace a /perfil + botón Logout
     - Si no hay sesión: enlace a /login
   - NavClient.tsx — parte interactiva de la Nav. Responsive:
-    - **Desktop (≥ md):** links inline (`hidden md:flex`) — SearchBox + Revistas/Perfil/Publicar (+Admin) + Salir, o Iniciar sesión / Crear cuenta sin sesión.
+    - **Desktop (≥ md):** links inline (`hidden md:flex`) — SearchBox + Revistas/Calendario/Perfil/Publicar (+Admin) + Salir, o Revistas/Calendario/Iniciar sesión/Crear cuenta sin sesión.
     - **Móvil (< md):** botón hamburguesa que abre `MobileMenu` (`md:hidden`).
     - Los links se derivan una vez de la sesión (rol-aware) y se reusan en ambos.
     - SearchBox — combobox de búsqueda global (ver §3.x abajo); en el drawer va con `fullWidth`.
@@ -492,6 +493,20 @@
   - Cabecera: badge "Publicada" + volumen (`Vol. N`) + título. (Sin descripción — ver §3.7.)
   - Lista numerada de artículos (`revista_articulo`), cada uno con título → `/publicacion/[id]` y autor → `/usuario/[id]`; cabecera "Artículos ({n})".
   - `EmptyState` si la edición no tiene artículos.
+
+  ---
+  3.9 Calendario Editorial — /revistas/calendario
+
+  Descripción: Página pública, 100% lectura, sin mutaciones (`app/(main)/revistas/calendario/page.tsx`, Server Component con `export const metadata` estático). Explica el ciclo mensual de revistas y muestra la edición en preparación, si existe.
+
+  Data: `getRevistaActiva()` (`lib/data/revistas.ts`) para la edición en `estado = 'borrador'`; si hay una, `getRevista(id)` para el conteo de obras curadas vía `revista_articulo.length` (no se infiere del `select('*')` de `getRevistaActiva`).
+
+  Contenido:
+  - **Explicador de ciclo:** 3 tarjetas (`Card` + `Badge`) con un array local `CICLO_ETAPAS` (sin fechas ni cómputos por instancia — solo copy genérico: apertura/publicación, postulaciones hasta el día 25, curación del 26 a fin de mes). Siempre se renderiza, sin importar el estado de `getRevistaActiva()`.
+  - **Card "Edición actual":** si hay edición activa → `Badge (tone: info)` "Edición en preparación" + volumen (`Vol. N` o "Volumen pendiente" si `volumen` es null) + título + conteo de obras curadas ("N obras curadas" / "Aún sin obras curadas"). Si no hay edición activa o hay error al leerla → nota `Card` con "No hay ninguna edición abierta en este momento" (estado defensivo, no rompe la página).
+  - **Link a /revistas** (`buttonClasses({ variant: 'secondary' })`) para ver el archivo de ediciones publicadas.
+
+  > No hay "Próxima edición" con fecha estimada ni tabla de próximas ediciones: `estado_revista` solo tiene `borrador`/`publicada`, con un índice único parcial que garantiza como máximo una revista en `borrador` — cualquier fecha futura sería inventada.
 
   ---
   4. Pantallas — Área de Autenticación (auth)
