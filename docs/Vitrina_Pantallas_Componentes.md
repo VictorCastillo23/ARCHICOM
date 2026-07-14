@@ -81,7 +81,7 @@
     - Si hay sesión: enlace a /perfil + botón Logout
     - Si no hay sesión: enlace a /login
   - NavClient.tsx — parte interactiva de la Nav. Responsive:
-    - **Desktop (≥ md):** links inline (`hidden md:flex`) — SearchBox + Revistas/Calendario/Perfil/Publicar (+Admin) + Salir, o Revistas/Calendario/Iniciar sesión/Crear cuenta sin sesión.
+    - **Desktop (≥ md):** links inline (`hidden md:flex`) — SearchBox + Revistas/Perfil/Publicar (+Admin) + Salir, o Revistas/Iniciar sesión/Crear cuenta sin sesión. El link a `/revistas/calendario` NO vive en el nav — es un botón dentro de la página `/revistas` (ver §3.9).
     - **Móvil (< md):** botón hamburguesa que abre `MobileMenu` (`md:hidden`).
     - Los links se derivan una vez de la sesión (rol-aware) y se reusan en ambos.
     - SearchBox — combobox de búsqueda global (ver §3.x abajo); en el drawer va con `fullWidth`.
