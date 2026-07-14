@@ -40,7 +40,9 @@ export default function AdminCorreoPreview({
 
       <div className="mt-4 rounded-md border border-border bg-surface-muted p-4">
         <p className="text-sm font-medium text-text">{asunto}</p>
-        <p className="mt-2 text-sm text-text whitespace-pre-wrap">{cuerpo}</p>
+        <div className="mt-2 max-h-64 overflow-y-auto">
+          <p className="text-sm text-text whitespace-pre-wrap">{cuerpo}</p>
+        </div>
       </div>
 
       <p className="mt-4 text-sm text-text" aria-live="polite">

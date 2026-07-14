@@ -31,6 +31,16 @@ const PLANTILLAS: Record<string, PlantillaEmail> = {
     cuerpoHtml: () =>
       '<p>Tu solicitud para publicar en una revista temática fue aceptada. Ingresa a la revista para ver tu obra publicada.</p>',
   },
+  solicitud_revista_rechazada: {
+    titulo: 'Tu obra no fue aceptada en una revista',
+    cuerpoHtml: () =>
+      '<p>Tu solicitud para publicar en una revista temática no fue aceptada en esta edición. Puedes postular la misma u otra obra en una próxima edición.</p>',
+  },
+  recordatorio_cierre_revista: {
+    titulo: 'La ventana de postulación de la revista cierra pronto',
+    cuerpoHtml: () =>
+      '<p>Tienes una solicitud pendiente para publicar en una revista temática y la ventana de postulación cierra el día 25. Ingresa a tu perfil para revisar el estado de tu solicitud.</p>',
+  },
 }
 
 Deno.serve(async (req: Request) => {

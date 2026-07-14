@@ -916,7 +916,7 @@ Variables de entorno: `NOTIF_WEBHOOK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, 
 Flujo:
 1. Header `x-webhook-secret` ≠ `NOTIF_WEBHOOK_SECRET` (o ausente) → **401**, antes de parsear el body.
 2. Parsea el payload nativo del webhook `{type, table, record, old_record?, schema}`.
-3. Enruta vía `resolveRecipient`: `solicitud_mensaje` INSERT → destinatario `record.receptor_id`, plantilla "nueva solicitud de mensaje"; `solicitud_revista` UPDATE con `record.estado==='aceptada'` **y** `old_record?.estado !== 'aceptada'` → destinatario `record.solicitante_id`, plantilla "tu obra fue aceptada en la revista" (el guard de `old_record` evita reenvíos si se vuelve a guardar una fila ya aceptada); cualquier otro caso → **204** (ignorado, no es error).
+3. Enruta vía `resolveRecipient`: `solicitud_mensaje` INSERT → destinatario `record.receptor_id`, plantilla "nueva solicitud de mensaje"; `solicitud_revista` UPDATE con `record.estado==='aceptada'` **y** `old_record?.estado !== 'aceptada'` → destinatario `record.solicitante_id`, plantilla "tu obra fue aceptada en la revista" (el guard de `old_record` evita reenvíos si se vuelve a guardar una fila ya aceptada); `solicitud_revista` UPDATE con `record.estado==='rechazada'` **y** `old_record?.estado !== 'rechazada'` → mismo destinatario, plantilla "tu obra no fue aceptada en una revista" (sin chequear `notif_app_revista` — ver asimetría de gate en §3.21/§3.23); `notificacion` INSERT con `record.tipo==='recordatorio_cierre_revista'` → destinatario `record.usuario_id`, plantilla "la ventana de postulación cierra pronto" (cualquier otro `tipo` en este mismo webhook → ignorado, evita duplicar emails); cualquier otro caso → **204** (ignorado, no es error).
 4. Cliente Supabase **anon** (`createClient(SUPABASE_URL, SUPABASE_ANON_KEY)`) — no `service_role` — llama `rpc('resolver_destinatario_notificacion', {p_secret: NOTIF_WEBHOOK_SECRET, p_usuario_id})`.
 5. Sin fila, o `notif_email_habilitado=false`, o sin `email` → **204** (omitido: usuario no encontrado / opt-out / sin correo, no es un error). Error real de la RPC → **500**.
 6. Arma el HTML vía `renderEmail(...)` y envía con Resend (`npm:resend`, import Deno) `emails.send({from: NOTIF_FROM_EMAIL, to: email, subject, html})`. Error de Resend → **500** con su mensaje; éxito → **200**.
@@ -930,7 +930,12 @@ Se configuran manualmente en el dashboard de Supabase (Database → Webhooks), n
 | Webhook | Tabla | Evento | Header | Destino |
 |---|---|---|---|---|
 | Nueva solicitud de mensaje | `solicitud_mensaje` | INSERT | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
-| Solicitud de revista aceptada | `solicitud_revista` | UPDATE | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+| Solicitud de revista aceptada/rechazada | `solicitud_revista` | UPDATE | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+| Notificación in-app nueva (recordatorio de cierre) | `notificacion` | INSERT | `x-webhook-secret: <mismo valor que NOTIF_WEBHOOK_SECRET>` | Edge Function `enviar-notificacion-email` |
+
+El webhook de `solicitud_revista` UPDATE ya existía para `aceptada` (fila 2) — la migración de seguimiento `notif_rechazo_recordatorio_revista` (§3.23) **reutiliza el mismo webhook** para `rechazada`, sin crear uno nuevo: `route-predicate.ts` agrega una rama (`estado==='rechazada' && oldEstado!=='rechazada'` → plantilla `solicitud_revista_rechazada`) al predicate existente. El webhook de `notificacion` INSERT (fila 3) sí es **nuevo**, configurado manualmente en el dashboard (Database → Webhooks) como runbook operativo — dispara para **toda** inserción en `notificacion` (likes, comentarios, aceptada, etc.), y `route-predicate.ts` filtra por `record.tipo`, devolviendo plantilla únicamente cuando `tipo==='recordatorio_cierre_revista'` y `null` para cualquier otro tipo (evita duplicar el email de `aceptada`/otros, que ya tienen su propio riel).
+
+**Asimetría del gate de email entre rechazo y recordatorio (ver también §3.23):** el rechazo usa el mismo riel que `aceptada` — el webhook de UPDATE dispara siempre que ocurre el UPDATE, así que el único gate real del email es `notif_email_habilitado`, evaluado downstream por `resolver_destinatario_notificacion()`, **independiente** de `notif_app_revista`. El recordatorio, en cambio, solo tiene un riel: el INSERT de la fila in-app; como `recordar_cierre_revista()` ya filtra por `notif_app_revista` antes de insertar, ese mismo flag termina cortando también el email como efecto colateral del mecanismo — no es una preferencia de email dedicada.
 
 El mismo secreto compartido vive en tres lugares: (a) el secreto de la Edge Function `NOTIF_WEBHOOK_SECRET`, (b) el header `x-webhook-secret` de cada webhook, (c) `private.notif_config` (leído por la RPC).
 
@@ -1126,11 +1131,11 @@ grant execute on function public.get_area_counts() to anon, authenticated;
 
 ---
 
-### 3.23 Notificaciones in-app — tabla `notificacion`, 5 columnas `notif_app_*` en `usuario`, 9 triggers `SECURITY DEFINER` y RPC `mis_preferencias_notif_app()` (migraciones `notificaciones_app`, `notificaciones_app_harden_advisors`, `notificaciones_app_harden_trigger_fn_execute`)
+### 3.23 Notificaciones in-app — tabla `notificacion`, 5 columnas `notif_app_*` en `usuario`, 10 triggers `SECURITY DEFINER` y RPC `mis_preferencias_notif_app()` (migraciones `notificaciones_app`, `notificaciones_app_harden_advisors`, `notificaciones_app_harden_trigger_fn_execute`, `notif_rechazo_recordatorio_revista`)
 
-> Cambio ADITIVO, aprobado explícitamente: tabla nueva `notificacion`, 5 columnas nuevas en `usuario`, 9 triggers y 2 funciones nuevas (1 RPC + 1 helper). Sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá. **Verificado EN VIVO contra el proyecto `fdfbyhjwnbteccagulxb` vía el MCP `supabase`** (no es una lectura de la migración a ciegas): esquema, índices, policies, grants de columna, `EXECUTE` de las 10 funciones y el job de `pg_cron` confirmados con `execute_sql`/`get_advisors` contra la base real, incluidas las 2 migraciones de endurecimiento de seguimiento (`get_advisors` limpio de hallazgos de `notificaciones_app` tras aplicarlas).
+> Cambio ADITIVO, aprobado explícitamente: tabla nueva `notificacion`, 5 columnas nuevas en `usuario`, 9 triggers y 2 funciones nuevas (1 RPC + 1 helper) en la migración base. Sin tocar tablas/columnas/RLS/RPC existentes fuera de lo documentado acá. **Verificado EN VIVO contra el proyecto `fdfbyhjwnbteccagulxb` vía el MCP `supabase`** (no es una lectura de la migración a ciegas): esquema, índices, policies, grants de columna, `EXECUTE` de las 10 funciones y el job de `pg_cron` confirmados con `execute_sql`/`get_advisors` contra la base real, incluidas las 2 migraciones de endurecimiento de seguimiento (`get_advisors` limpio de hallazgos de `notificaciones_app` tras aplicarlas). La migración de seguimiento `notif_rechazo_recordatorio_revista` (ver subsección dedicada más abajo) suma +2 tipos, +1 trigger, +1 función cron y +1 índice de idempotencia — ese conteo ya está reflejado en el título de esta sección.
 
-Campanita + dropdown + página `/notificaciones` (`Vitrina_Pantallas_Componentes.md` §18) sobre un sistema de notificaciones in-app para 6 eventos: `comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`. La tabla `notificacion` la escriben **exclusivamente** triggers `SECURITY DEFINER` (el owner `postgres` bypassea RLS, mismo patrón que `handle_new_user`/`bloquear_cambio_rol`) — **cero `service_role`**.
+Campanita + dropdown + página `/notificaciones` (`Vitrina_Pantallas_Componentes.md` §18) sobre un sistema de notificaciones in-app para 8 eventos: `comentario_nueva`, `comentario_respuesta`, `obra_aceptada_revista`, `nuevo_seguidor`, `solicitud_mensaje`, `obra_likeada`, `obra_rechazada_revista`, `recordatorio_cierre_revista`. La tabla `notificacion` la escriben **exclusivamente** triggers/funciones `SECURITY DEFINER` (el owner `postgres` bypassea RLS, mismo patrón que `handle_new_user`/`bloquear_cambio_rol`) — **cero `service_role`**.
 
 #### Tabla `notificacion`
 
@@ -1139,7 +1144,8 @@ create table public.notificacion (
   id uuid primary key default gen_random_uuid(),
   usuario_id uuid not null references public.usuario(id) on delete cascade,       -- destinatario
   tipo text not null check (tipo in ('comentario_nueva','comentario_respuesta',
-    'obra_aceptada_revista','nuevo_seguidor','solicitud_mensaje','obra_likeada')),
+    'obra_aceptada_revista','nuevo_seguidor','solicitud_mensaje','obra_likeada',
+    'obra_rechazada_revista','recordatorio_cierre_revista')),  -- últimos 2 sumados por notif_rechazo_recordatorio_revista
   usuario_relacionado_id uuid references public.usuario(id) on delete set null,    -- actor
   publicacion_relacionada_id uuid references public.publicacion(id) on delete cascade,
   comentario_relacionado_id uuid references public.comentario(id) on delete cascade,
@@ -1169,6 +1175,8 @@ create unique index notificacion_seguidor_agg_uniq on public.notificacion (usuar
 ```
 
 `obra_likeada` y `comentario_nueva` comparten la misma clave `(usuario_id, publicacion_relacionada_id)` pero el predicado `WHERE tipo=...` los resuelve a **índices arbitrarios distintos** — sin colisión posible entre ambos tipos.
+
+Un **5º índice único parcial**, `notificacion_recordatorio_uniq`, se suma en la migración de seguimiento `notif_rechazo_recordatorio_revista` — no es de agregación (no participa de ningún `ON CONFLICT DO UPDATE contador+1`), sino de **idempotencia mensual** del recordatorio de cierre. Ver la subsección dedicada más abajo.
 
 #### RLS: 3 policies, sin policy de INSERT (deliberado)
 
@@ -1250,9 +1258,9 @@ $$;
 
 `IMMUTABLE`, sin `SECURITY DEFINER` (no necesita bypass, no toca tablas). Genera el texto singular/plural de `descripcion` para los 4 tipos agregables; lo llaman tanto los triggers de INSERT (al agregar, `contador+1`) como los de DELETE (al decrementar) para que la copia se mantenga consistente en ambas direcciones. El cliente **nunca** re-deriva la pluralización — `NotificationItem` renderiza `descripcion` tal cual llega de la BD.
 
-#### 9 triggers, 8 funciones — INSERT-side (6) y DELETE-side (3)
+#### 10 triggers, 9 funciones de trigger — INSERT-side (7) y DELETE-side (3)
 
-Los 6 triggers de INSERT crean/agregan la notificación en el momento del evento; los 3 triggers de DELETE (Decisiones A/B del diseño, REV 3) decrementan o borran la fila agregada cuando el usuario deshace la acción origen (unlike, borrar comentario, dejar de seguir). Los otros 2 tipos (`solicitud_mensaje`, `obra_aceptada_revista`) son de baja frecuencia/alta señal y **no** tienen contraparte de deshacer — quedan sin agregar (`contador` siempre 1) y sin trigger de DELETE.
+Los 6 triggers de INSERT de la migración base crean/agregan la notificación en el momento del evento; los 3 triggers de DELETE (Decisiones A/B del diseño, REV 3) decrementan o borran la fila agregada cuando el usuario deshace la acción origen (unlike, borrar comentario, dejar de seguir). Los tipos `solicitud_mensaje`, `obra_aceptada_revista` y `obra_rechazada_revista` (este último sumado por `notif_rechazo_recordatorio_revista`) son de baja frecuencia/alta señal y **no** tienen contraparte de deshacer — quedan sin agregar (`contador` siempre 1) y sin trigger de DELETE.
 
 | # | Trigger | Tabla | Evento | Función | Tipo generado | Agrega |
 |---|---|---|---|---|---|---|
@@ -1264,8 +1272,11 @@ Los 6 triggers de INSERT crean/agregan la notificación en el momento del evento
 | 6 | `trg_notif_obra_likeada_del` | `"like"` | AFTER DELETE | `notif_obra_likeada_del()` | decrementa/borra `obra_likeada` | — |
 | 7 | `trg_notif_comentario_del` | `comentario` | AFTER DELETE | `notif_comentario_del()` | decrementa/borra `comentario_nueva`/`comentario_respuesta` (branch por `OLD.responde_a`) | — |
 | 8 | `trg_notif_nuevo_seguidor_del` | `seguidor` | AFTER DELETE | `notif_nuevo_seguidor_del()` | decrementa/borra `nuevo_seguidor` | — |
+| 9 | `trg_notif_obra_rechazada` | `solicitud_revista` | AFTER UPDATE | `notif_obra_rechazada()` | `obra_rechazada_revista` | No |
 
-Todas las 8 funciones son `SECURITY DEFINER`, `set search_path = public, pg_temp`, y cada una respeta la preferencia `notif_app_*` correspondiente del destinatario **en el INSERT** (`if not (select notif_app_x from usuario where id=v_dest) then return NEW/OLD; end if` — si la preferencia está apagada, no se crea la notificación). Cada trigger evita auto-notificación (`if v_autor = NEW.usuario_id then return NEW`, etc. — nadie recibe una notificación de su propia acción sobre su propio contenido).
+Todas las 9 funciones de trigger son `SECURITY DEFINER`, `set search_path = public, pg_temp`, y cada una respeta la preferencia `notif_app_*` correspondiente del destinatario **en el INSERT** (`if not (select notif_app_x from usuario where id=v_dest) then return NEW/OLD; end if` — si la preferencia está apagada, no se crea la notificación). Cada trigger evita auto-notificación (`if v_autor = NEW.usuario_id then return NEW`, etc. — nadie recibe una notificación de su propia acción sobre su propio contenido).
+
+`trg_notif_obra_rechazada` (fila 9) es el **segundo** trigger AFTER UPDATE sobre `solicitud_revista`, en paralelo a `trg_notif_obra_aceptada` — condición `NEW.estado='rechazada' and OLD.estado is distinct from NEW.estado`, sin mirar `revisor_id`: cubre TANTO el rechazo humano (`rechazar_solicitud`, `revisor_id` set) COMO el descarte automático de la rotación mensual (`publicar_revista_mensual()`, `revisor_id` NULL), porque ambos caminos setean `estado='rechazada'` sobre la misma fila. `descripcion = coalesce(NEW.respuesta, 'Tu obra no fue aceptada en la revista')` — refleja el motivo escrito por el admin cuando existe, sin usar `revista_id` como fuente de contenido (no hay columna en `notificacion` para guardarlo, mismo criterio que `obra_aceptada_revista`). No es un décimo trigger de "cron" — el recordatorio de cierre (ver subsección siguiente) NO es un trigger, es una función invocada directamente por `pg_cron`.
 
 **Agregación (INSERT-side, 4 tipos):** cada uno hace `INSERT ... ON CONFLICT (claves) WHERE <predicado del índice parcial> DO UPDATE SET contador = notificacion.contador + 1, usuario_relacionado_id = excluded.usuario_relacionado_id, descripcion = notif_desc_agg(tipo, contador+1)`. Mientras exista una fila **sin leer** para esa clave, N eventos nuevos actualizan la misma fila (`contador` sube, `descripcion` se repluraliza, `usuario_relacionado_id` se actualiza al actor más reciente). `creada_en` **no** se toca en el `DO UPDATE` (agregación silenciosa, no reordena el feed de notificaciones).
 
@@ -1302,6 +1313,86 @@ La migración base (`notificaciones_app`) se aplicó, y una revisión de `get_ad
 2. **`notificaciones_app_harden_trigger_fn_execute`** — revoca `EXECUTE` de `anon`/`authenticated` en las **8 funciones de trigger** (no en `notif_desc_agg` ni en la RPC, que sí deben ser invocables). Necesaria porque este proyecto tiene `ALTER DEFAULT PRIVILEGES` que otorga `EXECUTE` a `anon`/`authenticated`/`service_role` en toda función nueva por defecto — un `revoke ... from public` solo no alcanza para retirar el grant directo a esos roles (mismo aprendizaje ya aplicado en `rag_rate_limit_revoke_anon`/`mensajeria_directa_revoke_anon`/`resolver_destinatarios_correo`, §7.1). Verificado con `has_function_privilege`: las 8 funciones de trigger → `anon: false, authenticated: false` para las dos; `mis_preferencias_notif_app` → `anon: false, authenticated: true` (Decisión 1); `notif_desc_agg` → `anon: true, authenticated: true` (helper puro, sin objeción).
 
 `get_advisors(type: 'security')` quedó limpio de hallazgos propios de `notificaciones_app` tras ambas migraciones — los únicos WARN restantes en el proyecto son los ya documentados en §7.1 (RPC de negocio flagueadas por el mismo patrón "autenticado puede invocar, el control real es interno").
+
+#### Rechazo y recordatorio de cierre — migración de seguimiento `notif_rechazo_recordatorio_revista`
+
+> Cambio ADITIVO, aprobado explícitamente: +2 tipos en el CHECK, +1 trigger/función de rechazo, +1 función/cron de recordatorio, +1 índice de idempotencia. Aplicado vía `mcp__supabase__apply_migration` contra el proyecto `fdfbyhjwnbteccagulxb`.
+
+**Rechazo (`obra_rechazada_revista`):**
+
+```sql
+create or replace function public.notif_obra_rechazada() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if NEW.estado='rechazada' and OLD.estado is distinct from NEW.estado
+     and (select notif_app_revista from public.usuario where id = NEW.solicitante_id) then
+    insert into public.notificacion (usuario_id, tipo, publicacion_relacionada_id, descripcion, enlace)
+    values (NEW.solicitante_id,'obra_rechazada_revista',NEW.publicacion_id,
+      coalesce(NEW.respuesta, 'Tu obra no fue aceptada en la revista'),'/publicacion/'||NEW.publicacion_id);
+  end if;
+  return NEW;
+end; $$;
+create trigger trg_notif_obra_rechazada after update on public.solicitud_revista
+  for each row execute function public.notif_obra_rechazada();
+```
+
+Ver la fila 9 de la tabla de triggers arriba para el detalle de cobertura (rechazo humano + descarte automático) y la fuente de `descripcion`.
+
+**Recordatorio de cierre (`recordatorio_cierre_revista`) — índice de idempotencia:**
+
+```sql
+create unique index notificacion_recordatorio_uniq on public.notificacion (usuario_id, date_trunc('month', creada_en, 'UTC'))
+  where tipo='recordatorio_cierre_revista';
+```
+
+Dedup por `(usuario_id, mes calendario en UTC)`, **NO** por estado de lectura (a diferencia del patrón de agregación de `nuevo_seguidor` etc.): si el recordatorio es mensual y recurrente, dedupear por "no leído" bloquearía en silencio todos los recordatorios de los meses siguientes para cualquier usuario que deje uno sin leer (`ON CONFLICT DO NOTHING` los descartaría sin error). Usa **obligatoriamente** la variante de `date_trunc` de **3 argumentos** (`date_trunc('month', creada_en, 'UTC')`, con zona horaria explícita) — verificado en vivo contra `pg_proc.provolatile`: la variante de 2 argumentos (`date_trunc('month', creada_en)`, `timestamptz`) es `STABLE`, no `IMMUTABLE` (depende del `TimeZone` de sesión), y Postgres **rechaza** crear un índice con una expresión no-`IMMUTABLE` (`functions in index expression must be marked IMMUTABLE`). El corte de "mes calendario" queda fijado en UTC explícito e intencional, sin depender del `TimeZone` de sesión.
+
+**Función + cron:**
+
+```sql
+create or replace function public.recordar_cierre_revista() returns void
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_revista_id uuid;
+begin
+  select id into v_revista_id from public.revista where estado='borrador' limit 1;
+  if v_revista_id is null then return; end if;              -- idempotente si no hay borrador
+  insert into public.notificacion (usuario_id, tipo, descripcion, enlace)
+  select distinct s.solicitante_id,'recordatorio_cierre_revista',
+    'La ventana de postulación cierra pronto','/perfil'
+  from public.solicitud_revista s
+  join public.usuario u on u.id = s.solicitante_id
+  where s.revista_id = v_revista_id and s.estado='pendiente' and u.notif_app_revista = true
+  on conflict (usuario_id, date_trunc('month', creada_en, 'UTC')) where tipo='recordatorio_cierre_revista' do nothing;
+end $$;
+
+select cron.schedule('revista-recordatorio-cierre', '0 19 22 * *',  -- día 22, 13:00 UTC-6 = 19:00 UTC
+  $$ select public.recordar_cierre_revista(); $$);
+```
+
+`recordar_cierre_revista()` NO es un trigger — es una función `SECURITY DEFINER` invocada directamente por `pg_cron` (mismo mecanismo que `publicar_revista_mensual()`, §9), el **primer** cron de este proyecto que alimenta un webhook externo (los otros 2 crons, `revista-mensual` y `notificaciones-cleanup`, son SQL puro sin efecto downstream). Inserta **una** fila por usuario con al menos 1 solicitud `pendiente` en la revista activa (`estado='borrador'`), filtrando `u.notif_app_revista = true` **antes** del INSERT — si está apagado, no se inserta fila para ese usuario (ver asimetría de gating más abajo). Enlace fijo `/perfil` (ahí vive `SolicitudesHistorial`, la vista de "mis solicitudes" del usuario).
+
+**Hardening en dos pasos (mismo patrón que `notificaciones_app_harden_trigger_fn_execute`), aplicado a ambas funciones nuevas:**
+
+```sql
+revoke execute on function public.notif_obra_rechazada() from public;
+revoke execute on function public.notif_obra_rechazada() from anon, authenticated;
+
+revoke execute on function public.recordar_cierre_revista() from public;
+revoke execute on function public.recordar_cierre_revista() from anon, authenticated;
+```
+
+`revoke ... from public` por sí solo NO alcanza en este proyecto (`ALTER DEFAULT PRIVILEGES` ya le otorga `EXECUTE` directo a `anon`/`authenticated` en toda función nueva) — hace falta el segundo `revoke` explícito a esos 2 roles, mismo aprendizaje que §7.1/§3.23 (base).
+
+**Asimetría de gating de email (rechazo vs. recordatorio) — intencional, no uniformizar:**
+
+| Tipo | Gate del in-app | Gate del email |
+|---|---|---|
+| `obra_rechazada_revista` | `notif_app_revista` (en el trigger, antes del INSERT) | **Solo** `notif_email_habilitado` — el email va por el webhook de `solicitud_revista` UPDATE ya existente (§3.21), que dispara SIEMPRE que hay UPDATE, independiente de si se insertó o no la fila in-app. `notif_app_revista=false` NO corta el email. |
+| `recordatorio_cierre_revista` | `notif_app_revista` (en `recordar_cierre_revista()`, antes del INSERT) | También queda cortado por `notif_app_revista`, como **efecto colateral** del mecanismo: el único riel del email es el webhook nuevo sobre el INSERT de `notificacion` (§3.21); si `notif_app_revista=false` nunca se inserta la fila, así que el webhook nunca dispara. No es una preferencia de email real por tipo (no existe una columna dedicada; agregarla queda fuera de alcance). |
+
+Ver §3.21 para el detalle del webhook nuevo y el flujo completo de `route-predicate.ts`.
+
+**Deuda aceptada (MVP, sin arreglar en esta ronda):** el dedupe `(usuario_id, mes calendario UTC)` asume como máximo 1 ciclo de revista por mes calendario. `publicar_revista_mensual()` tiene un camino de recuperación manual (§9.3) que en teoría podría producir una segunda rotación dentro del mismo mes; si `recordar_cierre_revista()` se invocara manualmente una segunda vez ese mismo mes para el nuevo ciclo, un usuario que ya tenga fila de ese mes sería saltado en silencio por `ON CONFLICT DO NOTHING`. Requiere 2 reinvocaciones manuales fuera del flujo automático normal (el cron corre una sola vez al mes) — no alcanzable por el uso normal documentado. Sin columna `revista_id` en `notificacion` para desambiguar.
 
 #### Endpoints y UI
 
@@ -1356,6 +1447,8 @@ Cambio ADITIVO, aprobado explícitamente. El fast-fill inicial con `default true
 | `notif_nuevo_seguidor()` / `notif_nuevo_seguidor_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `seguidor` → crea o decrementa `nuevo_seguidor`, agregando por `usuario_id`. Ver §3.23 |
 | `notif_solicitud_mensaje()` | Trigger (SECURITY DEFINER) | INSERT en `solicitud_mensaje` → crea `solicitud_mensaje` (sin agregar). Ver §3.23 |
 | `notif_obra_likeada()` / `notif_obra_likeada_del()` | Trigger (SECURITY DEFINER) ×2 | INSERT/DELETE en `"like"` → crea o decrementa `obra_likeada`, agregando por `(usuario_id, publicacion_relacionada_id)`. Ver §3.23 |
+| `notif_obra_rechazada()` | Trigger (SECURITY DEFINER) | UPDATE en `solicitud_revista` (`estado→'rechazada'`, cualquier origen: humano o descarte automático) → crea `obra_rechazada_revista` (sin agregar). Ver §3.23 |
+| `recordar_cierre_revista()` | Función (SECURITY DEFINER), invocada por `pg_cron` | **No es trigger.** Día 22 de cada mes: inserta un `recordatorio_cierre_revista` por usuario con solicitudes `pendiente` en la revista activa, dedupe mensual vía `notificacion_recordatorio_uniq`. Ver §3.23 y §9 |
 | Bucket `publicaciones` | Storage | Lectura pública; subir/editar/borrar restringido a la carpeta `{user_id}/...` de cada usuario |
 
 ---
@@ -1641,6 +1734,18 @@ select cron.schedule('notificaciones-cleanup', '30 8 * * *',
 ```
 
 Borra únicamente notificaciones **ya leídas** con más de 90 días — las no leídas nunca se borran automáticamente, sin importar su antigüedad. Verificado en vivo (`select * from cron.job where jobname like '%notif%'`): job activo con ese schedule exacto.
+
+### 9.5 Recordatorio de cierre de postulación (`revista-recordatorio-cierre`, §3.23)
+
+Día 22 de cada mes, mismo mapeo UTC-6→UTC que `revista-mensual` (día 22 = 3 días antes del cierre día 25, confirmado por el cambio hermano `revista-ventana-postulacion`):
+
+```sql
+-- Día 22 de cada mes, 13:00 UTC-6 == 19:00 UTC
+select cron.schedule('revista-recordatorio-cierre', '0 19 22 * *',
+  $$ select public.recordar_cierre_revista(); $$);
+```
+
+**Precedente nuevo:** es el **primer** job de `pg_cron` en este proyecto cuyo INSERT alimenta un webhook externo (Database Webhook sobre `notificacion` INSERT → Edge Function `enviar-notificacion-email`, §3.21) — `revista-mensual` y `notificaciones-cleanup` son SQL puro, sin efecto downstream. `recordar_cierre_revista()` es idempotente por diseño doble: si no hay revista `borrador` no hace nada (igual que `publicar_revista_mensual()`), y el índice `notificacion_recordatorio_uniq` (§3.23) impide más de 1 fila por usuario por mes calendario UTC aunque el job se reinvoque manualmente el mismo día.
 
 ---
 

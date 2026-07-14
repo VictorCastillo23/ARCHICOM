@@ -3,9 +3,11 @@ import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import type { BadgeTone } from '@/components/ui/Badge'
 import type { EstadoSolicitud, SolicitudConDetalle } from '@/lib/types/database'
+import { labelDiasRestantes } from '@/lib/utils/revistaCiclo'
 
 interface SolicitudesHistorialProps {
   solicitudes: SolicitudConDetalle[]
+  estadoVentana: { abierta: boolean; diasRestantes: number | null }
 }
 
 const estadoTone: Record<EstadoSolicitud, BadgeTone> = {
@@ -30,7 +32,7 @@ function formatDate(iso: string) {
   })
 }
 
-export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistorialProps) {
+export default function SolicitudesHistorial({ solicitudes, estadoVentana }: SolicitudesHistorialProps) {
   if (solicitudes.length === 0) {
     return (
       <EmptyState
@@ -96,6 +98,16 @@ export default function SolicitudesHistorial({ solicitudes }: SolicitudesHistori
                     {s.revista.volumen != null && ` (Vol. ${s.revista.volumen})`}
                     {' '}<span className="italic">— edición en curso</span>
                   </span>
+                )}
+              </p>
+            )}
+
+            {s.estado === 'pendiente' && esBorrador && (
+              <p className="text-xs text-text-muted mb-1">
+                {estadoVentana.abierta ? (
+                  labelDiasRestantes(estadoVentana.diasRestantes)
+                ) : (
+                  <Badge tone="warning">En curación editorial</Badge>
                 )}
               </p>
             )}

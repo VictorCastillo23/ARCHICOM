@@ -134,6 +134,7 @@ export default function NavClient({
   const userLinks: NavLink[] = session
     ? [
       { href: '/revistas', label: 'Revistas' },
+      { href: '/revistas/calendario', label: 'Calendario' },
       { href: '/mensajes', label: 'Mensajes' },
       //{ href: '/notificaciones', label: 'Notificaciones' },
       { href: '/perfil', label: 'Mi Perfil' },
@@ -147,6 +148,7 @@ export default function NavClient({
   const mobileLinks: NavLink[] = session
     ? userLinks
     : [
+      { href: '/revistas/calendario', label: 'Calendario' },
       { href: '/login', label: 'Iniciar sesión' },
       { href: '/signup', label: 'Crear cuenta' },
     ]
@@ -168,6 +170,12 @@ export default function NavClient({
               className="text-text-muted hover:text-text transition-colors"
             >
               Revistas
+            </Link>
+            <Link
+              href="/revistas/calendario"
+              className="text-text-muted hover:text-text transition-colors"
+            >
+              Calendario
             </Link>
             <Link
               href="/login"

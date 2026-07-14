@@ -50,17 +50,10 @@ export function renderEmail({ titulo, cuerpoHtml, nombre }: RenderEmailParams): 
   </head>
   <body style="margin:0;padding:24px;background-color:#f5f5f5;font-family:sans-serif;color:#1a1a1a;">
     <div style="max-width:560px;margin:0 auto;background-color:#ffffff;border-radius:8px;padding:32px;">
-      <h1 style="font-size:20px;margin:0 0 16px;">${tituloSeguro}</h1>
       <p style="margin:0 0 16px;">${saludo}</p>
       <div>${cuerpoHtml}</div>
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
-        <tr>
-          <td style="border-radius:6px;background-color:#1a6b5e;">
-            <a href="${SITE_URL}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">Visitar Vitrina</a>
-          </td>
-        </tr>
-      </table>
-      <hr style="margin-top:8px;border:none;border-top:1px solid #e5e5e5;" />
+      <p style="margin:24px 0 0;"><a href="${SITE_URL}" style="color:#1a6b5e;">Visitar Vitrina</a></p>
+      <hr style="margin-top:16px;border:none;border-top:1px solid #e5e5e5;" />
       <p style="font-size:12px;color:#737373;margin-top:16px;">Vitrina — portafolio digital académico</p>
     </div>
   </body>
