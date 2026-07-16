@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getPerfil, getPerfilStats } from '@/lib/data/perfil'
 import { getMisPublicaciones } from '@/lib/data/publicaciones'
@@ -16,6 +17,35 @@ import type { PublicacionCardData, Publicacion } from '@/lib/types/database'
 
 interface UsuarioPageProps {
   params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: UsuarioPageProps): Promise<Metadata> {
+  const { id } = await params
+  const { data: perfil } = await getPerfil(id)
+  if (!perfil) return {}
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vitrina.vercel.app'
+  const url = `${siteUrl}/usuario/${id}`
+  const title = `${perfil.nombre} — Vitrina`
+  const description = [perfil.carrera, perfil.institucion].filter(Boolean).join(' · ') ||
+    'Perfil académico en Vitrina.'
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      url,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  }
 }
 
 export default async function UsuarioPage({ params }: UsuarioPageProps) {

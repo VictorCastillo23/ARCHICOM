@@ -28,13 +28,24 @@ export async function generateMetadata({ params }: ColeccionPageProps): Promise<
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vitrina.vercel.app'
+  const url = `${siteUrl}/coleccion/${id}`
+  const title = `${coleccion.titulo} — Vitrina`
+  const description = coleccion.descripcion ?? 'Colección de publicaciones académicas en Vitrina.'
 
   return {
-    title: `${coleccion.titulo} — Vitrina`,
-    description:
-      coleccion.descripcion ?? 'Colección de publicaciones académicas en Vitrina.',
-    alternates: {
-      canonical: `${siteUrl}/coleccion/${id}`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
     },
   }
 }

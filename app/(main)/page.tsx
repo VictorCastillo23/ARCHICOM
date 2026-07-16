@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getFeed } from '@/lib/data/feed'
 import { getTrendingFeed } from '@/lib/data/trending'
@@ -16,6 +17,25 @@ import type { PublicacionCardData, FeedPublicacion, Revista } from '@/lib/types/
 import { TIPOS_PUBLICACION } from '@/lib/constants/publicaciones'
 
 const LIMIT = 24
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vitrina.vercel.app'
+const description = 'Explora publicaciones académicas de la comunidad: libros, artículos, investigaciones, poemas y más.'
+
+export const metadata: Metadata = {
+  description,
+  alternates: { canonical: siteUrl },
+  openGraph: {
+    title: 'Vitrina',
+    description,
+    type: 'website',
+    url: siteUrl,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Vitrina',
+    description,
+  },
+}
 
 interface FeedPageProps {
   searchParams: Promise<Record<string, string>>
