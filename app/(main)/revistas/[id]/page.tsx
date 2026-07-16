@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getRevista } from '@/lib/data/revistas'
 import Badge from '@/components/ui/Badge'
@@ -7,6 +8,33 @@ import EmptyState from '@/components/ui/EmptyState'
 
 interface RevistaDetallePageProps {
   params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: RevistaDetallePageProps): Promise<Metadata> {
+  const { id } = await params
+  const { data } = await getRevista(id)
+  if (!data) return {}
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vitrina.vercel.app'
+  const url = `${siteUrl}/revistas/${id}`
+  const description = `Revista ${data.volumen ? `Vol. ${data.volumen} — ` : ''}${data.titulo}. Artículos curados por la comunidad en Vitrina.`
+
+  return {
+    title: data.titulo,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: data.titulo,
+      description,
+      type: 'website',
+      url,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: data.titulo,
+      description,
+    },
+  }
 }
 
 export default async function RevistaDetallePage({ params }: RevistaDetallePageProps) {

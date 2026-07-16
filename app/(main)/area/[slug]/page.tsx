@@ -26,12 +26,24 @@ export async function generateMetadata({ params }: AreaPageProps): Promise<Metad
   if (!area) return {}
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vitrina.vercel.app'
+  const url = `${siteUrl}/area/${slug}`
+  const title = `${area} — Vitrina`
+  const description = `Explora publicaciones académicas de ${area} creadas por la comunidad en Vitrina.`
 
   return {
-    title: `${area} — Vitrina`,
-    description: `Explora publicaciones académicas de ${area} creadas por la comunidad en Vitrina.`,
-    alternates: {
-      canonical: `${siteUrl}/area/${slug}`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
     },
   }
 }
