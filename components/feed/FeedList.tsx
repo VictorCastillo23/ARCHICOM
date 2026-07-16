@@ -57,9 +57,9 @@ export default function FeedList({
 
   return (
     <ul className="animate-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none p-0">
-      {publicaciones.map((pub) => (
+      {publicaciones.map((pub, index) => (
         <li key={pub.id}>
-          <PublicacionCard pub={pub} />
+          <PublicacionCard pub={pub} priority={index < 3} />
         </li>
       ))}
     </ul>

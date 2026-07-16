@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import TipoBadge from '@/components/ui/TipoBadge'
 import Card from '@/components/ui/Card'
 import { getTipoArchivo } from '@/lib/utils/archivo'
@@ -6,6 +7,8 @@ import type { PublicacionCardData } from '@/lib/types/database'
 
 export interface PublicacionCardProps {
   pub: PublicacionCardData
+  /** Set for above-the-fold cards (first grid row) to skip lazy-loading and hint LCP. */
+  priority?: boolean
 }
 
 // Generic document glyph shown for a PDF that has no thumbnail yet (either
@@ -29,7 +32,7 @@ function IconoDocumento() {
   )
 }
 
-export default function PublicacionCard({ pub }: PublicacionCardProps) {
+export default function PublicacionCard({ pub, priority = false }: PublicacionCardProps) {
   const {
     id,
     titulo,
@@ -55,17 +58,15 @@ export default function PublicacionCard({ pub }: PublicacionCardProps) {
         className="text-text hover:text-primary transition-colors"
       >
         {archivo_url && (
-          <div className="-mx-6 -mt-6 aspect-[4/3] rounded-t-lg border-b border-border bg-surface-muted overflow-hidden">
+          <div className="relative -mx-6 -mt-6 aspect-[4/3] rounded-t-lg border-b border-border bg-surface-muted overflow-hidden">
             {imagenMiniatura ? (
-              // Remote user-uploaded image/thumbnail; raw <img> mirrors the
-              // established pattern in components/publicacion/ArchivoVistaPrevia.tsx
-              // (next/image would need images.remotePatterns for the Supabase
-              // Storage host, which isn't configured in next.config.ts).
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={imagenMiniatura}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                priority={priority}
+                className="object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
