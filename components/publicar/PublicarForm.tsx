@@ -241,6 +241,10 @@ export default function PublicarForm({
   // searchable and the chat works — no manual step. Best-effort and fully
   // silent: retries up to 3 times on failure, then gives up without surfacing
   // anything (re-editing will retry; the admin backfill is the fallback).
+  // Fire-and-forget by design — callers must NOT await this. Embedding a PDF
+  // can take a while; blocking the submit on it would leave the user staring
+  // at the form after they've already saved. The request keeps running
+  // server-side after the redirect.
   async function indexarSiCorresponde(id: string): Promise<void> {
     if (!tienePdf) return
     setIndexando(true)
@@ -287,8 +291,9 @@ export default function PublicarForm({
     )
     const failed = results.filter((ok) => !ok).length
 
-    // Auto-index the PDF (best-effort, silent — retries internally).
-    await indexarSiCorresponde(publicacion.id)
+    // Auto-index the PDF (best-effort, silent, retries internally) — NOT
+    // awaited so the redirect below doesn't wait for embedding to finish.
+    void indexarSiCorresponde(publicacion.id)
 
     const problemas: string[] = []
     if (failed > 0)
@@ -355,8 +360,9 @@ export default function PublicarForm({
     ])
     const failed = results.filter((ok) => !ok).length
 
-    // Auto-index the PDF (best-effort, silent — retries internally).
-    await indexarSiCorresponde(id)
+    // Auto-index the PDF (best-effort, silent, retries internally) — NOT
+    // awaited so the redirect below doesn't wait for embedding to finish.
+    void indexarSiCorresponde(id)
 
     const problemas: string[] = []
     if (failed > 0)
