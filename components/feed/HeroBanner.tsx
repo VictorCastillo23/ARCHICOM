@@ -8,11 +8,14 @@ export default function HeroBanner() {
       style={{ minHeight: '280px', justifyContent: 'center' }}
     >
       <h1 className="text-(length:--size-heading-lg) font-normal font-display text-text leading-tight max-w-xl">
-        Tu trabajo merece un mejor lugar que un chat
+        Tu trabajo merece ser visto
       </h1>
-      <p className="text-sm text-text-muted max-w-lg">
-        Vitrina es el portafolio digital para jóvenes. Publica tus obras, recibe
-        retroalimentación y participa en la revista mensual de la comunidad.
+      <p className="text-sm text-text-muted max-w-lg whitespace-pre-line">
+        {[
+          'Vitrina es tu portafolio digital académico y artístico.',
+          'Publica tus obras, descubre talento de la comunidad,',
+          'recibe retroalimentación y participa en la revista mensual.',
+        ].join('\n')}
       </p>
       <div className="flex flex-wrap justify-center gap-3 mt-2">
         <Link
