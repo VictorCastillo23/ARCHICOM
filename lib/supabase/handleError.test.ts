@@ -61,7 +61,7 @@ describe('handleError', () => {
       expect(json.error?.code).toBe('internal_error')
     })
 
-    it('sends only { code, status } to Sentry on the default path, never the raw message', () => {
+    it('never passes the raw error object to Sentry.captureException, and keeps details out of reach', () => {
       const rawError = {
         __isAuthError: true,
         status: 503,
@@ -69,9 +69,17 @@ describe('handleError', () => {
         details: 'sensitive internal detail',
       }
       handleError(rawError)
-      expect(Sentry.captureException).toHaveBeenCalledWith(rawError, {
-        extra: { code: undefined, status: 503 },
-      })
+      expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+      const [capturedArg, capturedContext] = vi.mocked(Sentry.captureException).mock.calls[0]
+      expect(capturedArg).not.toBe(rawError)
+      expect(capturedArg).not.toEqual(rawError)
+      expect(capturedArg).not.toHaveProperty('details')
+      expect(capturedArg).not.toHaveProperty('message', 'Down')
+      expect(JSON.stringify(capturedArg)).not.toContain('sensitive internal detail')
+      if (capturedArg instanceof Error) {
+        expect(capturedArg.message).not.toContain('sensitive internal detail')
+      }
+      expect(capturedContext).toEqual({ extra: { code: undefined, status: 503 } })
     })
   })
 
@@ -125,7 +133,7 @@ describe('handleError', () => {
       expect(json.error?.code).toBe('internal_error')
     })
 
-    it('sends only { code, status } to Sentry for an unrecognized code, never message/details/hint', () => {
+    it('never passes the raw error object to Sentry.captureException, and keeps details/hint out of reach', () => {
       const rawError = {
         code: 'UNKNOWN',
         message: 'boom',
@@ -133,9 +141,24 @@ describe('handleError', () => {
         hint: 'try again',
       }
       handleError(rawError)
-      expect(Sentry.captureException).toHaveBeenCalledWith(rawError, {
-        extra: { code: 'UNKNOWN', status: undefined },
-      })
+      expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+      const [capturedArg, capturedContext] = vi.mocked(Sentry.captureException).mock.calls[0]
+      expect(capturedArg).not.toBe(rawError)
+      expect(capturedArg).not.toEqual(rawError)
+      expect(capturedArg).not.toHaveProperty('details')
+      expect(capturedArg).not.toHaveProperty('hint')
+      expect(JSON.stringify(capturedArg)).not.toContain('row data leak')
+      expect(JSON.stringify(capturedArg)).not.toContain('try again')
+      if (capturedArg instanceof Error) {
+        expect(capturedArg.message).not.toContain('row data leak')
+        expect(capturedArg.message).not.toContain('try again')
+      }
+      expect(capturedContext).toEqual({ extra: { code: 'UNKNOWN', status: undefined } })
+    })
+
+    it('does not call Sentry.captureException for a mapped/handled error code (23505)', () => {
+      handleError({ code: '23505' })
+      expect(Sentry.captureException).not.toHaveBeenCalled()
     })
   })
 })
