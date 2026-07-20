@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import * as Sentry from '@sentry/nextjs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   forbidden,
   handleError,
@@ -6,6 +7,14 @@ import {
   unauthorized,
   validationError,
 } from './handleError'
+
+vi.mock('@sentry/nextjs', () => ({
+  captureException: vi.fn(),
+}))
+
+afterEach(() => {
+  vi.clearAllMocks()
+})
 
 async function body(res: Response) {
   return res.json() as Promise<{
@@ -50,6 +59,19 @@ describe('handleError', () => {
       expect(res.status).toBe(500)
       const json = await body(res)
       expect(json.error?.code).toBe('internal_error')
+    })
+
+    it('sends only { code, status } to Sentry on the default path, never the raw message', () => {
+      const rawError = {
+        __isAuthError: true,
+        status: 503,
+        message: 'Down',
+        details: 'sensitive internal detail',
+      }
+      handleError(rawError)
+      expect(Sentry.captureException).toHaveBeenCalledWith(rawError, {
+        extra: { code: undefined, status: 503 },
+      })
     })
   })
 
@@ -101,6 +123,19 @@ describe('handleError', () => {
       expect(res.status).toBe(500)
       const json = await body(res)
       expect(json.error?.code).toBe('internal_error')
+    })
+
+    it('sends only { code, status } to Sentry for an unrecognized code, never message/details/hint', () => {
+      const rawError = {
+        code: 'UNKNOWN',
+        message: 'boom',
+        details: 'row data leak',
+        hint: 'try again',
+      }
+      handleError(rawError)
+      expect(Sentry.captureException).toHaveBeenCalledWith(rawError, {
+        extra: { code: 'UNKNOWN', status: undefined },
+      })
     })
   })
 })

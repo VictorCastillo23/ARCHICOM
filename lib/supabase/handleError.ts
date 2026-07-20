@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextResponse } from 'next/server'
 
 type ErrorEnvelope = { error: { code: string; message: string } }
@@ -24,10 +25,13 @@ export function validationError(message: string): NextResponse {
 
 // Logs only the fields needed to diagnose an error — never the raw object,
 // which for Postgres/PostgREST errors can carry `details`/`hint` with query
-// values or row data (N-8, SECURITY_AUDIT.md 2026-07-04).
+// values or row data (N-8, SECURITY_AUDIT.md 2026-07-04). Same discipline
+// applies to the Sentry event: `extra` carries `code`/`status` only, never
+// the raw error or its `message`/`details`/`hint`.
 function logServerError(tag: string, error: unknown): void {
   const e = error as { code?: string; message?: string; status?: number }
   console.error(tag, { code: e?.code, status: e?.status, message: e?.message })
+  Sentry.captureException(error, { extra: { code: e?.code, status: e?.status } })
 }
 
 export function handleError(error: unknown): NextResponse {
