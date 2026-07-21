@@ -30,6 +30,13 @@ next-env.d.ts
 # vercel
 .vercel
 
+# playwright (e2e)
+/playwright-report/
+/test-results/
+/playwright/.cache/
+# storageState files hold live session cookies/localStorage — never commit them
+/e2e/.auth/
+
 # misc
 .DS_Store
 *.pem
