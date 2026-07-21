@@ -44,4 +44,27 @@ test.describe('auth session lifecycle', () => {
     await page.goto('/perfil')
     await expect(page).toHaveURL(/\/login$/)
   })
+
+  test('a failed login shows an error and never creates a session', async ({ page }) => {
+    const email = requireEnv('E2E_TEST_USER_EMAIL')
+
+    await page.goto('/login')
+    await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email)
+    await page
+      .getByRole('textbox', { name: 'Contraseña', exact: true })
+      .fill('wrong-password-e2e-should-never-match')
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click()
+
+    // LoginForm renders the API's error message in a `role="alert"` <p>
+    // (components/auth/LoginForm.tsx) instead of navigating away.
+    await expect(page.getByRole('alert')).toBeVisible()
+
+    // No redirect to an authenticated page, and no session/cookie was set —
+    // this file's own `storageState: { cookies: [], origins: [] }` starts
+    // clean, so any auth cookie here could only come from this attempt.
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toHaveCount(0)
+    const cookies = await page.context().cookies()
+    expect(cookies.some((cookie) => cookie.name.includes('auth-token'))).toBe(false)
+  })
 })

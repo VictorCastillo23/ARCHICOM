@@ -60,14 +60,26 @@ jobs:
       - run: pnpm build
 
   # PR-only (unlike the 4 jobs above, which also run on push to main) and
-  # non-blocking: the 3 seeded Supabase Auth test accounts are currently
-  # banned (CLAUDE.md), so this job can't pass end-to-end yet. It stays wired
-  # up and ready for when E2E_TEST_*_EMAIL/PASSWORD point at real, unbanned
-  # accounts — see design's "Blocking Prerequisites" section.
+  # non-blocking for now: this requires E2E_TEST_USER_EMAIL/PASSWORD and
+  # E2E_TEST_ADMIN_EMAIL/PASSWORD GitHub secrets pointing at dedicated test
+  # accounts, separate from (not the same as) the 3 seeded accounts
+  # documented in CLAUDE.md, which may remain banned. Provisioning those
+  # dedicated accounts is an external, owner-driven prerequisite — see the
+  # design's "Blocking Prerequisites" section. It stays wired up and ready
+  # for once those secrets exist.
+  #
+  # `continue-on-error` lives on the `pnpm test:e2e` step ONLY (not the job),
+  # so a broken `pnpm install`/`playwright install` still fails the job for
+  # real — only the known/accepted "no test accounts yet" outcome is
+  # soft-failed. Because step-level `continue-on-error` overrides that step's
+  # `conclusion` to `success` (masking `failure()` job-wide), the
+  # upload-artifact step below checks `steps.e2e_tests.outcome` instead:
+  # `outcome` is the step's real pre-override pass/fail result, while
+  # `conclusion` is what actually determines job status after the override —
+  # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context.
   e2e:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
@@ -88,9 +100,12 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       # playwright.config.ts's webServer already runs `pnpm build && pnpm start`
       # — no separate build step here to avoid building twice.
-      - run: pnpm test:e2e
+      - name: Run Playwright e2e tests
+        id: e2e_tests
+        continue-on-error: true
+        run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: steps.e2e_tests.outcome == 'failure'
         with:
           name: playwright-report
           path: playwright-report/

@@ -9,8 +9,20 @@ export interface PublicacionCreada {
  * Fills and submits the real `/publicar` form for the simplest publication
  * shape — tipo "Artículo" (categoria "texto": no file upload required, no
  * recomendacion-only fields) with an external link so the "at least one of
- * {archivo, enlace}" rule is satisfied — and waits for the redirect to the
- * new publication's detail page.
+ * {archivo, enlace}" rule is satisfied — then captures the created id
+ * straight from the `POST /api/publicaciones` response body.
+ *
+ * Deliberately NOT derived from the post-submit redirect URL. The row is
+ * committed server-side by that POST (components/publicar/PublicarForm.tsx
+ * `crearPublicacion()`) *before* a separate tag-attach step; if that step
+ * fails, the form intentionally does NOT redirect (it shows an inline
+ * warning instead, so the user doesn't think the publication was lost — see
+ * PublicarForm.tsx's `problemas`/`setTagWarning` branch). Waiting on the
+ * redirect URL here would leave the returned id (and therefore any caller's
+ * cleanup) hostage to that unrelated step, permanently orphaning the row on
+ * any comparable stall/timeout — this repo has no separate test/staging DB.
+ * Reading the id from the response is independent of whatever happens
+ * afterwards (tag-attach, redirect, or a slow RSC transition).
  *
  * Shared by publicar.spec.ts and admin-solicitud.spec.ts so both exercise the
  * same real form instead of duplicating field-by-field selectors.
@@ -35,11 +47,25 @@ export async function crearPublicacionViaUI(
   await page.getByRole('textbox', { name: 'Título', exact: true }).fill(titulo)
   await page.getByRole('textbox', { name: 'Resumen', exact: true }).fill(resumen)
   await page.getByRole('textbox', { name: 'Enlace a la obra (opcional)', exact: true }).fill(urlExterna)
-  await page.getByRole('button', { name: 'Publicar', exact: true }).click()
 
-  await page.waitForURL(/\/publicacion\/[^/]+$/)
-  const id = new URL(page.url()).pathname.split('/').filter(Boolean).pop()
-  if (!id) throw new Error('Could not extract publicacion id from the post-submit URL')
+  // Register the response listener BEFORE the click that triggers it — the
+  // standard Playwright pattern for tying a wait to an action
+  // (https://playwright.dev/docs/api/class-page#page-wait-for-response),
+  // so the create request can never resolve before we start listening.
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (res) => new URL(res.url()).pathname === '/api/publicaciones' && res.request().method() === 'POST',
+    ),
+    page.getByRole('button', { name: 'Publicar', exact: true }).click(),
+  ])
+
+  const body = (await response.json()) as { data?: { publicacion?: { id?: string } } }
+  const id = body.data?.publicacion?.id
+  if (!id) {
+    throw new Error(
+      `POST /api/publicaciones (status ${response.status()}) did not return a publicacion id`,
+    )
+  }
 
   return { id, titulo }
 }
