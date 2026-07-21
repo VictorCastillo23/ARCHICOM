@@ -36,11 +36,11 @@
 
 ```bash
 # Publishable key (recomendada)
-SUPABASE_URL=https://fdfbyhjwnbteccagulxb.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_xYnc2tMGelLFZ-tMtw-7cQ_ATtcJzwn
+SUPABASE_URL=env.NEXT_PUBLIC_SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY=env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 # Anon key legacy (alternativa, también pública)
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkZmJ5aGp3bmJ0ZWNjYWd1bHhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTAxMDYsImV4cCI6MjA5NTc2NjEwNn0.4wi9iVtGOaY1tygSwf0JztRwKrC36Q8nZZ9jPHWh4ww
+SUPABASE_ANON_KEY=env.SUPABASE_ANON_KEY
 ```
 
 En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. `NEXT_PUBLIC_SUPABASE_URL`). La `service_role` se obtiene en el panel (Settings → API) y vive solo en el servidor; **jamás** se prefija con `NEXT_PUBLIC_` ni se incluye en el bundle del navegador.

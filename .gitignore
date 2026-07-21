@@ -54,3 +54,4 @@ auditorias/
 testsprite_tests/
 scripts/
 docs/prompts/
+.claude/
