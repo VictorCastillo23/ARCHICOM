@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { copyToClipboard } from '@/lib/clipboard'
 
 export interface CompartirButtonProps {
   /** Relative path to share, e.g. `/publicacion/123`. The origin is resolved at click time. */
@@ -23,28 +24,6 @@ export default function CompartirButton({ path, label = 'Compartir' }: Compartir
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
   }, [])
-
-  async function copyToClipboard(text: string): Promise<boolean> {
-    try {
-      await navigator.clipboard.writeText(text)
-      return true
-    } catch {
-      // Fallback for insecure contexts / older browsers without the Clipboard API
-      try {
-        const ta = document.createElement('textarea')
-        ta.value = text
-        ta.style.position = 'fixed'
-        ta.style.opacity = '0'
-        document.body.appendChild(ta)
-        ta.select()
-        const ok = document.execCommand('copy')
-        document.body.removeChild(ta)
-        return ok
-      } catch {
-        return false
-      }
-    }
-  }
 
   async function handleClick() {
     const url = `${window.location.origin}${path}`
