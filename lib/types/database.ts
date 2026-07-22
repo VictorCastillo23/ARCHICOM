@@ -20,6 +20,7 @@ export type TipoPublicacion =
   | 'pintura'
   | 'diseno_grafico'
   | 'diseno_modas'
+  | 'divulgacion'
 export type RolUsuario = 'usuario' | 'administrador'
 export type EstadoRevista = 'borrador' | 'publicada'
 export type EstadoSolicitud = 'pendiente' | 'aceptada' | 'rechazada' | 'retirada'

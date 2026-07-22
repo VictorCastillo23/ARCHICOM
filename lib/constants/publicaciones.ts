@@ -2,9 +2,9 @@ import type { TipoPublicacion } from '@/lib/types/database'
 import type { BadgeTone } from '@/components/ui/Badge'
 
 /**
- * Frontend-only grouping for the 19 publication types. NOT a DB column — it never
+ * Frontend-only grouping for the 20 publication types. NOT a DB column — it never
  * travels in any payload. It exists so the publish UI can show a grouped, type-first
- * picker instead of a flat 19-item <select>.
+ * picker instead of a flat 20-item <select>.
  */
 export type CategoriaTipo = 'texto' | 'visual' | 'recomendacion' | 'otro'
 
@@ -33,6 +33,7 @@ export const TIPO_META: Record<
   tesis:         { label: 'Tesis',         tone: 'warning', categoria: 'texto'  },
   ponencia:      { label: 'Ponencia',      tone: 'warning', categoria: 'texto'  },
   proyecto:      { label: 'Proyecto',      tone: 'info',    categoria: 'texto'  },
+  divulgacion:   { label: 'Divulgación científica', tone: 'success', categoria: 'texto' },
   dibujo:         { label: 'Dibujo',          tone: 'danger',  categoria: 'visual' },
   ilustracion:    { label: 'Ilustración',     tone: 'danger',  categoria: 'visual' },
   pintura:        { label: 'Pintura',         tone: 'accent',  categoria: 'visual' },
