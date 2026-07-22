@@ -27,6 +27,7 @@ import AnonFollowCTA from '@/components/publicacion/AnonFollowCTA'
 import LikersStack from '@/components/publicacion/LikersStack'
 import AnonViewBanner from '@/components/publicacion/AnonViewBanner'
 import CompartirButton from '@/components/ui/CompartirButton'
+import CitarButton from '@/components/ui/CitarButton'
 import Link from 'next/link'
 import type { Tag, PublicacionTag, TipoPublicacion, Usuario } from '@/lib/types/database'
 
@@ -336,6 +337,13 @@ export default async function PublicacionPage({ params }: PublicacionPageProps) 
             isAuthenticated={isAuthenticated}
           />
           <CompartirButton path={`/publicacion/${id}`} label="Compartir" />
+          <CitarButton
+            titulo={data.titulo}
+            autorNombre={autor?.nombre ?? 'Autor desconocido'}
+            tipo={data.tipo}
+            creadoEn={data.creado_en}
+            path={`/publicacion/${id}`}
+          />
         </div>
         <div className="mt-3">
           <LikersStack
