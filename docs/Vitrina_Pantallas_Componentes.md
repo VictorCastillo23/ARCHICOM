@@ -252,7 +252,7 @@
 
   Componentes: PublicarForm (orquestador) + TipoPicker (selector) + ArchivoPreview (vista previa).
 
-  Selector de tipo (TipoPicker): los 19 tipos como **chips clickeables agrupados por categoría**
+  Selector de tipo (TipoPicker): los 20 tipos como **chips clickeables agrupados por categoría**
   (no un `<select>`), expuesto como `radiogroup` accesible. Las categorías (metadata SOLO de
   frontend en `TIPO_META`, NO es columna de BD ni viaja en el payload):
 
@@ -641,7 +641,7 @@
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
   │ Badge      │ Chip de texto con tone (info, success, warning, danger, neutral)              │
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ TipoBadge  │ Badge especializado para los 19 tipos de publicación, cada uno con tono propio │
+  │ TipoBadge  │ Badge especializado para los 20 tipos de publicación, cada uno con tono propio │
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
   │ Field      │ Wrapper de label + input/textarea + mensaje de error                          │
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤

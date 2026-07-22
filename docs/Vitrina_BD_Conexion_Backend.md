@@ -54,7 +54,7 @@ En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. 
 | Tipo | Valores |
 |---|---|
 | `rol_usuario` | `usuario`, `administrador` |
-| `tipo_publicacion` | `libro`, `articulo`, `investigacion`, `ensayo`, `cuento`, `poema`, `resena`, `tesis`, `ponencia`, `proyecto`, `dibujo`, `ilustracion`, `pintura`, `diseno_grafico`, `diseno_modas`, `fotografia`, `infografia`, `recomendacion`, `otro` |
+| `tipo_publicacion` | `libro`, `articulo`, `investigacion`, `ensayo`, `cuento`, `poema`, `resena`, `tesis`, `ponencia`, `proyecto`, `divulgacion`, `dibujo`, `ilustracion`, `pintura`, `diseno_grafico`, `diseno_modas`, `fotografia`, `infografia`, `recomendacion`, `otro` |
 | `estado_revista` | `borrador`, `publicada` |
 | `estado_solicitud` | `pendiente`, `aceptada`, `rechazada`, `retirada` (`retirada` = artículo aceptado y luego retirado por un admin vía `retirar_articulo`) |
 | `motivo_reporte` | `contenido_inapropiado`, `plagio`, `spam`, `otro` |
@@ -1409,6 +1409,14 @@ alter table public.publicacion alter column chat_habilitado set default false;
 ```
 
 Cambio ADITIVO, aprobado explícitamente. El fast-fill inicial con `default true` backfillea todas las filas existentes como habilitadas (el chat ya funcionaba para ellas antes de este cambio); la única excepción es la publicación `5072d255-5cdf-459e-9da8-eac16a8e430c`, apagada explícitamente. El tercer `ALTER COLUMN ... SET DEFAULT false` deja las publicaciones **nuevas** desactivadas por defecto — el autor la enciende explícitamente desde el formulario de publicar/editar (toggle gateado por `tienePdf`, ver `Vitrina_Pantallas_Componentes.md`). `publicacion` usa GRANT de tabla completo (no por columna, a diferencia de `usuario` — ver footgun §3.19), así que no hizo falta un `GRANT` adicional, mismo precedente que `bloqueada` (§3.10) y `archivo_thumbnail_url` (§3.20b). Sin cambios en RLS: la policy `editar_propio` (UPDATE) ya cubre cualquier columna de la fila propia del autor. El indexado de PDFs (embeddings, `lib/rag/indexer.ts`) sigue siendo **incondicional** — corre siempre, independientemente de este flag. El endpoint `/api/publicaciones/[id]/chat` valida `chat_habilitado` inmediatamente después de resolver la publicación y **antes** de invocar `consumir_cuota_rag()`, para que una publicación con el chat apagado no consuma cuota horaria del usuario ni llame al LLM.
+
+### 3.25 Valor `divulgacion` en el enum `tipo_publicacion`
+
+```sql
+ALTER TYPE tipo_publicacion ADD VALUE IF NOT EXISTS 'divulgacion';
+```
+
+Cambio ADITIVO, aprobado explícitamente (agrega un valor al enum, no una columna). Etiqueta `Divulgación científica` en `TIPO_META` (`lib/constants/publicaciones.ts`), categoría `texto` — se distingue de `articulo`/`investigacion`/`ensayo` por ser redacción divulgativa para público general, no un texto académico formal. Sin cambios en RLS, RPC, la vista `feed_publicaciones` ni en `publicacion_tag`/`tag`. Motivado por un análisis del uso real de `tipo = 'otro'`: de 5 publicaciones ahí, una calzaba mejor con este nuevo valor; las otras 4 se reclasificaron a `proyecto`/`investigacion`, ya existentes.
 
 ---
 
