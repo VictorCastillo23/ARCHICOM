@@ -17,6 +17,11 @@ export type RenderEmailParams = {
   nombre?: string
 }
 
+export type RenderEmailTextParams = {
+  cuerpoTexto: string
+  nombre?: string
+}
+
 /**
  * Escapes the 5 HTML-significant characters. Not a sanitizer — only safe for
  * plain-text values. NOT exported/shared with
@@ -58,4 +63,16 @@ export function renderEmail({ titulo, cuerpoHtml, nombre }: RenderEmailParams): 
     </div>
   </body>
 </html>`
+}
+
+/**
+ * Plain-text sibling of `renderEmail`, sent as the `text` part alongside the
+ * HTML body. Not a nicety — a bulk-style HTML-only email with no plain-text
+ * alternative is a strong signal mail providers associate with promotional/
+ * bulk mail (contributes to landing in Gmail's Promotions tab instead of
+ * Primary).
+ */
+export function renderEmailText({ cuerpoTexto, nombre }: RenderEmailTextParams): string {
+  const saludo = nombre ? `Hola, ${nombre}.` : 'Hola.'
+  return `${saludo}\n\n${cuerpoTexto}\n\nVisitar Vitrina: ${SITE_URL}`
 }
