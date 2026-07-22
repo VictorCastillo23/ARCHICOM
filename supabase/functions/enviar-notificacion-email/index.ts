@@ -13,11 +13,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@4'
 import { resolveRecipient, type WebhookPayload } from './route-predicate.ts'
-import { renderEmail } from '../_shared/email-template.ts'
+import { renderEmail, renderEmailText } from '../_shared/email-template.ts'
 
 type PlantillaEmail = {
   titulo: string
   cuerpoHtml: () => string
+  cuerpoTexto: () => string
 }
 
 const PLANTILLAS: Record<string, PlantillaEmail> = {
@@ -25,21 +26,29 @@ const PLANTILLAS: Record<string, PlantillaEmail> = {
     titulo: 'Tienes una nueva solicitud de mensaje',
     cuerpoHtml: () =>
       '<p>Alguien quiere iniciar una conversación contigo en Vitrina. Ingresa a tu bandeja de mensajes para responder.</p>',
+    cuerpoTexto: () =>
+      'Alguien quiere iniciar una conversación contigo en Vitrina. Ingresa a tu bandeja de mensajes para responder.',
   },
   solicitud_revista_aceptada: {
     titulo: 'Tu obra fue aceptada en una revista',
     cuerpoHtml: () =>
       '<p>Tu solicitud para publicar en una revista temática fue aceptada. Ingresa a la revista para ver tu obra publicada.</p>',
+    cuerpoTexto: () =>
+      'Tu solicitud para publicar en una revista temática fue aceptada. Ingresa a la revista para ver tu obra publicada.',
   },
   solicitud_revista_rechazada: {
     titulo: 'Tu obra no fue aceptada en una revista',
     cuerpoHtml: () =>
       '<p>Tu solicitud para publicar en una revista temática no fue aceptada en esta edición. Puedes postular la misma u otra obra en una próxima edición.</p>',
+    cuerpoTexto: () =>
+      'Tu solicitud para publicar en una revista temática no fue aceptada en esta edición. Puedes postular la misma u otra obra en una próxima edición.',
   },
   recordatorio_cierre_revista: {
     titulo: 'La ventana de postulación de la revista cierra pronto',
     cuerpoHtml: () =>
       '<p>Tienes una solicitud pendiente para publicar en una revista temática y la ventana de postulación cierra el día 25. Ingresa a tu perfil para revisar el estado de tu solicitud.</p>',
+    cuerpoTexto: () =>
+      'Tienes una solicitud pendiente para publicar en una revista temática y la ventana de postulación cierra el día 25. Ingresa a tu perfil para revisar el estado de tu solicitud.',
   },
 }
 
@@ -93,6 +102,7 @@ Deno.serve(async (req: Request) => {
     titulo: plantilla.titulo,
     cuerpoHtml: plantilla.cuerpoHtml(),
   })
+  const text = renderEmailText({ cuerpoTexto: plantilla.cuerpoTexto() })
 
   const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
   const { error: resendError } = await resend.emails.send({
@@ -100,6 +110,7 @@ Deno.serve(async (req: Request) => {
     to: destinatario.email,
     subject: plantilla.titulo,
     html,
+    text,
   })
 
   if (resendError) {

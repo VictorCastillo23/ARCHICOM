@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderEmail } from './email-template'
+import { renderEmail, renderEmailText } from './email-template'
 
 describe('renderEmail', () => {
   it('includes the given titulo and cuerpoHtml verbatim', () => {
@@ -66,5 +66,39 @@ describe('renderEmail', () => {
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
     expect(html).not.toContain('Hola, <b>Ana</b>.')
     expect(html).toContain('Hola, &lt;b&gt;Ana&lt;/b&gt;.')
+  })
+})
+
+describe('renderEmailText', () => {
+  it('includes the given cuerpoTexto verbatim', () => {
+    const text = renderEmailText({ cuerpoTexto: 'Alguien quiere hablar contigo.' })
+
+    expect(text).toContain('Alguien quiere hablar contigo.')
+  })
+
+  it('greets by name when nombre is provided', () => {
+    const text = renderEmailText({ cuerpoTexto: 'Contenido.', nombre: 'Ana' })
+
+    expect(text).toContain('Hola, Ana.')
+  })
+
+  it('falls back to a generic greeting when nombre is omitted', () => {
+    const text = renderEmailText({ cuerpoTexto: 'Contenido.' })
+
+    expect(text).toContain('Hola.')
+    expect(text).not.toContain('Hola, ')
+  })
+
+  it('includes a plain-text link to esvitrina.com', () => {
+    const text = renderEmailText({ cuerpoTexto: 'Contenido.' })
+
+    expect(text).toContain('https://esvitrina.com')
+  })
+
+  it('is not HTML (no tags, unlike renderEmail)', () => {
+    const text = renderEmailText({ cuerpoTexto: 'Contenido.' })
+
+    expect(text).not.toContain('<')
+    expect(text).not.toContain('>')
   })
 })

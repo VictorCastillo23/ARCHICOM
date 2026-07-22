@@ -27,7 +27,7 @@ import { Resend } from 'npm:resend@4'
 import { chunk } from './chunk.ts'
 import { plainTextToHtml } from './plain-text-to-html.ts'
 import { validatePayload } from './validate-payload.ts'
-import { renderEmail } from '../_shared/email-template.ts'
+import { renderEmail, renderEmailText } from '../_shared/email-template.ts'
 
 const LOTE_MAX = 50
 // MVP mitigation, not full queueing/checkpointing (out of scope for this
@@ -121,12 +121,20 @@ Deno.serve(async (req: Request) => {
             cuerpoHtml: cuerpoHtmlSeguro,
             nombre: destinatario.nombre,
           })
+          // Plain-text alternative alongside the HTML part — mail providers
+          // treat HTML-only bulk mail as a promotional signal; `cuerpo` is
+          // already plain text, so this is free.
+          const text = renderEmailText({
+            cuerpoTexto: cuerpo,
+            nombre: destinatario.nombre,
+          })
 
           const { error } = await resend.emails.send({
             from,
             to: destinatario.email,
             subject: asunto,
             html,
+            text,
           })
 
           if (error) {
