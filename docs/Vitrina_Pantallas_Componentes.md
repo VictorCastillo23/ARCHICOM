@@ -252,7 +252,7 @@
 
   Componentes: PublicarForm (orquestador) + TipoPicker (selector) + ArchivoPreview (vista previa).
 
-  Selector de tipo (TipoPicker): los 19 tipos como **chips clickeables agrupados por categoría**
+  Selector de tipo (TipoPicker): los 20 tipos como **chips clickeables agrupados por categoría**
   (no un `<select>`), expuesto como `radiogroup` accesible. Las categorías (metadata SOLO de
   frontend en `TIPO_META`, NO es columna de BD ni viaja en el payload):
 
@@ -641,7 +641,7 @@
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
   │ Badge      │ Chip de texto con tone (info, success, warning, danger, neutral)              │
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ TipoBadge  │ Badge especializado para los 19 tipos de publicación, cada uno con tono propio │
+  │ TipoBadge  │ Badge especializado para los 20 tipos de publicación, cada uno con tono propio │
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
   │ Field      │ Wrapper de label + input/textarea + mensaje de error                          │
   ├────────────┼───────────────────────────────────────────────────────────────────────────────┤
@@ -1361,6 +1361,26 @@ Campanita + dropdown + página completa para las 6 notificaciones auto-generadas
 **Archivos:** `components/ui/BellIcon.tsx`, `components/notificaciones/{NotificationBell,NotificationDropdown,NotificationItem,NotificationModal,NotificationFilterBar,NotificationList}.tsx`, `lib/constants/notificaciones.ts`, `app/(main)/notificaciones/{page,loading}.tsx`, `lib/data/notificaciones.ts` (modificado — agrega el embed `usuario_relacionado` y el filtro `tipo` a `getNotificaciones`), `lib/types/database.ts` (modificado — nuevo tipo `NotificacionConActor`), `components/layout/{Nav.server,NavClient}.tsx` (modificados).
 
 **Preferencias:** los 5 toggles `notif_app_*` viven en `/perfil/ajustes` — ver `NotificacionesForm` (§3.4.1), extendido con una fila `Toggle` por tipo, cada una persistiendo vía PATCH `/api/usuario/preferencias-notificaciones` (§22).
+
+---
+
+## 19. Citar Publicación
+
+### CitarButton (`components/ui/CitarButton.tsx`)
+
+- **Tipo:** Client Component (`'use client'`).
+- **Props:** `titulo: string`, `autorNombre: string`, `tipo: string`, `creadoEn: string` (timestamptz), `path: string` (ruta relativa, ej. `/publicacion/123`).
+- **Comportamiento:** botón "Citar" que abre un modal (reusa `components/ui/Modal.tsx` — focus trap, Escape, click-fuera y scroll-lock ya incluidos, sin reimplementar nada). El modal muestra:
+  - Un aviso (`role="note"`, estilo ámbar `border-warning bg-warning-bg text-warning`) advirtiendo que Vitrina no es un repositorio académico revisado por pares ni asigna DOI.
+  - La cita en formato APA 7: `{autorNombre} ({año}). {título en cursiva} [{Tipo}]. Vitrina. {url}`, en un `<blockquote>` seleccionable. `año = new Date(creadoEn).getFullYear()`; `url = window.location.origin + path`, **resuelta en el click** (igual que `CompartirButton`, nunca en render/SSR).
+  - **Etiqueta de tipo:** mapea `tipo` a un label en español entre corchetes vía `TIPO_META` (`lib/constants/publicaciones.ts`) — ej. `tesis → [Tesis]`, `articulo → [Artículo]`; `recomendacion` y `otro` se normalizan a `[Publicación]` (única excepción sobre `TIPO_META`, resuelta con una función local en el propio componente, sin tocar `TIPO_META`).
+  - Botón "Copiar cita": copia el **texto plano** de la cita (sin la cursiva del título) reusando la misma lógica de copiado con fallback que `CompartirButton`, extraída a `lib/clipboard.ts` (`copyToClipboard`, compartida por ambos botones). Feedback "¡Copiado!" ~2 s en `aria-live="polite"`.
+  - Botón "Cerrar" (`components/ui/Button.tsx`, `variant="secondary"`).
+- **Estilo del botón "Citar" y de "Copiar cita":** mismo patrón visual pill que `CompartirButton` (`inline-flex … rounded-md px-4 py-2 text-sm border`, hover `border-primary text-primary`; "Copiar cita" añade el estado copiado `text-primary border-primary`).
+- **Accesibilidad:** `aria-label="Citar esta publicación"` en el disparador; modal con `role="dialog"`/`aria-modal="true"` (heredado de `Modal`) y `aria-labelledby` al `<h2>` del título.
+- **Uso en `/publicacion/[id]`:** en la fila de acciones, junto a `CompartirButton` (`app/(main)/publicacion/[id]/page.tsx`), con `titulo={data.titulo}`, `autorNombre={autor?.nombre ?? 'Autor desconocido'}`, `tipo={data.tipo}`, `creadoEn={data.creado_en}`, `path={`/publicacion/${id}`}`. Visible para todos (con o sin sesión), igual que Compartir.
+
+**Archivos:** `components/ui/CitarButton.tsx`, `lib/clipboard.ts` (nuevo — `copyToClipboard` compartida), `components/ui/CompartirButton.tsx` (modificado — usa el helper compartido, sin cambio de comportamiento), `app/(main)/publicacion/[id]/page.tsx` (modificado).
 
 ---
 

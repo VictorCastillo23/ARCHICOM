@@ -54,7 +54,7 @@ En **Next.js** las variables del cliente se prefijan con `NEXT_PUBLIC_` (p. ej. 
 | Tipo | Valores |
 |---|---|
 | `rol_usuario` | `usuario`, `administrador` |
-| `tipo_publicacion` | `libro`, `articulo`, `investigacion`, `ensayo`, `cuento`, `poema`, `resena`, `tesis`, `ponencia`, `proyecto`, `dibujo`, `ilustracion`, `pintura`, `diseno_grafico`, `diseno_modas`, `fotografia`, `infografia`, `recomendacion`, `otro` |
+| `tipo_publicacion` | `libro`, `articulo`, `investigacion`, `ensayo`, `cuento`, `poema`, `resena`, `tesis`, `ponencia`, `proyecto`, `divulgacion`, `dibujo`, `ilustracion`, `pintura`, `diseno_grafico`, `diseno_modas`, `fotografia`, `infografia`, `recomendacion`, `otro` |
 | `estado_revista` | `borrador`, `publicada` |
 | `estado_solicitud` | `pendiente`, `aceptada`, `rechazada`, `retirada` (`retirada` = artículo aceptado y luego retirado por un admin vía `retirar_articulo`) |
 | `motivo_reporte` | `contenido_inapropiado`, `plagio`, `spam`, `otro` |
@@ -909,7 +909,7 @@ $$;
 
 #### Edge Function `enviar-notificacion-email`
 
-`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, a diferencia del precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})`, wrapper HTML compartido con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija). El wrapper incluye un botón fijo "Visitar Vitrina" → `https://esvitrina.com` (hardcodeado en `email-template.ts`, no viene de `NEXT_PUBLIC_SITE_URL` — las Edge Functions corren en Deno, fuera de la app Next.js, así que esa env var no es alcanzable ahí).
+`verify_jwt:false` — el llamante es un DB Webhook de Supabase, sin JWT de usuario; la autorización es un secreto compartido, no `es_admin()`. Fuente en `supabase/functions/enviar-notificacion-email/index.ts` (committed en el repo, a diferencia del precedente `embed` que vive solo desplegado). La lógica pura/ramificada vive en dos siblings planos (sin APIs de Deno) para poder cubrirlos con Vitest directamente: `route-predicate.ts` (`resolveRecipient(payload)`, decide destinatario + plantilla) y `../_shared/email-template.ts` (`renderEmail({titulo, cuerpoHtml, nombre?})` + `renderEmailText({cuerpoTexto, nombre?})`, wrappers HTML/texto-plano compartidos con `enviar-correo-masivo`, sin footer de "darse de baja" — decisión MVP fija). El wrapper HTML incluye un botón fijo "Visitar Vitrina" → `https://esvitrina.com` (hardcodeado en `email-template.ts`, no viene de `NEXT_PUBLIC_SITE_URL` — las Edge Functions corren en Deno, fuera de la app Next.js, así que esa env var no es alcanzable ahí); `renderEmailText` enlaza la misma URL en texto plano. Cada una de las 4 plantillas de `PLANTILLAS` tiene ahora `cuerpoHtml` y `cuerpoTexto` — el `text` del correo no es un fallback trivial, es la señal que evita que Gmail lo clasifique como correo masivo/promocional (un HTML-only sin parte de texto plano es un indicador típico de bulk mail).
 
 Variables de entorno: `NOTIF_WEBHOOK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NOTIF_FROM_EMAIL`.
 
@@ -919,7 +919,7 @@ Flujo:
 3. Enruta vía `resolveRecipient`: `solicitud_mensaje` INSERT → destinatario `record.receptor_id`, plantilla "nueva solicitud de mensaje"; `solicitud_revista` UPDATE con `record.estado==='aceptada'` **y** `old_record?.estado !== 'aceptada'` → destinatario `record.solicitante_id`, plantilla "tu obra fue aceptada en la revista" (el guard de `old_record` evita reenvíos si se vuelve a guardar una fila ya aceptada); `solicitud_revista` UPDATE con `record.estado==='rechazada'` **y** `old_record?.estado !== 'rechazada'` → mismo destinatario, plantilla "tu obra no fue aceptada en una revista" (sin chequear `notif_app_revista` — ver asimetría de gate en §3.21/§3.23); `notificacion` INSERT con `record.tipo==='recordatorio_cierre_revista'` → destinatario `record.usuario_id`, plantilla "la ventana de postulación cierra pronto" (cualquier otro `tipo` en este mismo webhook → ignorado, evita duplicar emails); cualquier otro caso → **204** (ignorado, no es error).
 4. Cliente Supabase **anon** (`createClient(SUPABASE_URL, SUPABASE_ANON_KEY)`) — no `service_role` — llama `rpc('resolver_destinatario_notificacion', {p_secret: NOTIF_WEBHOOK_SECRET, p_usuario_id})`.
 5. Sin fila, o `notif_email_habilitado=false`, o sin `email` → **204** (omitido: usuario no encontrado / opt-out / sin correo, no es un error). Error real de la RPC → **500**.
-6. Arma el HTML vía `renderEmail(...)` y envía con Resend (`npm:resend`, import Deno) `emails.send({from: NOTIF_FROM_EMAIL, to: email, subject, html})`. Error de Resend → **500** con su mensaje; éxito → **200**.
+6. Arma el HTML vía `renderEmail(...)` y el texto plano vía `renderEmailText(...)`, y envía con Resend (`npm:resend`, import Deno) `emails.send({from: NOTIF_FROM_EMAIL, to: email, subject, html, text})`. Error de Resend → **500** con su mensaje; éxito → **200**.
 
 **Footgun de build:** el entrypoint Deno (`index.ts`) usa globals (`Deno.serve`, `Deno.env`) y specifiers `npm:`/imports con extensión `.ts` que `tsc` (targeted a Node) no puede resolver. Se excluyó explícitamente en `tsconfig.json` (`exclude: ["supabase/functions/**/index.ts"]`) — los siblings planos (`route-predicate.ts`, `email-template.ts`) **no** están excluidos y sí se type-checan/lintean normalmente. ESLint (`eslint-config-next/typescript`) no requiere una exclusión equivalente: no lanza error de "parserOptions.project" sobre `index.ts` aun estando fuera del programa de `tsc`.
 
@@ -1051,7 +1051,7 @@ Flujo:
 3. `rpc('resolver_destinatarios_correo', {p_tipo, p_ciudad, p_ids})`. `P0001` (no-admin) → **403**; otro error → **500** (log server-side, sin detalle en la respuesta).
 4. Cero destinatarios resueltos → **200** `{enviados:0, fallidos:0, detalles:[]}` — no es error.
 5. Más de `LIMITE_DESTINATARIOS = 500` resueltos → **400**, sin enviar nada — mitiga que un `tipo:'todos'` sin cota deje `correo_admin.estado` atascado en `'pendiente'` si el runtime mata la función a mitad de un envío; no resuelve el problema de fondo, solo acota el peor caso sin construir colas/checkpointing.
-6. Convierte `cuerpo` a HTML seguro UNA vez (`plain-text-to-html.ts`), divide en lotes de ≤50 (`chunk.ts`) y envía con Resend en paralelo por lote vía `renderEmail({titulo: asunto, cuerpoHtml: cuerpoHtmlSeguro, nombre})`.
+6. Convierte `cuerpo` a HTML seguro UNA vez (`plain-text-to-html.ts`), divide en lotes de ≤50 (`chunk.ts`) y envía con Resend en paralelo por lote vía `renderEmail({titulo: asunto, cuerpoHtml: cuerpoHtmlSeguro, nombre})` + `renderEmailText({cuerpoTexto: cuerpo, nombre})` — el `cuerpo` original (pre-HTML) se reutiliza tal cual como parte `text`, sin costo extra.
 7. Responde **200** `{enviados, fallidos, detalles: {email, error?}[]}`. El Route Handler escribe el UPDATE de `correo_admin` con los conteos/`estado` final — `cantidad_destinatarios = enviados + fallidos` (puede seguir llamando a `resolver_destinatarios_correo` aparte solo para el conteo de preview/dry-run, sin enviar nada).
 
 **Nota de superficie de error:** gateada por `verify_jwt:true` + el `es_admin()` interno de la RPC — solo un admin autenticado ve la respuesta, por eso `detalles[].error` incluye el mensaje de Resend por destinatario (diagnóstico); excepciones no estructuradas devuelven un mensaje genérico, detalle real solo en `console.error`. Con la lista de destinatarios imposible de manipular desde fuera de la RPC, este passthrough no habilita saltarse el opt-out.
@@ -1409,6 +1409,14 @@ alter table public.publicacion alter column chat_habilitado set default false;
 ```
 
 Cambio ADITIVO, aprobado explícitamente. El fast-fill inicial con `default true` backfillea todas las filas existentes como habilitadas (el chat ya funcionaba para ellas antes de este cambio); la única excepción es la publicación `5072d255-5cdf-459e-9da8-eac16a8e430c`, apagada explícitamente. El tercer `ALTER COLUMN ... SET DEFAULT false` deja las publicaciones **nuevas** desactivadas por defecto — el autor la enciende explícitamente desde el formulario de publicar/editar (toggle gateado por `tienePdf`, ver `Vitrina_Pantallas_Componentes.md`). `publicacion` usa GRANT de tabla completo (no por columna, a diferencia de `usuario` — ver footgun §3.19), así que no hizo falta un `GRANT` adicional, mismo precedente que `bloqueada` (§3.10) y `archivo_thumbnail_url` (§3.20b). Sin cambios en RLS: la policy `editar_propio` (UPDATE) ya cubre cualquier columna de la fila propia del autor. El indexado de PDFs (embeddings, `lib/rag/indexer.ts`) sigue siendo **incondicional** — corre siempre, independientemente de este flag. El endpoint `/api/publicaciones/[id]/chat` valida `chat_habilitado` inmediatamente después de resolver la publicación y **antes** de invocar `consumir_cuota_rag()`, para que una publicación con el chat apagado no consuma cuota horaria del usuario ni llame al LLM.
+
+### 3.25 Valor `divulgacion` en el enum `tipo_publicacion`
+
+```sql
+ALTER TYPE tipo_publicacion ADD VALUE IF NOT EXISTS 'divulgacion';
+```
+
+Cambio ADITIVO, aprobado explícitamente (agrega un valor al enum, no una columna). Etiqueta `Divulgación científica` en `TIPO_META` (`lib/constants/publicaciones.ts`), categoría `texto` — se distingue de `articulo`/`investigacion`/`ensayo` por ser redacción divulgativa para público general, no un texto académico formal. Sin cambios en RLS, RPC, la vista `feed_publicaciones` ni en `publicacion_tag`/`tag`. Motivado por un análisis del uso real de `tipo = 'otro'`: de 5 publicaciones ahí, una calzaba mejor con este nuevo valor; las otras 4 se reclasificaron a `proyecto`/`investigacion`, ya existentes.
 
 ---
 

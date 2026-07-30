@@ -38,6 +38,7 @@ export const AREA_TO_SLUG: Readonly<Record<string, string>> = {
   'Educación':                         'educacion',
   'Economía y Administración':         'economia-y-administracion',
   'Ciencias':                          'ciencias',
+  'Salud':                             'salud',
 }
 
 /**
