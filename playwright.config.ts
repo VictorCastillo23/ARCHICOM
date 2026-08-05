@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
 import { USER_STORAGE_STATE } from './e2e/support/storage-state'
+
+// Playwright Test does not auto-load .env files (unlike `next dev`/`next build`,
+// which load .env.local for the webServer's own child process). Without this,
+// E2E_TEST_* stays undefined in the `playwright test` process even when set in
+// .env.local — a missing file is a silent no-op, so this stays safe in CI,
+// where those vars already come from real job-level secrets.
+dotenv.config({ path: '.env.local' })
 
 /**
  * v1: chromium-only. Cross-browser coverage is deferred until the suite is
