@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react'
 import Button from '@/components/ui/Button'
+import PdfViewer from '@/components/publicacion/PdfViewer'
 
 interface ArchivoPreviewProps {
   file: File | null
@@ -40,13 +41,7 @@ export default function ArchivoPreview({ file, onClear }: ArchivoPreviewProps) {
 
       {isPdf && (
         <div>
-          <iframe
-            src={objectUrl}
-            title="Vista previa del PDF"
-            className="w-full rounded border-0"
-            style={{ height: '400px' }}
-            onError={() => {}}
-          />
+          <PdfViewer source={file} title="Vista previa del PDF" />
           <p className="mt-2 text-xs text-text-muted">
             <span className="inline-flex items-center gap-1 rounded bg-surface border border-border px-2 py-0.5 text-xs font-medium">
               PDF

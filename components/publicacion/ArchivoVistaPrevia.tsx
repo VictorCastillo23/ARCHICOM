@@ -1,3 +1,5 @@
+import PdfViewer from '@/components/publicacion/PdfViewer'
+
 interface ArchivoVistaPreviaProps {
   url: string
   titulo: string
@@ -57,12 +59,7 @@ export default function ArchivoVistaPrevia({ url, titulo }: ArchivoVistaPreviaPr
   if (tipo === 'pdf') {
     return (
       <div className="rounded-md border border-border bg-surface-muted p-3">
-        <iframe
-          src={url}
-          title={`Vista previa de ${titulo}`}
-          className="w-full rounded border-0"
-          style={{ height: '520px' }}
-        />
+        <PdfViewer source={url} title={titulo} />
         <div className="mt-3">
           <VerArchivoButton url={url} label="Abrir en nueva pestaña ↗" />
         </div>
