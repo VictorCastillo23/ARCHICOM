@@ -8,11 +8,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --fix"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.5",
     "@next/third-parties": "^16.2.9",
+    "@sentry/nextjs": "^10.66.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "@vercel/analytics": "^2.0.1",
@@ -26,12 +33,16 @@
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.2",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

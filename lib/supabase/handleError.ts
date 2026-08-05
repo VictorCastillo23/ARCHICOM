@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextResponse } from 'next/server'
 
 type ErrorEnvelope = { error: { code: string; message: string } }
@@ -24,10 +25,18 @@ export function validationError(message: string): NextResponse {
 
 // Logs only the fields needed to diagnose an error — never the raw object,
 // which for Postgres/PostgREST errors can carry `details`/`hint` with query
-// values or row data (N-8, SECURITY_AUDIT.md 2026-07-04).
+// values or row data (N-8, SECURITY_AUDIT.md 2026-07-04). Same discipline
+// applies to the Sentry event: `Sentry.captureException`'s first argument is
+// what the SDK auto-serializes (up to `normalizeDepth`) when the value isn't
+// an `Error` instance, so we must never pass the raw error/`e` there either —
+// a fresh, sanitized `Error` built only from `code`/`status` is passed
+// instead. `extra` still carries `code`/`status` only, never the raw error
+// or its `message`/`details`/`hint`.
 function logServerError(tag: string, error: unknown): void {
   const e = error as { code?: string; message?: string; status?: number }
   console.error(tag, { code: e?.code, status: e?.status, message: e?.message })
+  const sanitizedError = new Error(`${tag}: code=${e?.code ?? 'unknown'} status=${e?.status ?? 'unknown'}`)
+  Sentry.captureException(sanitizedError, { extra: { code: e?.code, status: e?.status } })
 }
 
 export function handleError(error: unknown): NextResponse {

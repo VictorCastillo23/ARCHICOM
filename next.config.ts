@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const SUPABASE_HOST = 'https://fdfbyhjwnbteccagulxb.supabase.co'
 // Supabase Realtime uses a WebSocket; connect-src must allow the wss:// origin too.
@@ -68,4 +69,15 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Same-origin tunnel keeps the CSP connect-src unchanged (see proxy.ts's
+  // matcher exclusion for why /monitoring must bypass the session-refresh proxy).
+  tunnelRoute: '/monitoring',
+  // Missing authToken/org/project (unprovisioned locally) makes the plugin skip
+  // sourcemap upload gracefully instead of failing the build.
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+});

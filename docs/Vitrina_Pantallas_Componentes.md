@@ -182,10 +182,11 @@
   │ Resumen        │ Bloque de texto con el resumen        │ resumen                                                 │   
   ├────────────────┼───────────────────────────────────────┼─────────────────────────────────────────────────────────┤   
   │ ArchivoVista-  │ Preview embebido del archivo: imagen  │ archivo_url (opcional)                                  │
-  │ Previa         │ inline / PDF en iframe; al presionar  │                                                         │
-  │                │ abre en otra pestaña. Detecta tipo    │                                                         │
-  │                │ por extensión; extensión desconocida  │                                                         │
-  │                │ → fallback "Ver archivo".             │                                                         │
+  │ Previa         │ inline / PDF paginado (canvas,        │                                                         │
+  │                │ pdf.js) con Anterior/Siguiente; al    │                                                         │
+  │                │ presionar abre en otra pestaña.       │                                                         │
+  │                │ Detecta tipo por extensión; extensión │                                                         │
+  │                │ desconocida → fallback "Ver archivo". │                                                         │
   ├────────────────┼───────────────────────────────────────┼─────────────────────────────────────────────────────────┤   
   │ Obra recomendada │ Bloque con la atribución externa    │ obra_autor_externo, url_externa (solo recomendación)   │   
   ├────────────────┼───────────────────────────────────────┼─────────────────────────────────────────────────────────┤   

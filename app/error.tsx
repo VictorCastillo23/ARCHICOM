@@ -1,5 +1,7 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
+import { useEffect } from 'react'
 import ErrorState from '@/components/ui/ErrorState'
 
 interface ErrorPageProps {
@@ -8,6 +10,10 @@ interface ErrorPageProps {
 }
 
 export default function GlobalError({ error, reset }: ErrorPageProps) {
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <ErrorState

@@ -25,10 +25,18 @@
 next-env.d.ts
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
 
 # vercel
 .vercel
+
+# playwright (e2e)
+/playwright-report/
+/test-results/
+/playwright/.cache/
+# storageState files hold live session cookies/localStorage — never commit them
+/e2e/.auth/
 
 # misc
 .DS_Store

@@ -28,7 +28,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec tsc --noEmit
+      - run: pnpm run typecheck
 
   test:
     runs-on: ubuntu-latest
@@ -58,3 +58,55 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+  # PR-only (unlike the 4 jobs above, which also run on push to main) and
+  # non-blocking for now: this requires E2E_TEST_USER_EMAIL/PASSWORD and
+  # E2E_TEST_ADMIN_EMAIL/PASSWORD GitHub secrets pointing at dedicated test
+  # accounts, separate from (not the same as) the 3 seeded accounts
+  # documented in CLAUDE.md, which may remain banned. Provisioning those
+  # dedicated accounts is an external, owner-driven prerequisite — see the
+  # design's "Blocking Prerequisites" section. It stays wired up and ready
+  # for once those secrets exist.
+  #
+  # `continue-on-error` lives on the `pnpm test:e2e` step ONLY (not the job),
+  # so a broken `pnpm install`/`playwright install` still fails the job for
+  # real — only the known/accepted "no test accounts yet" outcome is
+  # soft-failed. Because step-level `continue-on-error` overrides that step's
+  # `conclusion` to `success` (masking `failure()` job-wide), the
+  # upload-artifact step below checks `steps.e2e_tests.outcome` instead:
+  # `outcome` is the step's real pre-override pass/fail result, while
+  # `conclusion` is what actually determines job status after the override —
+  # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context.
+  e2e:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      ANTHROPIC_API_KEY: placeholder-key
+      E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
+      E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+      E2E_TEST_ADMIN_EMAIL: ${{ secrets.E2E_TEST_ADMIN_EMAIL }}
+      E2E_TEST_ADMIN_PASSWORD: ${{ secrets.E2E_TEST_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # playwright.config.ts's webServer already runs `pnpm build && pnpm start`
+      # — no separate build step here to avoid building twice.
+      - name: Run Playwright e2e tests
+        id: e2e_tests
+        continue-on-error: true
+        run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: steps.e2e_tests.outcome == 'failure'
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
